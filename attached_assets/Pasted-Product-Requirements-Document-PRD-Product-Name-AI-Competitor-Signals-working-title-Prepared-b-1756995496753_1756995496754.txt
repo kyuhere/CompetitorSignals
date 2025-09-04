@@ -1,0 +1,156 @@
+Product Requirements Document (PRD)
+
+Product Name: AI Competitor Signals (working title)
+
+Prepared by: [Your Name]
+Date: [Today’s Date]
+
+1. Purpose / Vision
+
+The AI Competitor Signals app is designed to help businesses and individuals track and analyze their competitors quickly and efficiently. By aggregating publicly available signals such as news articles, funding events, social activity, and founder statements, the tool produces concise, actionable insights in a newsletter-style format.
+
+The app is:
+
+Cost-effective for early-stage users
+
+Scalable for more frequent or larger competitor analysis
+
+Agile in adding new data sources and premium features
+
+2. Target Users
+
+Small business owners and founders
+
+Marketing and strategy teams
+
+Product managers and analysts
+
+Entrepreneurs researching market trends
+
+User Levels / Tiers:
+
+Tier	Access	Features
+Guest / Free	1 competitor per session	One-time report, basic news/funding signals
+Logged-In / Free Account	Up to 5 competitors per session	History of previous analyses, multiple competitors, improved formatting
+Premium (Future)	Unlimited competitors	Scheduled reports, advanced data sources, trend tracking, analytics dashboard
+3. Key Features
+3.1 Core Features (MVP)
+Feature	Description
+Competitor Input	Users submit competitor names and optionally URLs or RSS feeds.
+Signal Aggregation	Pulls news, press releases, funding announcements, and social signals from public sources.
+AI Summarization	Generates bullet-point “signals report” highlighting key events and trends.
+Single-Page Report	Newsletter-style layout for easy consumption and sharing.
+Free vs Logged-In Limits	1 competitor for guests, up to 5 for logged-in users.
+Backend Rate-Limiting	Enforces query limits reliably by tracking each user’s daily usage. Prevents abuse, refreshes daily.
+3.2 Advanced Features (Post-MVP)
+Feature	Description
+Scheduled / Automated Reports	Weekly or bi-weekly competitor summaries sent via email or in-app.
+Multi-Source Integration	Social media, niche news feeds, investor alerts.
+Historical Trend Tracking	Compare competitor signals over time.
+Premium Analytics Dashboard	Aggregate metrics across multiple competitors, funding, product launches, controversies.
+API Access	For advanced users to query competitor data programmatically.
+4. Functional Requirements
+
+Accept competitor names and optional URLs
+
+Pull signals from multiple sources: RSS feeds, news APIs, social mentions
+
+Summarize events using AI into bullet-point style reports
+
+Store results temporarily for logged-in users
+
+Enforce query limits per user tier via backend rate-limiting
+
+Export or share reports in HTML or PDF
+
+5. Non-Functional Requirements
+
+Scalability: Handle multiple users concurrently
+
+Performance: Return reports within seconds for small queries
+
+Security: Keep user submissions and history private
+
+Cost-Efficiency: Minimize API and AI calls via batching or caching
+
+Extensibility: Add new data sources or analysis modules without rewriting core logic
+
+Reliability: Rate-limiting ensures free and logged-in tiers cannot exceed allowed queries
+
+6. User Stories
+
+Guest User
+
+“I want to analyze one competitor quickly, so I can get a snapshot of recent activity without signing up.”
+
+Logged-In Free User
+
+“I want to analyze up to five competitors and save the reports for later review.”
+
+Premium User (Future)
+
+“I want to schedule automated weekly competitor reports with trend tracking and advanced analytics.”
+
+7. Workflow (MVP)
+
+User visits the app URL
+
+User submits competitor name(s) (1 for guests, up to 5 for logged-in users)
+
+Backend checks rate limits per user:
+
+Rejects requests exceeding allowed queries (HTTP 429 or frontend message)
+
+Resets daily counters automatically
+
+Backend queries APIs / RSS feeds for signals
+
+Backend sends collected data to AI summarizer
+
+AI generates bullet-point report
+
+Report displayed to the user and optionally saved for logged-in accounts
+
+8. Success Metrics
+
+Usage: Number of competitor analyses generated, active users
+
+Quality: User feedback on report relevance and clarity
+
+Retention: Percentage of returning users
+
+Performance: Average report generation time
+
+Cost: AI/API cost per report vs user tier revenue
+
+Reliability: Queries per user do not exceed limits
+
+9. Technical Architecture (MVP-Agnostic)
+
+Frontend: Simple web form for competitor submission
+
+Backend: Handles API calls, RSS feed parsing, AI summarization, report generation
+
+Data Sources: News feeds, public announcements, funding data, social signals
+
+AI Summarization Engine: Generates concise, structured bullet-point reports
+
+Storage: Temporary storage for logged-in user reports
+
+Tier Management: Enforce query limits based on user status (guest, logged-in, premium) using backend rate-limiting
+
+Optional Integration: Windrush or similar platform for user management, authentication, and future premium workflows
+
+10. Future Enhancements / Integrations
+
+Bi-weekly automated email reports per user
+
+Integrate additional APIs for niche market intelligence
+
+Track historical trends for each competitor
+
+Add collaboration features for teams
+
+Premium analytics dashboard with filtering and visualizations
+
+Email / Slack / Notion delivery options
