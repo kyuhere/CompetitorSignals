@@ -113,48 +113,129 @@ class SignalAggregator {
 
   private async getNewsSignals(competitor: string): Promise<SignalItem[]> {
     try {
-      // Use NewsAPI or similar service
-      const newsApiKey = process.env.NEWS_API_KEY;
-      if (!newsApiKey) {
-        console.warn("NEWS_API_KEY not configured, skipping news signals");
+      const rapidApiKey = process.env.RAPIDAPI_KEY;
+      if (!rapidApiKey) {
+        console.warn("RAPIDAPI_KEY not configured, skipping news signals");
         return [];
       }
 
-      const response = await fetch(
-        `https://newsapi.org/v2/everything?q="${competitor}"&sortBy=publishedAt&pageSize=10&apiKey=${newsApiKey}`
+      // Search for multiple types of news about the competitor
+      const searchQueries = [
+        `${competitor} news recent`,
+        `${competitor} funding investment`,
+        `${competitor} announcement launch`,
+        `${competitor} partnership acquisition`
+      ];
+
+      const allResults: SignalItem[] = [];
+
+      for (const query of searchQueries) {
+        try {
+          const response = await fetch(
+            `https://google-search74.p.rapidapi.com/?query=${encodeURIComponent(query)}&limit=5&related_keywords=true`,
+            {
+              method: 'GET',
+              headers: {
+                'x-rapidapi-host': 'google-search74.p.rapidapi.com',
+                'x-rapidapi-key': rapidApiKey,
+              },
+            }
+          );
+
+          if (!response.ok) {
+            console.error(`Google Search API error for "${query}":`, response.statusText);
+            continue;
+          }
+
+          const data = await response.json();
+          
+          if (data.results) {
+            const results = data.results.map((result: any) => ({
+              title: result.title || '',
+              content: result.description || result.snippet || '',
+              url: result.url || result.link || '',
+              publishedAt: new Date().toISOString(), // Google search doesn't provide publish dates
+              type: this.detectSignalType(query, result.title, result.description) as 'news' | 'funding' | 'social' | 'product',
+            }));
+            
+            allResults.push(...results);
+          }
+
+          // Add a small delay to respect rate limits
+          await new Promise(resolve => setTimeout(resolve, 100));
+        } catch (error) {
+          console.error(`Error fetching search results for "${query}":`, error);
+          continue;
+        }
+      }
+
+      // Remove duplicates and limit results
+      const uniqueResults = allResults.filter((item, index, self) => 
+        index === self.findIndex(t => t.url === item.url && t.title === item.title)
       );
 
-      if (!response.ok) {
-        console.error("News API error:", response.statusText);
-        return [];
-      }
-
-      const data = await response.json();
-      
-      return (data.articles || []).map((article: any) => ({
-        title: article.title,
-        content: article.description || article.content?.substring(0, 200) || '',
-        url: article.url,
-        publishedAt: article.publishedAt,
-        type: 'news' as const,
-      }));
+      return uniqueResults.slice(0, 15); // Limit to 15 most relevant results
     } catch (error) {
       console.error("Error fetching news signals:", error);
       return [];
     }
   }
 
+  private detectSignalType(query: string, title: string, description: string): 'news' | 'funding' | 'social' | 'product' {
+    const text = (query + ' ' + title + ' ' + description).toLowerCase();
+    
+    if (text.includes('funding') || text.includes('investment') || text.includes('round') || text.includes('raised') || text.includes('venture')) {
+      return 'funding';
+    }
+    
+    if (text.includes('launch') || text.includes('release') || text.includes('feature') || text.includes('product') || text.includes('announcement')) {
+      return 'product';
+    }
+    
+    if (text.includes('twitter') || text.includes('social') || text.includes('tweet') || text.includes('linkedin')) {
+      return 'social';
+    }
+    
+    return 'news';
+  }
+
   private async getFundingSignals(competitor: string): Promise<SignalItem[]> {
     try {
-      // Mock funding data - in production, use Crunchbase API or similar
-      return [
+      const rapidApiKey = process.env.RAPIDAPI_KEY;
+      if (!rapidApiKey) {
+        return [];
+      }
+
+      const fundingQuery = `${competitor} funding investment round raised venture capital`;
+      
+      const response = await fetch(
+        `https://google-search74.p.rapidapi.com/?query=${encodeURIComponent(fundingQuery)}&limit=5&related_keywords=true`,
         {
-          title: `${competitor} funding activity`,
-          content: `Recent funding and investment activity for ${competitor}`,
-          type: 'funding' as const,
-          publishedAt: new Date().toISOString(),
+          method: 'GET',
+          headers: {
+            'x-rapidapi-host': 'google-search74.p.rapidapi.com',
+            'x-rapidapi-key': rapidApiKey,
+          },
         }
-      ];
+      );
+
+      if (!response.ok) {
+        return [];
+      }
+
+      const data = await response.json();
+      
+      if (data.results) {
+        return data.results.map((result: any) => ({
+          title: result.title || '',
+          content: result.description || result.snippet || '',
+          url: result.url || result.link || '',
+          publishedAt: new Date().toISOString(),
+          type: 'funding' as const,
+        })).slice(0, 5);
+      }
+
+      return [];
     } catch (error) {
       console.error("Error fetching funding signals:", error);
       return [];
@@ -163,15 +244,41 @@ class SignalAggregator {
 
   private async getSocialSignals(competitor: string): Promise<SignalItem[]> {
     try {
-      // Mock social data - in production, use Twitter API, Reddit API, etc.
-      return [
+      const rapidApiKey = process.env.RAPIDAPI_KEY;
+      if (!rapidApiKey) {
+        return [];
+      }
+
+      const socialQuery = `${competitor} twitter linkedin social media mentions`;
+      
+      const response = await fetch(
+        `https://google-search74.p.rapidapi.com/?query=${encodeURIComponent(socialQuery)}&limit=5&related_keywords=true`,
         {
-          title: `Social mentions of ${competitor}`,
-          content: `Recent social media activity and mentions of ${competitor}`,
-          type: 'social' as const,
-          publishedAt: new Date().toISOString(),
+          method: 'GET',
+          headers: {
+            'x-rapidapi-host': 'google-search74.p.rapidapi.com',
+            'x-rapidapi-key': rapidApiKey,
+          },
         }
-      ];
+      );
+
+      if (!response.ok) {
+        return [];
+      }
+
+      const data = await response.json();
+      
+      if (data.results) {
+        return data.results.map((result: any) => ({
+          title: result.title || '',
+          content: result.description || result.snippet || '',
+          url: result.url || result.link || '',
+          publishedAt: new Date().toISOString(),
+          type: 'social' as const,
+        })).slice(0, 5);
+      }
+
+      return [];
     } catch (error) {
       console.error("Error fetching social signals:", error);
       return [];

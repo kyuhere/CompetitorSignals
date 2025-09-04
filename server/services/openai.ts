@@ -105,7 +105,6 @@ Focus on:
         }
       ],
       response_format: { type: "json_object" },
-      temperature: 0.3, // Lower temperature for more consistent analysis
     });
 
     const result = response.choices[0].message.content;
