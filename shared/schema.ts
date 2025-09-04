@@ -51,8 +51,8 @@ export const competitorReports = pgTable("competitor_reports", {
 
 export const rateLimits = pgTable("rate_limits", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  userId: varchar("user_id").references(() => users.id),
-  sessionId: varchar("session_id"), // For guest users
+  userId: varchar("user_id").references(() => users.id).unique(),
+  sessionId: varchar("session_id").unique(), // For guest users
   queryCount: integer("query_count").default(0),
   lastReset: timestamp("last_reset").defaultNow(),
   createdAt: timestamp("created_at").defaultNow(),

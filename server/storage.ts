@@ -96,18 +96,35 @@ export class DatabaseStorage implements IStorage {
   }
 
   async upsertRateLimit(rateLimitData: InsertRateLimit): Promise<RateLimit> {
-    const [rateLimit] = await db
-      .insert(rateLimits)
-      .values(rateLimitData)
-      .onConflictDoUpdate({
-        target: rateLimitData.userId ? rateLimits.userId : rateLimits.sessionId,
-        set: {
-          queryCount: rateLimitData.queryCount,
-          lastReset: rateLimitData.lastReset,
-        },
-      })
-      .returning();
-    return rateLimit;
+    if (rateLimitData.userId) {
+      const [rateLimit] = await db
+        .insert(rateLimits)
+        .values(rateLimitData)
+        .onConflictDoUpdate({
+          target: rateLimits.userId,
+          set: {
+            queryCount: rateLimitData.queryCount,
+            lastReset: rateLimitData.lastReset,
+          },
+        })
+        .returning();
+      return rateLimit;
+    } else if (rateLimitData.sessionId) {
+      const [rateLimit] = await db
+        .insert(rateLimits)
+        .values(rateLimitData)
+        .onConflictDoUpdate({
+          target: rateLimits.sessionId,
+          set: {
+            queryCount: rateLimitData.queryCount,
+            lastReset: rateLimitData.lastReset,
+          },
+        })
+        .returning();
+      return rateLimit;
+    } else {
+      throw new Error("Either userId or sessionId must be provided");
+    }
   }
 
   async resetDailyLimits(): Promise<void> {

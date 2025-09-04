@@ -1,4 +1,4 @@
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { CheckCircle, Loader2, Circle } from "lucide-react";
 import { useState, useEffect } from "react";
 
@@ -47,6 +47,8 @@ export default function LoadingModal({ isOpen }: LoadingModalProps) {
   return (
     <Dialog open={isOpen}>
       <DialogContent className="sm:max-w-md" data-testid="modal-loading">
+        <DialogTitle className="sr-only">Analyzing Competitors</DialogTitle>
+        <DialogDescription className="sr-only">Gathering competitor signals from multiple sources</DialogDescription>
         <div className="text-center">
           <div className="inline-flex items-center justify-center w-16 h-16 bg-primary/10 rounded-full mb-4">
             <Loader2 className="w-8 h-8 text-primary animate-spin" />
