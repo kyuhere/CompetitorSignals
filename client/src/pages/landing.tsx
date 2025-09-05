@@ -3,6 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Progress } from "@/components/ui/progress";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { BarChart3, Users, TrendingUp, Shield, Search, Download, FileText } from "lucide-react";
 import { useMutation } from "@tanstack/react-query";
@@ -14,14 +15,43 @@ export default function Landing() {
   const [searchQuery, setSearchQuery] = useState("");
   const [showSignupDialog, setShowSignupDialog] = useState(false);
   const [searchResult, setSearchResult] = useState<any>(null);
+  const [loadingProgress, setLoadingProgress] = useState(0);
   const { toast } = useToast();
 
   const searchMutation = useMutation({
     mutationFn: async (competitor: string) => {
-      return await apiRequest('POST', '/api/analyze', {
-        competitors: competitor,
-        sources: { news: true, funding: true, social: true, products: false }
-      });
+      // Start progress simulation
+      setLoadingProgress(10);
+      
+      // Simulate progress during the API call
+      const progressInterval = setInterval(() => {
+        setLoadingProgress(prev => {
+          if (prev >= 90) {
+            clearInterval(progressInterval);
+            return 90;
+          }
+          return prev + Math.random() * 15;
+        });
+      }, 1000);
+      
+      try {
+        const result = await apiRequest('POST', '/api/analyze', {
+          competitors: competitor,
+          sources: { news: true, funding: true, social: true, products: false }
+        });
+        
+        clearInterval(progressInterval);
+        setLoadingProgress(100);
+        
+        // Reset progress after a short delay
+        setTimeout(() => setLoadingProgress(0), 500);
+        
+        return result;
+      } catch (error) {
+        clearInterval(progressInterval);
+        setLoadingProgress(0);
+        throw error;
+      }
     },
     onSuccess: (data) => {
       setSearchResult(data);
@@ -109,7 +139,16 @@ export default function Landing() {
                 </Button>
               </div>
               {searchMutation.isPending && (
-                <p className="text-center text-sm text-muted-foreground mt-2">Analyzing competitor...</p>
+                <div className="mt-4 space-y-2">
+                  <div className="flex items-center justify-between text-sm text-muted-foreground">
+                    <span>Analyzing competitor signals...</span>
+                    <span>{Math.round(loadingProgress)}%</span>
+                  </div>
+                  <Progress value={loadingProgress} className="w-full h-2" />
+                  <p className="text-xs text-muted-foreground text-center">
+                    Gathering data from news, funding, and social sources
+                  </p>
+                </div>
               )}
             </form>
           </div>

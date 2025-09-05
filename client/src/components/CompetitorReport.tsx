@@ -21,10 +21,22 @@ interface CompetitorReportProps {
 export default function CompetitorReport({ report }: CompetitorReportProps) {
   let analysis;
   try {
-    analysis = JSON.parse(report.summary);
+    // Handle both string and object formats
+    if (typeof report.summary === 'string') {
+      analysis = JSON.parse(report.summary);
+    } else if (typeof report.summary === 'object' && report.summary !== null) {
+      analysis = report.summary;
+    } else {
+      throw new Error('Invalid summary format');
+    }
   } catch (error) {
     console.error("Error parsing report summary:", error);
-    analysis = null;
+    analysis = {
+      executive_summary: "Analysis results are being processed. Please try generating a new report.",
+      competitor_insights: [],
+      market_signals: [],
+      recommendations: []
+    };
   }
 
   const handleExport = () => {
@@ -63,18 +75,6 @@ export default function CompetitorReport({ report }: CompetitorReportProps) {
     }
   };
 
-  if (!analysis) {
-    return (
-      <Card>
-        <CardContent className="p-6">
-          <div className="text-center">
-            <h2 className="text-xl font-semibold text-foreground mb-4">Analysis Error</h2>
-            <p className="text-muted-foreground">Unable to parse the analysis results. Please try generating a new report.</p>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
 
   return (
     <Card data-testid="card-competitor-report">
