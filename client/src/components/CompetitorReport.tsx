@@ -87,15 +87,15 @@ export default function CompetitorReport({ report }: CompetitorReportProps) {
             </h1>
             <div className="flex items-center space-x-4 text-sm text-muted-foreground">
               <span data-testid="text-report-date">
-                Generated: {new Date(report.createdAt).toLocaleDateString()} at {new Date(report.createdAt).toLocaleTimeString()}
+                Generated: {report.createdAt ? new Date(report.createdAt).toLocaleDateString() : 'Now'} at {report.createdAt ? new Date(report.createdAt).toLocaleTimeString() : 'Now'}
               </span>
               <span>•</span>
               <span data-testid="text-competitor-count">
-                {report.competitors.length} Competitors Analyzed
+                {report.competitors?.length || 0} Competitors Analyzed
               </span>
               <span>•</span>
               <span data-testid="text-signal-count">
-                {report.metadata.signalCount} Signals Processed
+                {report.metadata?.signalCount || 0} Signals Processed
               </span>
             </div>
           </div>
