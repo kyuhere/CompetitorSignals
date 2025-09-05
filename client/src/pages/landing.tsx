@@ -4,10 +4,11 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { BarChart3, Users, TrendingUp, Shield, Search } from "lucide-react";
+import { BarChart3, Users, TrendingUp, Shield, Search, Download, FileText } from "lucide-react";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import CompetitorReport from "@/components/CompetitorReport";
 
 export default function Landing() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -24,7 +25,7 @@ export default function Landing() {
     },
     onSuccess: (data) => {
       setSearchResult(data);
-      setShowSignupDialog(true);
+      // Don't show signup dialog immediately, let them see the report first
     },
     onError: (error: any) => {
       if (error.message.includes('429')) {
@@ -44,6 +45,10 @@ export default function Landing() {
     if (!searchQuery.trim()) return;
     
     searchMutation.mutate(searchQuery.trim());
+  };
+
+  const handleExportAttempt = () => {
+    setShowSignupDialog(true);
   };
 
   return (
