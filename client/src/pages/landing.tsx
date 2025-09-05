@@ -130,11 +130,62 @@ export default function Landing() {
           {/* Feature badges */}
           <div className="flex flex-wrap gap-2 justify-center">
             <Badge variant="secondary">No Credit Card Required</Badge>
-            <Badge variant="secondary">5 Competitors per Analysis</Badge>
+            <Badge variant="secondary">5 Reports Every Two Weeks</Badge>
             <Badge variant="secondary">AI-Powered Insights</Badge>
           </div>
         </div>
       </section>
+
+      {/* Report Preview Section */}
+      {searchResult && (
+        <section className="py-16 px-4 sm:px-6 lg:px-8 bg-muted/30">
+          <div className="max-w-6xl mx-auto">
+            <div className="mb-8">
+              <h2 className="text-3xl font-bold text-foreground mb-4">Your Competitor Analysis</h2>
+              <p className="text-muted-foreground">Here's your competitive intelligence report preview:</p>
+            </div>
+            
+            <CompetitorReport 
+              report={searchResult}
+            />
+            
+            {/* Export/Email and CTA Section */}
+            <div className="mt-8 space-y-6">
+              {/* Export/Email Button */}
+              <div className="flex justify-center">
+                <Button
+                  onClick={handleExportAttempt}
+                  size="lg"
+                  className="bg-primary hover:bg-primary/90"
+                  data-testid="button-export-email"
+                >
+                  <Download className="w-4 h-4 mr-2" />
+                  Export / Email Report
+                </Button>
+              </div>
+              
+              {/* Bi-weekly CTA */}
+              <Card className="bg-gradient-to-r from-primary/10 to-blue-500/10 border-primary/20">
+                <CardContent className="p-6 text-center">
+                  <h3 className="text-lg font-semibold text-foreground mb-2">
+                    Want to receive this as a bi-weekly report?
+                  </h3>
+                  <p className="text-muted-foreground mb-4">
+                    Sign up to get 5 competitor reports every two weeks, plus export and email features.
+                  </p>
+                  <Button
+                    onClick={() => window.location.href = '/api/login'}
+                    variant="default"
+                    data-testid="button-biweekly-signup"
+                  >
+                    Sign Up for Bi-weekly Reports
+                  </Button>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* Features Section */}
       <section className="py-16 px-4 sm:px-6 lg:px-8 bg-muted/50">
@@ -272,8 +323,8 @@ export default function Landing() {
             <DialogTitle>Great! Your search is complete</DialogTitle>
             <DialogDescription>
               {searchResult ? 
-                "We found competitive intelligence for your search. Sign up to view the full report and get access to more features." :
-                "You've used your free search. Sign up to get 5 competitor analyses per day plus report history."
+                "Ready to export your report or save it for later? Sign up for free to unlock export features and get 5 competitor analyses every two weeks." :
+                "You've used your free preview. Sign up to get 5 competitor analyses every two weeks plus export and email features."
               }
             </DialogDescription>
           </DialogHeader>
@@ -282,10 +333,10 @@ export default function Landing() {
             <div className="bg-muted p-4 rounded-lg">
               <h4 className="font-medium text-foreground mb-2">With a free account you get:</h4>
               <ul className="text-sm text-muted-foreground space-y-1">
-                <li>• 5 competitor analyses per day</li>
+                <li>• 5 competitor analyses every two weeks</li>
                 <li>• Full AI-powered reports with source links</li>
-                <li>• Report history and exports</li>
-                <li>• Social sentiment analysis</li>
+                <li>• Export and email your reports</li>
+                <li>• Report history and social sentiment analysis</li>
               </ul>
             </div>
             

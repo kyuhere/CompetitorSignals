@@ -84,22 +84,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .map(name => name.trim())
         .filter(name => name.length > 0);
       
-      // Check rate limits
+      // Check rate limits - allow one free preview for guests
       const limit = isLoggedIn ? 5 : 1;
       const rateLimit = await storage.getRateLimit(userId, sessionId);
       
-      // Reset if new day
+      // Reset if new day for logged-in users, or if it's a new session for guests
       const today = new Date();
       const lastReset = rateLimit?.lastReset || new Date(0);
-      const shouldReset = today.getDate() !== lastReset.getDate() || 
-                         today.getMonth() !== lastReset.getMonth() ||
-                         today.getFullYear() !== lastReset.getFullYear();
+      const shouldReset = isLoggedIn ? 
+        (today.getDate() !== lastReset.getDate() || 
+         today.getMonth() !== lastReset.getMonth() ||
+         today.getFullYear() !== lastReset.getFullYear()) :
+        !rateLimit; // For guests, reset if no previous rate limit (first time)
       
       let currentCount = shouldReset ? 0 : (rateLimit?.queryCount || 0);
       
-      if (currentCount >= limit) {
+      // For guests, allow the first search without login requirement
+      if (!isLoggedIn && currentCount === 0) {
+        // This is the free preview search - allow it
+      } else if (currentCount >= limit) {
         return res.status(429).json({ 
-          message: "Daily query limit exceeded. Please try again tomorrow.",
+          message: isLoggedIn ? 
+            "Daily query limit exceeded. Please try again tomorrow." :
+            "You've used your free preview. Sign up to get 5 reports every two weeks.",
           limit,
           current: currentCount,
         });
