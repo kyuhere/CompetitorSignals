@@ -103,42 +103,86 @@ COMPETITOR NAMES: ${competitorNames.join(', ')}
 SIGNALS DATA:
 ${JSON.stringify(signals, null, 2)}
 
-Please generate a detailed competitive intelligence analysis in news-style format with bullet points using the following JSON structure:
+Please generate a comprehensive competitive intelligence analysis with structured, detailed sections for each competitor using the following JSON structure:
 
 {
   "executive_summary": "• Brief overview of competitive landscape\n• Key market trends and developments\n• Overall activity assessment",
   "competitors": [
     {
       "competitor": "Company Name",
+      "company_overview": {
+        "location": "Headquarters location or 'No reliable data found'",
+        "market_positioning": "Market position description or 'No reliable data found'",
+        "key_products_services": ["• Product/service 1", "• Product/service 2"] || "No reliable data found"
+      },
+      "strengths_weaknesses": {
+        "strengths": [
+          "• Strength 1 [Source: bing.com/news]",
+          "• Strength 2 [Source: bing.com/news]",
+          "• Strength 3 [Source: bing.com/news]",
+          "• Strength 4 [Source: bing.com/news]",
+          "• Strength 5 [Source: bing.com/news]"
+        ],
+        "weaknesses": [
+          "• Weakness 1 [Source: bing.com/news]",
+          "• Weakness 2 [Source: bing.com/news]",
+          "• Weakness 3 [Source: bing.com/news]",
+          "• Weakness 4 [Source: bing.com/news]",
+          "• Weakness 5 [Source: bing.com/news]"
+        ]
+      },
+      "pricing_strategy": {
+        "pricing_models": "Subscription/One-time/Tiered/Freemium or 'No reliable data found'",
+        "general_strategy": "Premium/Low-cost/Freemium/Competitive or 'No reliable data found'",
+        "promotions_offers": "Current promotions or 'No reliable data found'"
+      },
+      "target_market": {
+        "primary_segments": "Customer segments or 'No reliable data found'",
+        "competitive_position": "Positioning vs competitors or 'No reliable data found'"
+      },
+      "tech_assessment": {
+        "tech_stack": "Frontend/backend/frameworks or 'No reliable data found'",
+        "innovation_level": "Traditional/Modern/Cutting-edge or 'No reliable data found'"
+      },
+      "market_presence": {
+        "market_share": "Estimated % or 'No reliable data found'",
+        "geographic_reach": "Regions/countries or 'No reliable data found'",
+        "target_audience": "Audience description or 'No reliable data found'"
+      },
+      "products_services": {
+        "main_offerings": ["• Offering 1", "• Offering 2"] || "No reliable data found",
+        "unique_selling_points": ["• USP 1", "• USP 2"] || "No reliable data found"
+      },
+      "swot_analysis": {
+        "strengths": ["• Strength 1", "• Strength 2"],
+        "weaknesses": ["• Weakness 1", "• Weakness 2"],
+        "opportunities": ["• Opportunity 1", "• Opportunity 2"],
+        "threats": ["• Threat 1", "• Threat 2"]
+      },
+      "customer_insights": {
+        "sentiment": "Positive/Neutral/Negative or 'No reliable data found'",
+        "pain_points": ["• Pain point 1", "• Pain point 2"] || "No reliable data found"
+      },
+      "tech_innovation": {
+        "patents_rd": "Notable patents/R&D or 'No reliable data found'",
+        "differentiating_innovations": "Key innovations or 'No reliable data found'"
+      },
       "activity_level": "high|moderate|low",
       "recent_developments": [
         "• Recent product launch or update with market impact [Source: bing.com/news]",
-        "• Partnership announcements and strategic moves [Source: bing.com/news]", 
+        "• Partnership announcements and strategic moves [Source: bing.com/news]",
         "• Executive changes or organizational updates [Source: bing.com/news]"
       ],
       "funding_business": [
         "• Funding rounds with amounts and investors [Source: bing.com/news]",
         "• Business expansion or market entry news [Source: bing.com/news]",
         "• Revenue or growth announcements [Source: bing.com/news]"
-      ],
-      "social_sentiment": {
-        "score": 75,
-        "mentions_count": 1247,
-        "quotes": [
-          "\"Positive mention or review quote\" [Source: bing.com/news]",
-          "\"Another sentiment quote\" [Source: bing.com/news]"
-        ]
-      },
-      "key_insights": [
-        "• Strategic positioning analysis [Source: bing.com/news]",
-        "• Competitive advantages or weaknesses [Source: bing.com/news]",
-        "• Market opportunities or threats [Source: bing.com/news]"
       ]
     }
   ],
   "strategic_insights": [
     "• Cross-competitor trend 1 with market implications [Source: bing.com/news]",
-    "• Industry development 2 affecting competitive landscape [Source: bing.com/news]", 
+    "• Industry development 2 affecting competitive landscape [Source: bing.com/news]",
     "• Strategic opportunity or threat 3 for consideration [Source: bing.com/news]"
   ],
   "sources_referenced": "Brief summary of news articles, funding announcements, social mentions, and other sources analyzed",
@@ -149,18 +193,18 @@ Please generate a detailed competitive intelligence analysis in news-style forma
   }
 }
 
-Focus on:
-- Write in news-style format with bullet points (• symbol)
-- Actionable insights over generic observations  
+CRITICAL FORMATTING REQUIREMENTS:
+- Output must be structured in clear, labeled sections as specified above
+- Use bullet points wherever possible (• symbol)
+- If data is missing for any section, clearly note: "No reliable data found"
+- Keep language concise and business-professional (newsletter/report style)
+- Each competitor must include ALL sections: company_overview, strengths_weaknesses, pricing_strategy, target_market, tech_assessment, market_presence, products_services, swot_analysis, customer_insights, and tech_innovation
+- For strengths_weaknesses: provide exactly 5 bullet points for strengths and 5 for weaknesses
+- For SWOT analysis: provide at least 2 points for each category (strengths, weaknesses, opportunities, threats)
+- Include [Source: bing.com/news] references at the end of key points when data is available
 - Recent developments (last 30 days prioritized)
 - Business impact and strategic implications
-- Funding, partnerships, product launches, and market positioning
-- Keep bullet points concise but informative (news headlines style)
 - Rate activity level based on signal volume and recency
-- Estimate social sentiment realistically based on available data
-- Include [Source: bing.com/news] references at the end of key points
-- Add direct quotes in social sentiment with source references
-- Format all content with bullet points for easy readability
 - Use short, clean source references like [Source: bing.com/news] instead of full URLs
 `;
 

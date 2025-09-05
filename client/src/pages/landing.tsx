@@ -152,9 +152,6 @@ export default function Landing() {
                     <span>{Math.round(loadingProgress)}%</span>
                   </div>
                   <Progress value={loadingProgress} className="w-full h-2" />
-                  <p className="text-xs text-muted-foreground text-center">
-                    Optimized with parallel processing and GPT-4o-mini for speed
-                  </p>
                 </div>
               )}
             </form>

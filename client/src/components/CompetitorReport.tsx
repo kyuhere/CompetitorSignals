@@ -1,7 +1,8 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Download, Share, BarChart3, DollarSign, MessageCircle, Lightbulb, CheckCircle, TrendingUp, TrendingDown, Minus } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Download, Share, BarChart3, DollarSign, MessageCircle, Lightbulb, CheckCircle, TrendingUp, TrendingDown, Minus, Building2, Target, Code, Globe, Package, Users, ThumbsUp, ThumbsDown, AlertTriangle, Zap } from "lucide-react";
 
 interface CompetitorReportProps {
   report: {
@@ -91,6 +92,41 @@ export default function CompetitorReport({ report }: CompetitorReportProps) {
     }
   };
 
+  const renderSection = (title: string, icon: React.ReactNode, content: any, emptyMessage = "No reliable data found") => {
+    if (!content || (Array.isArray(content) && content.length === 0) || content === "No reliable data found") {
+      return (
+        <div>
+          <h4 className="font-medium text-foreground mb-3 flex items-center">
+            {icon}
+            {title}
+          </h4>
+          <p className="text-sm text-muted-foreground italic">{emptyMessage}</p>
+        </div>
+      );
+    }
+
+    return (
+      <div>
+        <h4 className="font-medium text-foreground mb-3 flex items-center">
+          {icon}
+          {title}
+        </h4>
+        {Array.isArray(content) ? (
+          <ul className="space-y-2 text-sm">
+            {content.map((item: string, itemIndex: number) => (
+              <li key={itemIndex} className="flex items-start">
+                <div className="w-1.5 h-1.5 bg-primary rounded-full mt-2 mr-3 flex-shrink-0"></div>
+                <span className="text-foreground">{item}</span>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-sm text-foreground">{content}</p>
+        )}
+      </div>
+    );
+  };
+
 
   return (
     <Card data-testid="card-competitor-report">
@@ -154,82 +190,237 @@ export default function CompetitorReport({ report }: CompetitorReportProps) {
           </div>
         </div>
 
-        {/* Competitor Analysis */}
+        {/* Comprehensive Competitor Analysis */}
         <div className="space-y-8">
           {analysis.competitors?.map((competitor: any, index: number) => (
             <div key={index} className="border border-border rounded-lg p-6" data-testid={`competitor-analysis-${index}`}>
-              <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center justify-between mb-6">
                 <h3 className="text-xl font-semibold text-foreground" data-testid={`text-competitor-name-${index}`}>
                   {competitor.competitor}
                 </h3>
                 <div className="flex items-center space-x-2">
                   {getActivityBadge(competitor.activity_level)}
                   <span className="text-xs text-muted-foreground">
-                    {competitor.recent_developments?.length + competitor.funding_business?.length || 0} signals
+                    {(competitor.recent_developments?.length || 0) + (competitor.funding_business?.length || 0)} signals
                   </span>
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Recent Developments */}
-                <div>
-                  <h4 className="font-medium text-foreground mb-3 flex items-center">
-                    <BarChart3 className="w-4 h-4 text-primary mr-2" />
-                    Recent Developments
-                  </h4>
-                  <ul className="space-y-2 text-sm">
-                    {competitor.recent_developments?.map((item: string, itemIndex: number) => (
-                      <li key={itemIndex} className="flex items-start" data-testid={`development-${index}-${itemIndex}`}>
-                        <div className="w-1.5 h-1.5 bg-primary rounded-full mt-2 mr-3 flex-shrink-0"></div>
-                        <span className="text-foreground">{item}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
+              <Tabs defaultValue="overview" className="w-full">
+                <TabsList className="grid w-full grid-cols-4">
+                  <TabsTrigger value="overview">Overview</TabsTrigger>
+                  <TabsTrigger value="analysis">Analysis</TabsTrigger>
+                  <TabsTrigger value="market">Market</TabsTrigger>
+                  <TabsTrigger value="tech">Tech & Innovation</TabsTrigger>
+                </TabsList>
 
-                {/* Funding & Business */}
-                <div>
-                  <h4 className="font-medium text-foreground mb-3 flex items-center">
-                    <DollarSign className="w-4 h-4 text-green-600 mr-2" />
-                    Funding & Business
-                  </h4>
-                  <ul className="space-y-2 text-sm">
-                    {competitor.funding_business?.map((item: string, itemIndex: number) => (
-                      <li key={itemIndex} className="flex items-start" data-testid={`funding-${index}-${itemIndex}`}>
-                        <div className="w-1.5 h-1.5 bg-green-600 rounded-full mt-2 mr-3 flex-shrink-0"></div>
-                        <span className="text-foreground">{item}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </div>
-
-              {/* Social Sentiment */}
-              {competitor.social_sentiment && (
-                <div className="mt-4 pt-4 border-t border-border">
-                  <h4 className="font-medium text-foreground mb-2 flex items-center">
-                    <MessageCircle className="w-4 h-4 text-blue-600 mr-2" />
-                    Social Sentiment
-                  </h4>
-                  <div className="flex items-center space-x-4">
-                    <div className="flex items-center space-x-2">
-                      <div className="w-16 bg-muted rounded-full h-2">
-                        <div 
-                          className="bg-green-500 h-2 rounded-full transition-all duration-500" 
-                          style={{ width: `${competitor.social_sentiment.score}%` }}
-                        ></div>
-                      </div>
-                      <span className="text-xs text-muted-foreground" data-testid={`sentiment-score-${index}`}>
-                        {competitor.social_sentiment.score}% Positive
-                      </span>
+                <TabsContent value="overview" className="space-y-6 mt-6">
+                  {/* Company Overview */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      {renderSection("Company Overview", <Building2 className="w-4 h-4 text-blue-600 mr-2" />, 
+                        <>
+                          <p className="text-sm text-foreground mb-2"><strong>Location:</strong> {competitor.company_overview?.location || "No reliable data found"}</p>
+                          <p className="text-sm text-foreground mb-2"><strong>Market Position:</strong> {competitor.company_overview?.market_positioning || "No reliable data found"}</p>
+                          <div className="mt-3">
+                            <strong className="text-sm">Key Products & Services:</strong>
+                            {competitor.company_overview?.key_products_services ? (
+                              <ul className="mt-2 space-y-1">
+                                {competitor.company_overview.key_products_services.map((item: string, idx: number) => (
+                                  <li key={idx} className="text-sm text-foreground flex items-start">
+                                    <div className="w-1.5 h-1.5 bg-primary rounded-full mt-2 mr-3 flex-shrink-0"></div>
+                                    {item}
+                                  </li>
+                                ))}
+                              </ul>
+                            ) : (
+                              <p className="text-sm text-muted-foreground italic mt-2">No reliable data found</p>
+                            )}
+                          </div>
+                        </>
+                      )}
                     </div>
-                    <span className="text-xs text-muted-foreground">•</span>
-                    <span className="text-xs text-muted-foreground" data-testid={`mentions-count-${index}`}>
-                      {competitor.social_sentiment.mentions_count.toLocaleString()} mentions this week
-                    </span>
+
+                    {/* Products & Services */}
+                    <div>
+                      {renderSection("Products & Services", <Package className="w-4 h-4 text-purple-600 mr-2" />,
+                        <>
+                          <div className="mb-3">
+                            <strong className="text-sm">Main Offerings:</strong>
+                            {competitor.products_services?.main_offerings ? (
+                              <ul className="mt-2 space-y-1">
+                                {competitor.products_services.main_offerings.map((item: string, idx: number) => (
+                                  <li key={idx} className="text-sm text-foreground flex items-start">
+                                    <div className="w-1.5 h-1.5 bg-purple-600 rounded-full mt-2 mr-3 flex-shrink-0"></div>
+                                    {item}
+                                  </li>
+                                ))}
+                              </ul>
+                            ) : (
+                              <p className="text-sm text-muted-foreground italic mt-2">No reliable data found</p>
+                            )}
+                          </div>
+                          <div>
+                            <strong className="text-sm">Unique Selling Points:</strong>
+                            {competitor.products_services?.unique_selling_points ? (
+                              <ul className="mt-2 space-y-1">
+                                {competitor.products_services.unique_selling_points.map((item: string, idx: number) => (
+                                  <li key={idx} className="text-sm text-foreground flex items-start">
+                                    <div className="w-1.5 h-1.5 bg-purple-600 rounded-full mt-2 mr-3 flex-shrink-0"></div>
+                                    {item}
+                                  </li>
+                                ))}
+                              </ul>
+                            ) : (
+                              <p className="text-sm text-muted-foreground italic mt-2">No reliable data found</p>
+                            )}
+                          </div>
+                        </>
+                      )}
+                    </div>
                   </div>
-                </div>
-              )}
+
+                  {/* Pricing Strategy */}
+                  <div>
+                    {renderSection("Pricing Strategy", <DollarSign className="w-4 h-4 text-green-600 mr-2" />,
+                      <>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                          <div>
+                            <p className="text-sm text-foreground"><strong>Pricing Models:</strong> {competitor.pricing_strategy?.pricing_models || "No reliable data found"}</p>
+                          </div>
+                          <div>
+                            <p className="text-sm text-foreground"><strong>Strategy:</strong> {competitor.pricing_strategy?.general_strategy || "No reliable data found"}</p>
+                          </div>
+                          <div>
+                            <p className="text-sm text-foreground"><strong>Promotions:</strong> {competitor.pricing_strategy?.promotions_offers || "No reliable data found"}</p>
+                          </div>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="analysis" className="space-y-6 mt-6">
+                  {/* Strengths vs Weaknesses */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      {renderSection("Strengths", <ThumbsUp className="w-4 h-4 text-green-600 mr-2" />, 
+                        competitor.strengths_weaknesses?.strengths
+                      )}
+                    </div>
+                    <div>
+                      {renderSection("Weaknesses", <ThumbsDown className="w-4 h-4 text-red-600 mr-2" />, 
+                        competitor.strengths_weaknesses?.weaknesses
+                      )}
+                    </div>
+                  </div>
+
+                  {/* SWOT Analysis */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-4">
+                      {renderSection("Opportunities", <Zap className="w-4 h-4 text-blue-600 mr-2" />, 
+                        competitor.swot_analysis?.opportunities
+                      )}
+                    </div>
+                    <div className="space-y-4">
+                      {renderSection("Threats", <AlertTriangle className="w-4 h-4 text-orange-600 mr-2" />, 
+                        competitor.swot_analysis?.threats
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Customer Insights */}
+                  <div>
+                    {renderSection("Customer Insights", <Users className="w-4 h-4 text-indigo-600 mr-2" />,
+                      <>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <p className="text-sm text-foreground"><strong>Sentiment:</strong> {competitor.customer_insights?.sentiment || "No reliable data found"}</p>
+                          </div>
+                          <div>
+                            <div>
+                              <strong className="text-sm">Pain Points:</strong>
+                              {competitor.customer_insights?.pain_points ? (
+                                <ul className="mt-2 space-y-1">
+                                  {competitor.customer_insights.pain_points.map((item: string, idx: number) => (
+                                    <li key={idx} className="text-sm text-foreground flex items-start">
+                                      <div className="w-1.5 h-1.5 bg-indigo-600 rounded-full mt-2 mr-3 flex-shrink-0"></div>
+                                      {item}
+                                    </li>
+                                  ))}
+                                </ul>
+                              ) : (
+                                <p className="text-sm text-muted-foreground italic mt-2">No reliable data found</p>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="market" className="space-y-6 mt-6">
+                  {/* Target Market & Competitive Position */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      {renderSection("Target Market", <Target className="w-4 h-4 text-cyan-600 mr-2" />,
+                        <>
+                          <p className="text-sm text-foreground mb-2"><strong>Primary Segments:</strong> {competitor.target_market?.primary_segments || "No reliable data found"}</p>
+                          <p className="text-sm text-foreground"><strong>Competitive Position:</strong> {competitor.target_market?.competitive_position || "No reliable data found"}</p>
+                        </>
+                      )}
+                    </div>
+
+                    <div>
+                      {renderSection("Market Presence", <Globe className="w-4 h-4 text-emerald-600 mr-2" />,
+                        <>
+                          <p className="text-sm text-foreground mb-2"><strong>Market Share:</strong> {competitor.market_presence?.market_share || "No reliable data found"}</p>
+                          <p className="text-sm text-foreground mb-2"><strong>Geographic Reach:</strong> {competitor.market_presence?.geographic_reach || "No reliable data found"}</p>
+                          <p className="text-sm text-foreground"><strong>Target Audience:</strong> {competitor.market_presence?.target_audience || "No reliable data found"}</p>
+                        </>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Recent Developments & Funding */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      {renderSection("Recent Developments", <BarChart3 className="w-4 h-4 text-primary mr-2" />, 
+                        competitor.recent_developments
+                      )}
+                    </div>
+                    <div>
+                      {renderSection("Funding & Business", <DollarSign className="w-4 h-4 text-green-600 mr-2" />, 
+                        competitor.funding_business
+                      )}
+                    </div>
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="tech" className="space-y-6 mt-6">
+                  {/* Tech Assessment */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      {renderSection("Tech Assessment", <Code className="w-4 h-4 text-slate-600 mr-2" />,
+                        <>
+                          <p className="text-sm text-foreground mb-2"><strong>Tech Stack:</strong> {competitor.tech_assessment?.tech_stack || "No reliable data found"}</p>
+                          <p className="text-sm text-foreground"><strong>Innovation Level:</strong> {competitor.tech_assessment?.innovation_level || "No reliable data found"}</p>
+                        </>
+                      )}
+                    </div>
+
+                    <div>
+                      {renderSection("Tech & Innovation", <Zap className="w-4 h-4 text-yellow-600 mr-2" />,
+                        <>
+                          <p className="text-sm text-foreground mb-2"><strong>Patents & R&D:</strong> {competitor.tech_innovation?.patents_rd || "No reliable data found"}</p>
+                          <p className="text-sm text-foreground"><strong>Key Innovations:</strong> {competitor.tech_innovation?.differentiating_innovations || "No reliable data found"}</p>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </TabsContent>
+              </Tabs>
             </div>
           ))}
         </div>
