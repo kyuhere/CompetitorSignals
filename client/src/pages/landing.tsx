@@ -48,7 +48,7 @@ export default function Landing() {
         // Reset progress after a short delay
         setTimeout(() => setLoadingProgress(0), 500);
         
-        return result;
+        return await result.json();
       } catch (error) {
         clearInterval(progressInterval);
         setLoadingProgress(0);
