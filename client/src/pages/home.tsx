@@ -113,11 +113,11 @@ export default function Home() {
             <CompetitorInputForm 
               onAnalyze={handleAnalysis}
               isLoading={analyzeMutation.isPending}
-              usage={usage}
+              usage={usage as any}
             />
             
             <ReportHistory 
-              reports={reports || []}
+              reports={(reports as any) || []}
               isLoading={reportsLoading}
               onLoadReport={handleLoadReport}
             />
