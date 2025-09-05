@@ -17,7 +17,7 @@ export default function Landing() {
 
   const searchMutation = useMutation({
     mutationFn: async (competitor: string) => {
-      return await apiRequest('/api/analyze', {
+      return await apiRequest('POST', '/api/analyze', {
         competitors: competitor,
         sources: { news: true, funding: true, social: true, products: false }
       });
