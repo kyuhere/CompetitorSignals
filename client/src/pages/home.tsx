@@ -49,11 +49,12 @@ export default function Home() {
       
       try {
         const response = await apiRequest("POST", "/api/analyze", data);
+        const result = await response.json();
         clearInterval(progressInterval);
         setLoadingProgress(100);
         
         setTimeout(() => setLoadingProgress(0), 500);
-        return response;
+        return result;
       } catch (error) {
         clearInterval(progressInterval);
         setLoadingProgress(0);
