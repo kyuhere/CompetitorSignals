@@ -113,13 +113,7 @@ class SignalAggregator {
 
   private async getNewsSignals(competitor: string): Promise<SignalItem[]> {
     try {
-      const rapidApiKey = process.env.RAPIDAPI_KEY;
-      if (!rapidApiKey) {
-        console.warn("RAPIDAPI_KEY not configured, skipping news signals");
-        return [];
-      }
-
-      // Search for multiple types of news about the competitor
+      // Search for multiple types of news about the competitor using Bing RSS
       const searchQueries = [
         `${competitor} news recent`,
         `${competitor} funding investment`,
@@ -131,40 +125,23 @@ class SignalAggregator {
 
       for (const query of searchQueries) {
         try {
-          const response = await fetch(
-            `https://google-search74.p.rapidapi.com/?query=${encodeURIComponent(query)}&limit=5&related_keywords=true`,
-            {
-              method: 'GET',
-              headers: {
-                'x-rapidapi-host': 'google-search74.p.rapidapi.com',
-                'x-rapidapi-key': rapidApiKey,
-              },
-            }
-          );
-
-          if (!response.ok) {
-            console.error(`Google Search API error for "${query}":`, response.statusText);
-            continue;
-          }
-
-          const data = await response.json();
+          const rssUrl = `https://www.bing.com/news/search?format=RSS&q=${encodeURIComponent(query)}`;
+          const rssItems = await parseRSSFeed(rssUrl);
           
-          if (data.results) {
-            const results = data.results.map((result: any) => ({
-              title: result.title || '',
-              content: result.description || result.snippet || '',
-              url: result.url || result.link || '',
-              publishedAt: new Date().toISOString(), // Google search doesn't provide publish dates
-              type: this.detectSignalType(query, result.title, result.description) as 'news' | 'funding' | 'social' | 'product',
-            }));
-            
-            allResults.push(...results);
-          }
+          const results = rssItems.map((item: any) => ({
+            title: item.title || '',
+            content: item.description || item.content || '',
+            url: item.link || '',
+            publishedAt: item.pubDate || new Date().toISOString(),
+            type: this.detectSignalType(query, item.title, item.description) as 'news' | 'funding' | 'social' | 'product',
+          }));
+          
+          allResults.push(...results);
 
-          // Add a small delay to respect rate limits
+          // Add a small delay to be respectful
           await new Promise(resolve => setTimeout(resolve, 100));
         } catch (error) {
-          console.error(`Error fetching search results for "${query}":`, error);
+          console.error(`Error fetching RSS results for "${query}":`, error);
           continue;
         }
       }
@@ -201,41 +178,17 @@ class SignalAggregator {
 
   private async getFundingSignals(competitor: string): Promise<SignalItem[]> {
     try {
-      const rapidApiKey = process.env.RAPIDAPI_KEY;
-      if (!rapidApiKey) {
-        return [];
-      }
-
       const fundingQuery = `${competitor} funding investment round raised venture capital`;
+      const rssUrl = `https://www.bing.com/news/search?format=RSS&q=${encodeURIComponent(fundingQuery)}`;
+      const rssItems = await parseRSSFeed(rssUrl);
       
-      const response = await fetch(
-        `https://google-search74.p.rapidapi.com/?query=${encodeURIComponent(fundingQuery)}&limit=5&related_keywords=true`,
-        {
-          method: 'GET',
-          headers: {
-            'x-rapidapi-host': 'google-search74.p.rapidapi.com',
-            'x-rapidapi-key': rapidApiKey,
-          },
-        }
-      );
-
-      if (!response.ok) {
-        return [];
-      }
-
-      const data = await response.json();
-      
-      if (data.results) {
-        return data.results.map((result: any) => ({
-          title: result.title || '',
-          content: result.description || result.snippet || '',
-          url: result.url || result.link || '',
-          publishedAt: new Date().toISOString(),
-          type: 'funding' as const,
-        })).slice(0, 5);
-      }
-
-      return [];
+      return rssItems.map((item: any) => ({
+        title: item.title || '',
+        content: item.description || item.content || '',
+        url: item.link || '',
+        publishedAt: item.pubDate || new Date().toISOString(),
+        type: 'funding' as const,
+      })).slice(0, 5);
     } catch (error) {
       console.error("Error fetching funding signals:", error);
       return [];
@@ -244,41 +197,17 @@ class SignalAggregator {
 
   private async getSocialSignals(competitor: string): Promise<SignalItem[]> {
     try {
-      const rapidApiKey = process.env.RAPIDAPI_KEY;
-      if (!rapidApiKey) {
-        return [];
-      }
-
       const socialQuery = `${competitor} twitter linkedin social media mentions`;
+      const rssUrl = `https://www.bing.com/news/search?format=RSS&q=${encodeURIComponent(socialQuery)}`;
+      const rssItems = await parseRSSFeed(rssUrl);
       
-      const response = await fetch(
-        `https://google-search74.p.rapidapi.com/?query=${encodeURIComponent(socialQuery)}&limit=5&related_keywords=true`,
-        {
-          method: 'GET',
-          headers: {
-            'x-rapidapi-host': 'google-search74.p.rapidapi.com',
-            'x-rapidapi-key': rapidApiKey,
-          },
-        }
-      );
-
-      if (!response.ok) {
-        return [];
-      }
-
-      const data = await response.json();
-      
-      if (data.results) {
-        return data.results.map((result: any) => ({
-          title: result.title || '',
-          content: result.description || result.snippet || '',
-          url: result.url || result.link || '',
-          publishedAt: new Date().toISOString(),
-          type: 'social' as const,
-        })).slice(0, 5);
-      }
-
-      return [];
+      return rssItems.map((item: any) => ({
+        title: item.title || '',
+        content: item.description || item.content || '',
+        url: item.link || '',
+        publishedAt: item.pubDate || new Date().toISOString(),
+        type: 'social' as const,
+      })).slice(0, 5);
     } catch (error) {
       console.error("Error fetching social signals:", error);
       return [];

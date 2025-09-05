@@ -53,43 +53,59 @@ COMPETITOR NAMES: ${competitorNames.join(', ')}
 SIGNALS DATA:
 ${JSON.stringify(signals, null, 2)}
 
-Please generate a detailed competitive intelligence analysis in the following JSON format:
+Please generate a detailed competitive intelligence analysis in news-style format with bullet points using the following JSON structure:
 
 {
-  "executive_summary": "A 2-3 sentence overview of the competitive landscape and key trends",
+  "executive_summary": "• Brief overview of competitive landscape\n• Key market trends and developments\n• Overall activity assessment",
   "competitors": [
     {
       "competitor": "Company Name",
       "activity_level": "high|moderate|low",
-      "recent_developments": ["Brief bullet point 1", "Brief bullet point 2", "etc"],
-      "funding_business": ["Funding/business related bullet points"],
+      "recent_developments": [
+        "• Recent product launch or update with market impact",
+        "• Partnership announcements and strategic moves", 
+        "• Executive changes or organizational updates"
+      ],
+      "funding_business": [
+        "• Funding rounds with amounts and investors",
+        "• Business expansion or market entry news",
+        "• Revenue or growth announcements"
+      ],
       "social_sentiment": {
         "score": 75,
         "mentions_count": 1247
       },
-      "key_insights": ["Strategic insight 1", "Strategic insight 2"]
+      "key_insights": [
+        "• Strategic positioning analysis",
+        "• Competitive advantages or weaknesses",
+        "• Market opportunities or threats"
+      ]
     }
   ],
   "strategic_insights": [
-    "Cross-competitor strategic insight 1",
-    "Market trend insight 2",
-    "Opportunity or threat insight 3"
+    "• Cross-competitor trend 1 with market implications",
+    "• Industry development 2 affecting competitive landscape", 
+    "• Strategic opportunity or threat 3 for consideration"
   ],
+  "sources_referenced": "Brief summary of news articles, funding announcements, social mentions, and other sources analyzed",
   "methodology": {
-    "sources_analyzed": ["News APIs", "RSS Feeds", "Social Media"],
+    "sources_analyzed": ["Bing News RSS", "Funding News", "Social Media"],
     "total_signals": ${signals.reduce((acc, s) => acc + s.items.length, 0)},
     "confidence_level": "high|medium|low"
   }
 }
 
 Focus on:
-- Actionable insights over generic observations
+- Write in news-style format with bullet points (• symbol)
+- Actionable insights over generic observations  
 - Recent developments (last 30 days prioritized)
 - Business impact and strategic implications
 - Funding, partnerships, product launches, and market positioning
-- Keep bullet points concise but informative
+- Keep bullet points concise but informative (news headlines style)
 - Rate activity level based on signal volume and recency
 - Estimate social sentiment realistically based on available data
+- Reference the sources analyzed without including actual URLs
+- Format all content with bullet points for easy readability
 `;
 
     const response = await openai.chat.completions.create({

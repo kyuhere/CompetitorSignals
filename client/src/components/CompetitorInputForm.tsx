@@ -28,7 +28,6 @@ interface FormSources {
 
 export default function CompetitorInputForm({ onAnalyze, isLoading, usage }: CompetitorInputFormProps) {
   const [competitors, setCompetitors] = useState("");
-  const [urls, setUrls] = useState("");
   const [sources, setSources] = useState<FormSources>({
     news: true,
     funding: true,
@@ -54,7 +53,6 @@ export default function CompetitorInputForm({ onAnalyze, isLoading, usage }: Com
 
     onAnalyze({
       competitors: competitors.trim(),
-      urls: urls.trim(),
       sources,
     });
   };
@@ -78,7 +76,7 @@ export default function CompetitorInputForm({ onAnalyze, isLoading, usage }: Com
             <Label htmlFor="competitors" className="block text-sm font-medium text-foreground mb-2">
               Competitor Names
               <span className="text-xs text-muted-foreground ml-1">
-                (up to {usage?.limit || 1} for {usage?.isLoggedIn ? 'free' : 'guest'} users)
+                (up to {usage?.limit || 1} for {usage?.isLoggedIn ? 'logged-in' : 'guest'} users)
               </span>
             </Label>
             <Textarea
@@ -97,22 +95,6 @@ export default function CompetitorInputForm({ onAnalyze, isLoading, usage }: Com
             )}
           </div>
 
-          {/* Optional URLs */}
-          <div>
-            <Label htmlFor="urls" className="block text-sm font-medium text-foreground mb-2">
-              Optional URLs/RSS Feeds
-              <span className="text-xs text-muted-foreground ml-1">(for enhanced signals)</span>
-            </Label>
-            <Textarea
-              id="urls"
-              value={urls}
-              onChange={(e) => setUrls(e.target.value)}
-              rows={2}
-              placeholder={`https://company.com/news\nhttps://feeds.company.com/rss`}
-              className="resize-none"
-              data-testid="textarea-urls"
-            />
-          </div>
 
           {/* Analysis Options */}
           <div className="space-y-3">
