@@ -43,7 +43,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const rateLimit = await storage.getRateLimit(userId, sessionId);
       const isLoggedIn = !!userId;
       
-      const limit = isLoggedIn ? 5 : 1;
+      const limit = isLoggedIn ? 5 : 999999; // Unlimited for guests during testing
       const current = rateLimit?.queryCount || 0;
       const remaining = Math.max(0, limit - current);
       
@@ -84,29 +84,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .map(name => name.trim())
         .filter(name => name.length > 0);
       
-      // Check rate limits - allow one free preview for guests
-      const limit = isLoggedIn ? 5 : 1;
+      // Check rate limits - unlimited for guests during testing, normal limits for logged-in users
+      const limit = isLoggedIn ? 5 : 999999; // Unlimited for guests during testing
       const rateLimit = await storage.getRateLimit(userId, sessionId);
       
-      // Reset if new day for logged-in users, or if it's a new session for guests
+      // Reset if new day for logged-in users
       const today = new Date();
       const lastReset = rateLimit?.lastReset || new Date(0);
       const shouldReset = isLoggedIn ? 
         (today.getDate() !== lastReset.getDate() || 
          today.getMonth() !== lastReset.getMonth() ||
          today.getFullYear() !== lastReset.getFullYear()) :
-        !rateLimit; // For guests, reset if no previous rate limit (first time)
+        false; // Don't reset for guests during testing
       
       let currentCount = shouldReset ? 0 : (rateLimit?.queryCount || 0);
       
-      // For guests, allow the first search without login requirement
-      if (!isLoggedIn && currentCount === 0) {
-        // This is the free preview search - allow it
-      } else if (currentCount >= limit) {
+      // Only check limits for logged-in users during testing
+      if (isLoggedIn && currentCount >= limit) {
         return res.status(429).json({ 
-          message: isLoggedIn ? 
-            "Daily query limit exceeded. Please try again tomorrow." :
-            "You've used your free preview. Sign up to get 5 reports every two weeks.",
+          message: "Daily query limit exceeded. Please try again tomorrow.",
           limit,
           current: currentCount,
         });
