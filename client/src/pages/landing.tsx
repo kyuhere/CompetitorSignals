@@ -20,19 +20,20 @@ export default function Landing() {
 
   const searchMutation = useMutation({
     mutationFn: async (competitor: string) => {
-      // Start progress simulation
+      // Reset and start progress
       setLoadingProgress(10);
       
-      // Simulate progress during the API call
+      // Simulate faster progress with optimized backend
       const progressInterval = setInterval(() => {
         setLoadingProgress(prev => {
-          if (prev >= 90) {
+          if (prev >= 95) {
             clearInterval(progressInterval);
-            return 90;
+            return 95;
           }
-          return prev + Math.random() * 15;
+          // Faster progress increments to reflect parallel processing
+          return prev + Math.random() * 20 + 5;
         });
-      }, 1000);
+      }, 800); // Faster updates
       
       try {
         const result = await apiRequest('POST', '/api/analyze', {
@@ -141,12 +142,17 @@ export default function Landing() {
               {searchMutation.isPending && (
                 <div className="mt-4 space-y-2">
                   <div className="flex items-center justify-between text-sm text-muted-foreground">
-                    <span>Analyzing competitor signals...</span>
+                    <span>
+                      {loadingProgress < 30 ? "Gathering competitor signals..." :
+                       loadingProgress < 70 ? "Processing data in parallel..." :
+                       loadingProgress < 90 ? "AI analysis in progress..." :
+                       "Finalizing report..."}
+                    </span>
                     <span>{Math.round(loadingProgress)}%</span>
                   </div>
                   <Progress value={loadingProgress} className="w-full h-2" />
                   <p className="text-xs text-muted-foreground text-center">
-                    Gathering data from news, funding, and social sources
+                    Optimized with parallel processing and GPT-4o-mini for speed
                   </p>
                 </div>
               )}

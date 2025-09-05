@@ -5,7 +5,10 @@ import { setupAuth, isAuthenticated } from "./replitAuth";
 import { insertCompetitorReportSchema } from "@shared/schema";
 import { z } from "zod";
 import { signalAggregator } from "./services/signalAggregator";
-import { summarizeCompetitorSignals } from "./services/openai";
+import { summarizeCompetitorSignals, generateFastPreview } from "./services/openai";
+
+// Store active streaming sessions
+const streamingSessions = new Map<string, any>();
 
 const competitorAnalysisSchema = z.object({
   competitors: z.string().min(1, "At least one competitor is required"),
@@ -58,6 +61,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error("Error fetching usage:", error);
       res.status(500).json({ message: "Failed to fetch usage stats" });
     }
+  });
+
+  // Streaming analysis endpoint for real-time results
+  app.get('/api/analyze/stream/:sessionId', (req: any, res) => {
+    res.writeHead(200, {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      'Connection': 'keep-alive',
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Headers': 'Cache-Control',
+    });
+
+    // Keep connection alive
+    const keepAlive = setInterval(() => {
+      res.write('data: {"type": "keepalive"}\n\n');
+    }, 30000);
+
+    req.on('close', () => {
+      clearInterval(keepAlive);
+    });
+
+    // Store the response object for this session
+    streamingSessions.set(req.params.sessionId, res);
   });
 
   // Analyze competitors
@@ -125,12 +151,78 @@ export async function registerRoutes(app: Express): Promise<Server> {
         lastReset: shouldReset ? today : lastReset,
       });
       
-      // Aggregate signals
+      // Aggregate signals with streaming support
       const urlList = urls ? urls.split('\n').map(url => url.trim()).filter(url => url.length > 0) : [];
-      const signals = await signalAggregator.aggregateSignals(competitorList, urlList, sources);
       
-      // Generate AI summary
-      const summary = await summarizeCompetitorSignals(signals, competitorList);
+      // Generate a unique session ID for streaming
+      const streamSessionId = `${sessionId}_${Date.now()}`;
+      
+      // Send initial progress update
+      const streamRes = streamingSessions.get(streamSessionId);
+      if (streamRes) {
+        streamRes.write(`data: ${JSON.stringify({
+          type: "progress",
+          message: "Gathering competitor signals...",
+          progress: 20
+        })}\n\n`);
+      }
+      
+      // Aggregate signals in parallel with partial results callback
+      const signals = await signalAggregator.aggregateSignals(
+        competitorList, 
+        urlList, 
+        sources,
+        (partialResults) => {
+          const streamRes = streamingSessions.get(streamSessionId);
+          if (streamRes) {
+            streamRes.write(`data: ${JSON.stringify({
+              type: "partial_results",
+              data: partialResults,
+              progress: 50
+            })}\n\n`);
+          }
+        }
+      );
+      
+      // Send signals collected update
+      if (streamRes) {
+        streamRes.write(`data: ${JSON.stringify({
+          type: "progress",
+          message: "Analyzing with AI...",
+          progress: 70
+        })}\n\n`);
+      }
+      
+      // Generate fast preview first
+      let summary;
+      try {
+        const fastPreview = await generateFastPreview(signals, competitorList);
+        
+        // Send preview to stream
+        if (streamRes) {
+          streamRes.write(`data: ${JSON.stringify({
+            type: "preview",
+            data: fastPreview,
+            progress: 85
+          })}\n\n`);
+        }
+        
+        // Then generate full summary
+        summary = await summarizeCompetitorSignals(signals, competitorList, false);
+        
+        // Send completion
+        if (streamRes) {
+          streamRes.write(`data: ${JSON.stringify({
+            type: "complete",
+            progress: 100
+          })}\n\n`);
+        }
+        
+      } catch (error) {
+        console.error("AI analysis error:", error);
+        // Fallback to basic summary
+        summary = await summarizeCompetitorSignals(signals, competitorList, false);
+      }
       
       // Create report
       const reportData = {
@@ -159,9 +251,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         };
       }
       
+      // Clean up streaming session
+      streamingSessions.delete(streamSessionId);
+      
       res.json(report);
     } catch (error) {
       console.error("Error analyzing competitors:", error);
+      
+      // Clean up streaming session on error
+      const errorStreamSessionId = `${req.sessionID}_${Date.now()}`;
+      streamingSessions.delete(errorStreamSessionId);
+      
       res.status(500).json({ 
         message: "Failed to analyze competitors. Please try again.",
         error: error instanceof Error ? error.message : "Unknown error"

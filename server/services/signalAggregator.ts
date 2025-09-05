@@ -25,44 +25,106 @@ class SignalAggregator {
   async aggregateSignals(
     competitors: string[],
     urls: string[] = [],
-    sources: SignalSource = { news: true, funding: true, social: true, products: false }
+    sources: SignalSource = { news: true, funding: true, social: true, products: false },
+    onPartialResults?: (results: CompetitorSignals[]) => void
   ): Promise<CompetitorSignals[]> {
     const results: CompetitorSignals[] = [];
     
     try {
-      // Process RSS feeds if provided
+      // Create all async tasks for parallel execution
+      const tasks: Promise<CompetitorSignals | null>[] = [];
+      
+      // Process RSS feeds in parallel if provided
       if (urls.length > 0) {
-        for (const url of urls) {
-          try {
-            const feedItems = await parseRSSFeed(url);
-            const relevantItems = this.filterRelevantItems(feedItems, competitors);
-            
-            if (relevantItems.length > 0) {
-              results.push({
-                source: `RSS: ${new URL(url).hostname}`,
-                competitor: "Multiple",
-                items: relevantItems,
-              });
-            }
-          } catch (error) {
-            console.error(`Error parsing RSS feed ${url}:`, error);
-          }
-        }
+        urls.forEach(url => {
+          tasks.push(
+            parseRSSFeed(url)
+              .then(feedItems => {
+                const relevantItems = this.filterRelevantItems(feedItems, competitors);
+                if (relevantItems.length > 0) {
+                  return {
+                    source: `RSS: ${new URL(url).hostname}`,
+                    competitor: "Multiple",
+                    items: this.trimContent(relevantItems),
+                  };
+                }
+                return null;
+              })
+              .catch(error => {
+                console.error(`Error parsing RSS feed ${url}:`, error);
+                return null;
+              })
+          );
+        });
       }
 
-      // Aggregate signals for each competitor
-      for (const competitor of competitors) {
-        const competitorSignals = await this.getCompetitorSignals(competitor, sources);
-        if (competitorSignals.items.length > 0) {
-          results.push(competitorSignals);
+      // Process competitor signals in parallel
+      competitors.forEach(competitor => {
+        tasks.push(
+          this.getCompetitorSignals(competitor, sources)
+            .then(competitorSignals => {
+              if (competitorSignals.items.length > 0) {
+                return {
+                  ...competitorSignals,
+                  items: this.trimContent(competitorSignals.items)
+                };
+              }
+              return null;
+            })
+            .catch(error => {
+              console.error(`Error getting signals for ${competitor}:`, error);
+              return null;
+            })
+        );
+      });
+
+      // Execute all tasks in parallel and collect results as they complete
+      const taskResults = await Promise.allSettled(tasks);
+      
+      taskResults.forEach(result => {
+        if (result.status === 'fulfilled' && result.value) {
+          results.push(result.value);
+          
+          // Call callback for streaming partial results
+          if (onPartialResults) {
+            onPartialResults([...results]);
+          }
         }
-      }
+      });
 
       return results;
     } catch (error) {
       console.error("Error aggregating signals:", error);
       throw new Error("Failed to aggregate competitor signals");
     }
+  }
+
+  // Trim content to essential information only
+  private trimContent(items: SignalItem[]): SignalItem[] {
+    return items.map(item => ({
+      ...item,
+      content: this.trimTextContent(item.content),
+    }));
+  }
+
+  // Trim text to headline, summary, and key details only (max 300 chars)
+  private trimTextContent(content: string): string {
+    if (!content) return '';
+    
+    // Remove HTML tags
+    const cleanContent = content.replace(/<[^>]*>/g, '');
+    
+    // Extract first paragraph or sentence that looks like a summary
+    const sentences = cleanContent.split(/[.!?]+/);
+    let summary = sentences[0] || '';
+    
+    // If first sentence is too short, try to get more context
+    if (summary.length < 100 && sentences[1]) {
+      summary += '. ' + sentences[1];
+    }
+    
+    // Limit to 300 characters for efficiency
+    return summary.substring(0, 300).trim();
   }
 
   private async getCompetitorSignals(

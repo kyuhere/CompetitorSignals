@@ -1,9 +1,13 @@
 import OpenAI from "openai";
 
-// the newest OpenAI model is "gpt-5" which was released August 7, 2025. do not change this unless explicitly requested by the user
+// Optimized for speed - using GPT-4o-mini for fast processing, GPT-4o for premium
 const openai = new OpenAI({ 
   apiKey: process.env.OPENAI_API_KEY || process.env.OPENAI_API_KEY_ENV_VAR || "default_key" 
 });
+
+// Model selection based on use case
+const FAST_MODEL = "gpt-4o-mini"; // For quick categorization and summarization
+const PREMIUM_MODEL = "gpt-4o"; // For deeper analysis
 
 interface CompetitorSignal {
   source: string;
@@ -41,9 +45,54 @@ interface AnalysisResult {
   };
 }
 
-export async function summarizeCompetitorSignals(
+// Fast preview analysis for immediate results
+export async function generateFastPreview(
   signals: CompetitorSignal[],
   competitorNames: string[]
+): Promise<string> {
+  try {
+    // Create a smaller prompt focused on key insights only
+    const trimmedSignals = signals.map(signal => ({
+      source: signal.source,
+      competitor: signal.competitor,
+      items: signal.items.slice(0, 3) // Only first 3 items for speed
+    }));
+
+    const prompt = `
+Analyze these competitor signals and provide a BRIEF executive summary in JSON format.
+
+COMPETITORS: ${competitorNames.join(', ')}
+SIGNALS: ${JSON.stringify(trimmedSignals)}
+
+Respond with JSON only:
+{
+  "executive_summary": "Brief 2-3 sentence overview",
+  "competitor_insights": [
+    {"competitor": "Name", "activity_level": "high|moderate|low", "key_update": "One key development"}
+  ],
+  "top_signals": ["Most important finding 1", "Most important finding 2"]
+}`;
+
+    const response = await openai.chat.completions.create({
+      model: FAST_MODEL,
+      messages: [{ role: "user", content: prompt }],
+      response_format: { type: "json_object" },
+      max_tokens: 800, // Keep it small for speed
+      temperature: 0.3
+    });
+
+    return response.choices[0].message.content || '{}';
+  } catch (error) {
+    console.error("Error generating fast preview:", error);
+    throw new Error("Failed to generate preview analysis");
+  }
+}
+
+// Full analysis with premium model
+export async function summarizeCompetitorSignals(
+  signals: CompetitorSignal[],
+  competitorNames: string[],
+  usePremium: boolean = false
 ): Promise<string> {
   try {
     const prompt = `
@@ -116,7 +165,7 @@ Focus on:
 `;
 
     const response = await openai.chat.completions.create({
-      model: "gpt-5", // the newest OpenAI model is "gpt-5" which was released August 7, 2025
+      model: usePremium ? PREMIUM_MODEL : FAST_MODEL, // Use fast model by default, premium for deeper analysis
       messages: [
         {
           role: "system",
