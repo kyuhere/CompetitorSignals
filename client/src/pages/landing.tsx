@@ -1,9 +1,51 @@
+import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { BarChart3, Users, TrendingUp, Shield } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { BarChart3, Users, TrendingUp, Shield, Search } from "lucide-react";
+import { useMutation } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 
 export default function Landing() {
+  const [searchQuery, setSearchQuery] = useState("");
+  const [showSignupDialog, setShowSignupDialog] = useState(false);
+  const [searchResult, setSearchResult] = useState<any>(null);
+  const { toast } = useToast();
+
+  const searchMutation = useMutation({
+    mutationFn: async (competitor: string) => {
+      return await apiRequest('/api/analyze', {
+        competitors: competitor,
+        sources: { news: true, funding: true, social: true, products: false }
+      });
+    },
+    onSuccess: (data) => {
+      setSearchResult(data);
+      setShowSignupDialog(true);
+    },
+    onError: (error: any) => {
+      if (error.message.includes('429')) {
+        setShowSignupDialog(true);
+      } else {
+        toast({
+          title: "Search Error",
+          description: "Something went wrong. Please try again.",
+          variant: "destructive"
+        });
+      }
+    }
+  });
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!searchQuery.trim()) return;
+    
+    searchMutation.mutate(searchQuery.trim());
+  };
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
@@ -36,8 +78,36 @@ export default function Landing() {
           </h1>
           <p className="text-xl text-muted-foreground mb-8 leading-relaxed">
             Get actionable insights from news, funding, and social signals. 
-            Generate professional competitive intelligence reports in minutes.
+            Try it now with one free competitor search.
           </p>
+          
+          {/* Google-style Search Box */}
+          <div className="max-w-2xl mx-auto mb-8">
+            <form onSubmit={handleSearch} className="relative">
+              <div className="relative">
+                <Input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Enter a competitor name (e.g., OpenAI, Tesla, Spotify)"
+                  className="w-full h-14 text-lg pl-6 pr-16 border-2 border-border focus:border-primary rounded-full shadow-lg"
+                  data-testid="input-competitor-search"
+                />
+                <Button
+                  type="submit"
+                  size="sm"
+                  disabled={!searchQuery.trim() || searchMutation.isPending}
+                  className="absolute right-2 top-2 h-10 w-10 rounded-full p-0"
+                  data-testid="button-search"
+                >
+                  <Search className="w-4 h-4" />
+                </Button>
+              </div>
+              {searchMutation.isPending && (
+                <p className="text-center text-sm text-muted-foreground mt-2">Analyzing competitor...</p>
+              )}
+            </form>
+          </div>
           
           <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
             <Button 
@@ -45,7 +115,7 @@ export default function Landing() {
               onClick={() => window.location.href = '/api/login'}
               data-testid="button-get-started"
             >
-              Get Started Free
+              Get Full Access
             </Button>
             <Button variant="outline" size="lg" data-testid="button-learn-more">
               Learn More
@@ -189,6 +259,51 @@ export default function Landing() {
           </div>
         </div>
       </section>
+    
+      {/* Signup Dialog */}
+      <Dialog open={showSignupDialog} onOpenChange={setShowSignupDialog}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Great! Your search is complete</DialogTitle>
+            <DialogDescription>
+              {searchResult ? 
+                "We found competitive intelligence for your search. Sign up to view the full report and get access to more features." :
+                "You've used your free search. Sign up to get 5 competitor analyses per day plus report history."
+              }
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <div className="bg-muted p-4 rounded-lg">
+              <h4 className="font-medium text-foreground mb-2">With a free account you get:</h4>
+              <ul className="text-sm text-muted-foreground space-y-1">
+                <li>• 5 competitor analyses per day</li>
+                <li>• Full AI-powered reports with source links</li>
+                <li>• Report history and exports</li>
+                <li>• Social sentiment analysis</li>
+              </ul>
+            </div>
+            
+            <div className="flex gap-3">
+              <Button 
+                onClick={() => window.location.href = '/api/login'}
+                className="flex-1"
+                data-testid="button-signup-dialog"
+              >
+                Sign Up Free
+              </Button>
+              <Button 
+                variant="outline" 
+                onClick={() => setShowSignupDialog(false)}
+                className="flex-1"
+                data-testid="button-maybe-later"
+              >
+                Maybe Later
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
