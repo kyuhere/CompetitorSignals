@@ -28,15 +28,21 @@ class SignalAggregator {
     sources: SignalSource = { news: true, funding: true, social: true, products: false },
     onPartialResults?: (results: CompetitorSignals[]) => void
   ): Promise<CompetitorSignals[]> {
+    // Add default RSS feeds for broader coverage
+    const defaultRSSFeeds = [
+      'https://feeds.feedburner.com/TechCrunch/',
+      'https://news.ycombinator.com/rss'
+    ];
+    const allUrls = [...defaultRSSFeeds, ...urls];
     const results: CompetitorSignals[] = [];
     
     try {
       // Create all async tasks for parallel execution
       const tasks: Promise<CompetitorSignals | null>[] = [];
       
-      // Process RSS feeds in parallel if provided
-      if (urls.length > 0) {
-        urls.forEach(url => {
+      // Process RSS feeds in parallel (including default feeds)
+      if (allUrls.length > 0) {
+        allUrls.forEach(url => {
           tasks.push(
             parseRSSFeed(url)
               .then(feedItems => {
@@ -52,6 +58,28 @@ class SignalAggregator {
               })
               .catch(error => {
                 console.error(`Error parsing RSS feed ${url}:`, error);
+                return null;
+              })
+          );
+        });
+      }
+
+      // Add RapidAPI news search for each competitor
+      if (process.env.RAPIDAPI_KEY) {
+        competitors.forEach(competitor => {
+          tasks.push(
+            this.getRapidAPINews(competitor)
+              .then((rapidAPISignals: CompetitorSignals) => {
+                if (rapidAPISignals.items.length > 0) {
+                  return {
+                    ...rapidAPISignals,
+                    items: this.trimContent(rapidAPISignals.items)
+                  };
+                }
+                return null;
+              })
+              .catch((error: any) => {
+                console.error(`Error getting RapidAPI signals for ${competitor}:`, error);
                 return null;
               })
           );
@@ -290,6 +318,48 @@ class SignalAggregator {
     } catch (error) {
       console.error("Error fetching product signals:", error);
       return [];
+    }
+  }
+
+  private async getRapidAPINews(competitor: string): Promise<CompetitorSignals> {
+    try {
+      if (!process.env.RAPIDAPI_KEY) {
+        return { source: "RapidAPI News", competitor, items: [] };
+      }
+
+      const searchQuery = `${competitor} news recent developments`;
+      const response = await fetch(
+        `https://real-time-news-data.p.rapidapi.com/search?query=${encodeURIComponent(searchQuery)}&country=US&lang=en&time_published=7d&limit=10`,
+        {
+          method: 'GET',
+          headers: {
+            'x-rapidapi-host': 'real-time-news-data.p.rapidapi.com',
+            'x-rapidapi-key': process.env.RAPIDAPI_KEY
+          }
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`RapidAPI request failed: ${response.status}`);
+      }
+
+      const data = await response.json();
+      const items = data.data?.slice(0, 8).map((article: any) => ({
+        title: article.title || '',
+        content: article.snippet || article.summary || '',
+        url: article.link || article.url || '',
+        publishedAt: article.published_datetime_utc || new Date().toISOString(),
+        type: 'news' as const,
+      })) || [];
+
+      return {
+        source: "RapidAPI News",
+        competitor,
+        items,
+      };
+    } catch (error) {
+      console.error(`Error fetching RapidAPI news for ${competitor}:`, error);
+      return { source: "RapidAPI News", competitor, items: [] };
     }
   }
 
