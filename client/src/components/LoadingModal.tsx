@@ -4,17 +4,17 @@ import { useState, useEffect } from "react";
 
 interface LoadingModalProps {
   isOpen: boolean;
+  progress?: number;
 }
 
 const LOADING_STEPS = [
-  "Parsing competitor names",
-  "Fetching news and press releases", 
-  "Analyzing funding data",
-  "Processing social mentions",
-  "Generating AI summary"
+  "Gathering competitor signals...",
+  "Processing data in parallel...", 
+  "AI analysis in progress...",
+  "Finalizing report..."
 ];
 
-export default function LoadingModal({ isOpen }: LoadingModalProps) {
+export default function LoadingModal({ isOpen, progress: externalProgress }: LoadingModalProps) {
   const [currentStep, setCurrentStep] = useState(0);
   const [progress, setProgress] = useState(0);
 
@@ -25,24 +25,41 @@ export default function LoadingModal({ isOpen }: LoadingModalProps) {
       return;
     }
 
-    const interval = setInterval(() => {
-      setCurrentStep(prev => {
-        if (prev < LOADING_STEPS.length - 1) {
-          return prev + 1;
-        }
-        return prev;
-      });
+    // Use external progress if provided, otherwise fallback to internal
+    if (externalProgress !== undefined) {
+      setProgress(externalProgress);
       
-      setProgress(prev => {
-        if (prev < 90) {
-          return prev + 15;
-        }
-        return prev;
-      });
-    }, 8000); // 8 seconds per step
+      // Update step based on progress
+      if (externalProgress < 30) {
+        setCurrentStep(0);
+      } else if (externalProgress < 70) {
+        setCurrentStep(1);
+      } else if (externalProgress < 90) {
+        setCurrentStep(2);
+      } else {
+        setCurrentStep(3);
+      }
+    } else {
+      // Fallback to time-based progression
+      const interval = setInterval(() => {
+        setCurrentStep(prev => {
+          if (prev < LOADING_STEPS.length - 1) {
+            return prev + 1;
+          }
+          return prev;
+        });
+        
+        setProgress(prev => {
+          if (prev < 90) {
+            return prev + 15;
+          }
+          return prev;
+        });
+      }, 8000);
 
-    return () => clearInterval(interval);
-  }, [isOpen]);
+      return () => clearInterval(interval);
+    }
+  }, [isOpen, externalProgress]);
 
   return (
     <Dialog open={isOpen}>

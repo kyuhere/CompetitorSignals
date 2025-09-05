@@ -9,11 +9,13 @@ import CompetitorReport from "@/components/CompetitorReport";
 import ReportHistory from "@/components/ReportHistory";
 import LoadingModal from "@/components/LoadingModal";
 import { Card, CardContent } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
 import { BarChart3 } from "lucide-react";
 
 export default function Home() {
   const [currentReport, setCurrentReport] = useState(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [loadingProgress, setLoadingProgress] = useState(0);
   const { toast } = useToast();
 
   // Fetch usage stats
@@ -31,8 +33,32 @@ export default function Home() {
   const analyzeMutation = useMutation({
     mutationFn: async (data: any) => {
       setIsAnalyzing(true);
-      const response = await apiRequest("POST", "/api/analyze", data);
-      return response.json();
+      setLoadingProgress(10);
+      
+      // Progress simulation matching landing page
+      const progressInterval = setInterval(() => {
+        setLoadingProgress(prev => {
+          if (prev >= 90) {
+            clearInterval(progressInterval);
+            return 90;
+          }
+          const increment = Math.random() * 8 + 2;
+          return Math.min(90, prev + increment);
+        });
+      }, 1000);
+      
+      try {
+        const response = await apiRequest("POST", "/api/analyze", data);
+        clearInterval(progressInterval);
+        setLoadingProgress(100);
+        
+        setTimeout(() => setLoadingProgress(0), 500);
+        return response;
+      } catch (error) {
+        clearInterval(progressInterval);
+        setLoadingProgress(0);
+        throw error;
+      }
     },
     onSuccess: (report) => {
       setCurrentReport(report);
@@ -115,7 +141,7 @@ export default function Home() {
         </div>
       </main>
 
-      <LoadingModal isOpen={isAnalyzing} />
+      <LoadingModal isOpen={isAnalyzing} progress={loadingProgress} />
     </div>
   );
 }

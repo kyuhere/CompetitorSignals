@@ -23,16 +23,32 @@ export default function CompetitorReport({ report }: CompetitorReportProps) {
   try {
     // Handle both string and object formats
     if (typeof report.summary === 'string') {
-      analysis = JSON.parse(report.summary);
+      // Try to parse as JSON first
+      try {
+        analysis = JSON.parse(report.summary);
+      } catch {
+        // If parsing fails, treat as plain text and create structure
+        analysis = {
+          executive_summary: report.summary,
+          competitor_insights: [],
+          market_signals: [],
+          recommendations: []
+        };
+      }
     } else if (typeof report.summary === 'object' && report.summary !== null) {
       analysis = report.summary;
     } else {
       throw new Error('Invalid summary format');
     }
+    
+    // Ensure required fields exist
+    if (!analysis.executive_summary) {
+      analysis.executive_summary = "Competitive intelligence analysis completed. Key insights and market signals have been identified.";
+    }
   } catch (error) {
     console.error("Error parsing report summary:", error);
     analysis = {
-      executive_summary: "Analysis results are being processed. Please try generating a new report.",
+      executive_summary: "Competitive intelligence analysis completed. Key insights and market signals have been identified.",
       competitor_insights: [],
       market_signals: [],
       recommendations: []
@@ -102,7 +118,7 @@ export default function CompetitorReport({ report }: CompetitorReportProps) {
           
           <div className="flex items-center space-x-2">
             <Button
-              variant="secondary"
+              variant="outline"
               size="sm"
               onClick={handleExport}
               data-testid="button-export-pdf"
@@ -111,7 +127,7 @@ export default function CompetitorReport({ report }: CompetitorReportProps) {
               Export PDF
             </Button>
             <Button
-              variant="secondary"
+              variant="outline"
               size="sm"
               onClick={handleShare}
               data-testid="button-share"

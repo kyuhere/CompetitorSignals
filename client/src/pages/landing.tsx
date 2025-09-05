@@ -26,14 +26,15 @@ export default function Landing() {
       // Simulate faster progress with optimized backend
       const progressInterval = setInterval(() => {
         setLoadingProgress(prev => {
-          if (prev >= 95) {
+          if (prev >= 90) {
             clearInterval(progressInterval);
-            return 95;
+            return 90;
           }
-          // Faster progress increments to reflect parallel processing
-          return prev + Math.random() * 20 + 5;
+          // More controlled progress increments
+          const increment = Math.random() * 8 + 2; // 2-10% increments
+          return Math.min(90, prev + increment); // Cap at 90%
         });
-      }, 800); // Faster updates
+      }, 1000); // More reasonable timing
       
       try {
         const result = await apiRequest('POST', '/api/analyze', {
