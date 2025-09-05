@@ -25,6 +25,7 @@ interface CompetitorSummary {
   social_sentiment: {
     score: number; // 0-100
     mentions_count: number;
+    quotes?: string[];
   };
   key_insights: string[];
 }
@@ -62,30 +63,34 @@ Please generate a detailed competitive intelligence analysis in news-style forma
       "competitor": "Company Name",
       "activity_level": "high|moderate|low",
       "recent_developments": [
-        "• Recent product launch or update with market impact",
-        "• Partnership announcements and strategic moves", 
-        "• Executive changes or organizational updates"
+        "• Recent product launch or update with market impact [Source: bing.com/news]",
+        "• Partnership announcements and strategic moves [Source: bing.com/news]", 
+        "• Executive changes or organizational updates [Source: bing.com/news]"
       ],
       "funding_business": [
-        "• Funding rounds with amounts and investors",
-        "• Business expansion or market entry news",
-        "• Revenue or growth announcements"
+        "• Funding rounds with amounts and investors [Source: bing.com/news]",
+        "• Business expansion or market entry news [Source: bing.com/news]",
+        "• Revenue or growth announcements [Source: bing.com/news]"
       ],
       "social_sentiment": {
         "score": 75,
-        "mentions_count": 1247
+        "mentions_count": 1247,
+        "quotes": [
+          "\"Positive mention or review quote\" [Source: bing.com/news]",
+          "\"Another sentiment quote\" [Source: bing.com/news]"
+        ]
       },
       "key_insights": [
-        "• Strategic positioning analysis",
-        "• Competitive advantages or weaknesses",
-        "• Market opportunities or threats"
+        "• Strategic positioning analysis [Source: bing.com/news]",
+        "• Competitive advantages or weaknesses [Source: bing.com/news]",
+        "• Market opportunities or threats [Source: bing.com/news]"
       ]
     }
   ],
   "strategic_insights": [
-    "• Cross-competitor trend 1 with market implications",
-    "• Industry development 2 affecting competitive landscape", 
-    "• Strategic opportunity or threat 3 for consideration"
+    "• Cross-competitor trend 1 with market implications [Source: bing.com/news]",
+    "• Industry development 2 affecting competitive landscape [Source: bing.com/news]", 
+    "• Strategic opportunity or threat 3 for consideration [Source: bing.com/news]"
   ],
   "sources_referenced": "Brief summary of news articles, funding announcements, social mentions, and other sources analyzed",
   "methodology": {
@@ -104,8 +109,10 @@ Focus on:
 - Keep bullet points concise but informative (news headlines style)
 - Rate activity level based on signal volume and recency
 - Estimate social sentiment realistically based on available data
-- Reference the sources analyzed without including actual URLs
+- Include [Source: bing.com/news] references at the end of key points
+- Add direct quotes in social sentiment with source references
 - Format all content with bullet points for easy readability
+- Use short, clean source references like [Source: bing.com/news] instead of full URLs
 `;
 
     const response = await openai.chat.completions.create({
