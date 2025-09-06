@@ -209,4 +209,9 @@
     box-shadow: 0 0 10px rgba(255, 215, 0, 0.5); 
   }
   .score-poor { @apply bg-destructive text-destructive-foreground; }
+  
+  /* Secondary button style - grey with yellow hover */
+  .btn-grey-hover {
+    @apply bg-gray-100 text-black hover:bg-primary hover:text-black font-bold border-2 border-gray-300 hover:border-primary rounded-xl transition-all duration-200;
+  }
 }
