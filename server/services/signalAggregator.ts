@@ -28,12 +28,9 @@ class SignalAggregator {
     sources: SignalSource = { news: true, funding: true, social: true, products: false },
     onPartialResults?: (results: CompetitorSignals[]) => void
   ): Promise<CompetitorSignals[]> {
-    // Add default RSS feeds for broader coverage
-    const defaultRSSFeeds = [
-      'https://feeds.feedburner.com/TechCrunch/',
-      'https://news.ycombinator.com/rss'
-    ];
-    const allUrls = [...defaultRSSFeeds, ...urls];
+    // Skip default RSS feeds to avoid irrelevant content
+    // Focus only on user-provided URLs and targeted news searches
+    const allUrls = [...urls]; // Only use user-provided RSS feeds
     const results: CompetitorSignals[] = [];
     
     try {
@@ -203,19 +200,19 @@ class SignalAggregator {
 
   private async getNewsSignals(competitor: string): Promise<SignalItem[]> {
     try {
-      // Search for multiple types of news about the competitor using Bing RSS
+      // Search for business-critical news about the competitor
       const searchQueries = [
-        `${competitor} news recent`,
-        `${competitor} funding investment`,
-        `${competitor} announcement launch`,
-        `${competitor} partnership acquisition`
+        `"${competitor}" funding raised investment revenue earnings`,
+        `"${competitor}" layoffs hiring expansion growth`,
+        `"${competitor}" product launch new features`,
+        `"${competitor}" acquisition merger partnership deal`
       ];
 
       const allResults: SignalItem[] = [];
 
       for (const query of searchQueries) {
         try {
-          const rssUrl = `https://www.bing.com/news/search?format=RSS&q=${encodeURIComponent(query)}`;
+          const rssUrl = `https://www.bing.com/news/search?format=RSS&q=${encodeURIComponent(query)}&sortby=date&since=90days&count=10`;
           const rssItems = await parseRSSFeed(rssUrl);
           
           const results = rssItems.map((item: any) => ({
@@ -268,8 +265,8 @@ class SignalAggregator {
 
   private async getFundingSignals(competitor: string): Promise<SignalItem[]> {
     try {
-      const fundingQuery = `${competitor} funding investment round raised venture capital`;
-      const rssUrl = `https://www.bing.com/news/search?format=RSS&q=${encodeURIComponent(fundingQuery)}`;
+      const fundingQuery = `"${competitor}" "funding" OR "investment" OR "raised" OR "revenue" OR "valuation" OR "IPO"`;
+      const rssUrl = `https://www.bing.com/news/search?format=RSS&q=${encodeURIComponent(fundingQuery)}&sortby=date&since=90days&count=5`;
       const rssItems = await parseRSSFeed(rssUrl);
       
       return rssItems.map((item: any) => ({
@@ -287,8 +284,8 @@ class SignalAggregator {
 
   private async getSocialSignals(competitor: string): Promise<SignalItem[]> {
     try {
-      const socialQuery = `${competitor} twitter linkedin social media mentions`;
-      const rssUrl = `https://www.bing.com/news/search?format=RSS&q=${encodeURIComponent(socialQuery)}`;
+      const socialQuery = `"${competitor}" "customers" OR "reviews" OR "complaints" OR "satisfaction" OR "market share"`;
+      const rssUrl = `https://www.bing.com/news/search?format=RSS&q=${encodeURIComponent(socialQuery)}&sortby=date&since=90days&count=5`;
       const rssItems = await parseRSSFeed(rssUrl);
       
       return rssItems.map((item: any) => ({
