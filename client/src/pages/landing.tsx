@@ -120,13 +120,12 @@ export default function Landing() {
           </div>
         </div>
       </header>
-
       {/* Hero Section */}
       <section className="py-24 px-4 sm:px-6 lg:px-8 bg-white">
         <div className="max-w-5xl mx-auto text-center">
           <h1 className="text-5xl sm:text-6xl lg:text-7xl font-black text-black mb-8 leading-tight">
             Squeeze the most out of<br />your 
-            <span className="bg-primary text-black px-4 py-2 rounded-lg">competitor insights</span>
+            <span className="bg-primary text-black px-4 py-2 rounded-lg text-[55px]">competitor insights</span>
           </h1>
           <p className="text-xl text-gray-600 mb-12 leading-relaxed max-w-4xl mx-auto">
             Generate comprehensive competitor analysis reports from any company name or URL. Get detailed insights on market positioning, pricing, technology, and strategic opportunities.
@@ -205,7 +204,6 @@ export default function Landing() {
           )}
         </div>
       </section>
-
       {/* Report Preview Section */}
       {searchResult && (
         <section className="py-16 px-4 sm:px-6 lg:px-8 bg-muted/30" data-scroll-target="analysis">
@@ -256,7 +254,6 @@ export default function Landing() {
           </div>
         </section>
       )}
-
       {/* Features Section */}
       <section className="py-16 px-4 sm:px-6 lg:px-8 bg-muted/50">
         <div className="max-w-6xl mx-auto">
@@ -303,7 +300,6 @@ export default function Landing() {
           </div>
         </div>
       </section>
-
       {/* Pricing Section */}
       <section className="py-16 px-4 sm:px-6 lg:px-8">
         <div className="max-w-4xl mx-auto">
@@ -385,7 +381,6 @@ export default function Landing() {
           </div>
         </div>
       </section>
-    
       {/* Signup Dialog */}
       <Dialog open={showSignupDialog} onOpenChange={setShowSignupDialog}>
         <DialogContent className="sm:max-w-[425px]">
