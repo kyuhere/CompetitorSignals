@@ -13,7 +13,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
-import { BarChart3, Building2, TrendingUp, Zap } from "lucide-react";
+import { BarChart3, Building2, TrendingUp, Zap, Target } from "lucide-react";
 
 export default function Home() {
   const [currentReport, setCurrentReport] = useState(null);
@@ -85,8 +85,8 @@ export default function Home() {
       queryClient.invalidateQueries({ queryKey: ["/api/reports"] });
       queryClient.invalidateQueries({ queryKey: ["/api/competitors/tracked"] });
       toast({
-        title: "Analysis Complete",
-        description: "Your competitor report has been generated and competitors have been tracked.",
+        title: "🍋 Analysis Complete!",
+        description: "Your competitor report has been squeezed and competitors have been tracked.",
       });
     },
     onError: (error) => {
@@ -125,32 +125,80 @@ export default function Home() {
     <div className="min-h-screen bg-background">
       <AppHeader usage={usage} />
       
+      {/* Hero Section */}
+      <div className="section-yellow py-16 mb-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <h1 className="text-4xl lg:text-6xl font-extrabold leading-tight mb-4">
+            🍋 Competitor Lemonade
+          </h1>
+          <p className="text-xl font-medium mb-6">
+            Squeeze the most out of your competitive intelligence
+          </p>
+          <div className="text-lg font-medium">
+            ⚡ AI-powered insights • 📊 Real-time tracking • 🎯 Strategic advantage
+          </div>
+        </div>
+      </div>
+      
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <Tabs defaultValue="analysis" className="w-full">
-          <TabsList className="grid w-full grid-cols-2 mb-8">
-            <TabsTrigger value="analysis" className="flex items-center" data-testid="tab-analysis">
-              <TrendingUp className="w-4 h-4 mr-2" />
-              Competitor Analysis
+        <Tabs defaultValue="tracking" className="w-full">
+          <TabsList className="grid w-full grid-cols-3 mb-8 bg-muted/50 p-1 rounded-2xl">
+            <TabsTrigger value="tracking" className="flex items-center font-bold text-sm rounded-xl data-[state=active]:bg-primary data-[state=active]:text-primary-foreground" data-testid="tab-tracking">
+              <Target className="w-4 h-4 mr-2" />
+              🎯 Competitor Tracking
             </TabsTrigger>
-            <TabsTrigger value="reports" className="flex items-center" data-testid="tab-reports">
+            <TabsTrigger value="analysis" className="flex items-center font-bold text-sm rounded-xl data-[state=active]:bg-primary data-[state=active]:text-primary-foreground" data-testid="tab-analysis">
+              <TrendingUp className="w-4 h-4 mr-2" />
+              📊 One-Time Analysis
+            </TabsTrigger>
+            <TabsTrigger value="reports" className="flex items-center font-bold text-sm rounded-xl data-[state=active]:bg-primary data-[state=active]:text-primary-foreground" data-testid="tab-reports">
               <BarChart3 className="w-4 h-4 mr-2" />
-              Report History
+              📋 Report History
             </TabsTrigger>
           </TabsList>
 
-          {/* Main Analysis Tab */}
+          {/* Competitor Tracking Tab */}
+          <TabsContent value="tracking" className="space-y-6">
+            <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+              {/* Left Column: Tracked Competitors */}
+              <div className="xl:col-span-1 space-y-6">
+                <TrackedCompetitors />
+              </div>
+
+              {/* Right Column: Report Display */}
+              <div className="xl:col-span-2">
+                {currentReport ? (
+                  <CompetitorReport report={currentReport} />
+                ) : (
+                  <Card className="h-96 flex items-center justify-center card-rounded hover-lift">
+                    <CardContent className="text-center">
+                      <div className="text-6xl mb-4">🎯</div>
+                      <h3 className="text-2xl font-bold text-foreground mb-3">Track Your Competitors</h3>
+                      <p className="text-muted-foreground text-lg font-medium mb-4">
+                        Add competitors to your tracking list for ongoing monitoring and insights.
+                      </p>
+                      <p className="text-sm text-muted-foreground bg-soft-green p-3 rounded-xl border-2 border-primary/20">
+                        🍋 We'll automatically analyze them every two weeks!
+                      </p>
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
+            </div>
+          </TabsContent>
+
+          {/* One-Time Analysis Tab */}
           <TabsContent value="analysis" className="space-y-6">
             <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
-              {/* Left Column: Input Form and Tracked Competitors */}
+              {/* Left Column: Input Form */}
               <div className="xl:col-span-1 space-y-6">
-                <Card>
+                <Card className="card-rounded hover-lift">
                   <CardHeader>
-                    <CardTitle className="flex items-center">
-                      <TrendingUp className="w-5 h-5 mr-2" />
-                      Competitor Analysis
+                    <CardTitle className="flex items-center text-xl font-bold">
+                      📊 One-Time Analysis
                     </CardTitle>
-                    <p className="text-sm text-muted-foreground">
-                      Enter competitors to analyze and automatically track them for future insights.
+                    <p className="text-sm text-muted-foreground font-medium">
+                      🍋 Get instant competitive insights without long-term tracking.
                     </p>
                   </CardHeader>
                   <CardContent>
@@ -161,9 +209,6 @@ export default function Home() {
                     />
                   </CardContent>
                 </Card>
-                
-                {/* Tracked Competitors Section */}
-                <TrackedCompetitors onAnalyzeTracked={handleAnalysis} />
               </div>
 
               {/* Right Column: Report Display */}
@@ -171,12 +216,15 @@ export default function Home() {
                 {currentReport ? (
                   <CompetitorReport report={currentReport} />
                 ) : (
-                  <Card className="h-96 flex items-center justify-center">
+                  <Card className="h-96 flex items-center justify-center card-rounded hover-lift">
                     <CardContent className="text-center">
-                      <BarChart3 className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
-                      <h3 className="text-lg font-medium text-foreground mb-2">No Analysis Yet</h3>
-                      <p className="text-muted-foreground">
-                        Enter competitor names to generate your analysis report.
+                      <div className="text-6xl mb-4">📊</div>
+                      <h3 className="text-2xl font-bold text-foreground mb-3">Ready for Analysis</h3>
+                      <p className="text-muted-foreground text-lg font-medium mb-4">
+                        Enter competitor names to generate your instant analysis report.
+                      </p>
+                      <p className="text-sm text-muted-foreground bg-soft-blue p-3 rounded-xl border-2 border-primary/20">
+                        🍋 Get comprehensive competitive intelligence in minutes!
                       </p>
                     </CardContent>
                   </Card>
@@ -187,6 +235,13 @@ export default function Home() {
 
           {/* Report History Tab */}
           <TabsContent value="reports" className="space-y-6">
+            <div className="mb-6 text-center">
+              <h2 className="text-2xl font-bold mb-2">📋 Your Analysis History</h2>
+              <p className="text-muted-foreground font-medium">
+                🍋 Browse through all your previous competitive intelligence reports
+              </p>
+            </div>
+            
             <ReportHistory 
               reports={(reports as any) || []}
               isLoading={reportsLoading}
