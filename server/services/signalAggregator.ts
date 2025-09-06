@@ -21,7 +21,7 @@ interface CompetitorSignals {
   items: SignalItem[];
 }
 
-class SignalAggregator {
+class SignalAggregator {\n  // Calculate text similarity using Jaccard index\n  private calculateSimilarity(text1: string, text2: string): number {\n    if (!text1 || !text2) return 0;\n    \n    const words1 = new Set(text1.toLowerCase().split(/\\s+/));\n    const words2 = new Set(text2.toLowerCase().split(/\\s+/));\n    \n    const intersection = new Set([...words1].filter(x => words2.has(x)));\n    const union = new Set([...words1, ...words2]);\n    \n    return intersection.size / union.size;\n  }
   async aggregateSignals(
     competitors: string[],
     urls: string[] = [],
@@ -233,12 +233,38 @@ class SignalAggregator {
         }
       }
 
-      // Remove duplicates and limit results
-      const uniqueResults = allResults.filter((item, index, self) => 
-        index === self.findIndex(t => t.url === item.url && t.title === item.title)
-      );
-
-      return uniqueResults.slice(0, 15); // Limit to 15 most relevant results
+      // Enhanced deduplication and filtering
+      const filteredResults = allResults.filter(item => {
+        // Apply the same date and relevance filtering as RSS feeds
+        const threeMonthsAgo = new Date();
+        threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
+        
+        if (item.publishedAt) {
+          const publishedDate = new Date(item.publishedAt);
+          if (publishedDate < threeMonthsAgo) return false;
+        }
+        
+        return true;
+      });
+      
+      // Sophisticated deduplication - remove similar titles and URLs
+      const uniqueResults = filteredResults.filter((item, index, self) => {
+        return index === self.findIndex(t => {
+          // Exact URL match
+          if (t.url === item.url && t.url) return true;
+          
+          // Similar title match (80% similarity)
+          const titleSimilarity = this.calculateSimilarity(t.title, item.title);
+          return titleSimilarity < 0.8;
+        });
+      });
+      
+      // Sort by date (newest first) and limit results
+      const sortedResults = uniqueResults
+        .sort((a, b) => new Date(b.publishedAt || 0).getTime() - new Date(a.publishedAt || 0).getTime())
+        .slice(0, 10); // Reduced to 10 most recent and relevant results
+        
+      return sortedResults;
     } catch (error) {
       console.error("Error fetching news signals:", error);
       return [];
@@ -361,12 +387,61 @@ class SignalAggregator {
   }
 
   private filterRelevantItems(items: SignalItem[], competitors: string[]): SignalItem[] {
-    return items.filter(item => 
-      competitors.some(competitor => 
-        item.title.toLowerCase().includes(competitor.toLowerCase()) ||
-        item.content.toLowerCase().includes(competitor.toLowerCase())
-      )
-    );
+    const threeMonthsAgo = new Date();
+    threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
+
+    return items.filter(item => {
+      // Filter by date - only include articles from last 3 months
+      if (item.publishedAt) {
+        const publishedDate = new Date(item.publishedAt);
+        if (publishedDate < threeMonthsAgo) {
+          return false;
+        }
+      }
+
+      // Enhanced relevance check
+      const title = item.title.toLowerCase();
+      const content = item.content.toLowerCase();
+      
+      // Check if any competitor is mentioned directly
+      const hasCompetitorMention = competitors.some(competitor => {
+        const compLower = competitor.toLowerCase();
+        return title.includes(compLower) || content.includes(compLower);
+      });
+      
+      if (!hasCompetitorMention) return false;
+      
+      // Filter out irrelevant topics (exclude loosely related content)
+      const irrelevantKeywords = [
+        'canva review', 'free ai tools', 'top 9', 'that make your life easier',
+        'tutorial', 'how to use', 'tips and tricks', 'vs comparison',
+        'alternatives to', 'similar to', 'like', 'instead of'
+      ];
+      
+      const hasIrrelevantContent = irrelevantKeywords.some(keyword => 
+        title.includes(keyword) || content.includes(keyword)
+      );
+      
+      if (hasIrrelevantContent) return false;
+      
+      // Prioritize business-critical content
+      const businessKeywords = [
+        'funding', 'investment', 'raised', 'revenue', 'earnings', 'valuation',
+        'layoffs', 'hiring', 'expansion', 'growth', 'launch', 'acquisition',
+        'merger', 'partnership', 'deal', 'ceo', 'executive', 'strategy'
+      ];
+      
+      const hasBusinessContent = businessKeywords.some(keyword => 
+        title.includes(keyword) || content.includes(keyword)
+      );
+      
+      // If it mentions the competitor but isn't business-critical, be more selective
+      if (!hasBusinessContent && Math.random() > 0.3) {
+        return false; // Only include 30% of non-business content
+      }
+      
+      return true;
+    });
   }
 }
 
