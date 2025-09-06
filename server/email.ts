@@ -24,18 +24,29 @@ export async function sendCompetitorReport({
   
   try {
     console.log(`Attempting to send email to: ${to}`);
+    console.log(`Report title: ${reportTitle}`);
+    console.log(`Competitors: ${competitors.join(', ')}`);
     console.log(`Using API key: ${process.env.RESEND_API_KEY ? 'Present' : 'Missing'}`);
     
-    const { data, error } = await resend.emails.send({
+    const emailPayload = {
       from: 'Competitor Lemonade <onboarding@resend.dev>',
       to: [to],
       subject: `🍋 ${reportTitle} - Competitor Analysis Report`,
       html: htmlContent,
+    };
+    
+    console.log('Email payload:', {
+      from: emailPayload.from,
+      to: emailPayload.to,
+      subject: emailPayload.subject,
+      htmlLength: htmlContent.length
     });
     
+    const { data, error } = await resend.emails.send(emailPayload);
+    
     if (error) {
-      console.error('Resend API error:', error);
-      return { success: false, error: error.message };
+      console.error('Resend API error:', JSON.stringify(error, null, 2));
+      return { success: false, error: typeof error === 'string' ? error : JSON.stringify(error) };
     }
     
     console.log('Email sent successfully:', data);
@@ -45,7 +56,10 @@ export async function sendCompetitorReport({
     console.error('Error details:', {
       message: error?.message,
       status: error?.status,
-      name: error?.name
+      statusCode: error?.statusCode,
+      code: error?.code,
+      name: error?.name,
+      stack: error?.stack
     });
     return { success: false, error: error?.message || 'Unknown error' };
   }

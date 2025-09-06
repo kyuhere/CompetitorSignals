@@ -506,12 +506,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Get the report
-      const report = await storage.getReport(reportId);
+      const report = await storage.getReportById(reportId);
       if (!report) {
         return res.status(404).json({ message: "Report not found" });
       }
       
       // Send the email
+      console.log(`Attempting to send report ${reportId} to ${email}`);
       const emailResult = await sendCompetitorReport({
         to: email,
         reportTitle: report.title,
@@ -520,13 +521,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       
       if (emailResult.success) {
+        console.log(`Email sent successfully to ${email}, ID: ${emailResult.id}`);
         res.json({ 
           success: true, 
           message: "Report sent successfully to your email",
           emailId: emailResult.id 
         });
       } else {
-        res.status(500).json({ message: "Failed to send email" });
+        console.error(`Email failed for ${email}:`, emailResult.error);
+        res.status(500).json({ 
+          message: "Failed to send email",
+          error: emailResult.error
+        });
       }
     } catch (error) {
       console.error("Error sending email report:", error);
