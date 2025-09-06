@@ -45,7 +45,7 @@ export default function TrackedCompetitors() {
       setNewCompetitorName("");
       setIsAdding(false);
       toast({
-        title: "🍋 Success!",
+        title: "Success!",
         description: "Competitor added to your tracking list",
       });
     },
@@ -66,7 +66,7 @@ export default function TrackedCompetitors() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/competitors/tracked'] });
       toast({
-        title: "🗑️ Removed",
+        title: "Removed",
         description: "Competitor removed from your tracking list",
       });
     },
@@ -115,7 +115,8 @@ export default function TrackedCompetitors() {
       <Card data-testid="card-tracked-competitors" className="card-rounded">
         <CardHeader>
           <CardTitle className="flex items-center text-xl font-bold">
-            🏢 Tracked Competitors
+            <Building2 className="w-6 h-6 mr-3 text-primary" />
+            Tracked Competitors
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -134,7 +135,8 @@ export default function TrackedCompetitors() {
       <CardHeader>
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center text-xl font-bold">
-            🏢 Tracked Competitors
+            <Building2 className="w-6 h-6 mr-3 text-primary" />
+            Tracked Competitors
           </CardTitle>
           <Badge 
             className="bg-primary text-primary-foreground font-bold px-3 py-1" 
@@ -144,7 +146,7 @@ export default function TrackedCompetitors() {
           </Badge>
         </div>
         <p className="text-sm text-muted-foreground font-medium">
-          🍋 Manage the competitors you want to monitor. We'll squeeze fresh insights every two weeks!
+          Manage the competitors you want to monitor. We'll analyze them automatically every two weeks.
         </p>
       </CardHeader>
       
@@ -197,9 +199,9 @@ export default function TrackedCompetitors() {
           
           {(!trackedData?.competitors || trackedData.competitors.length === 0) && (
             <div className="text-center py-12 text-muted-foreground bg-muted/30 rounded-xl">
-              <div className="text-6xl mb-4">🍋</div>
+              <Building2 className="w-16 h-16 mx-auto mb-4 text-muted-foreground/50" />
               <p className="font-bold text-lg mb-2">No competitors being tracked yet</p>
-              <p className="text-sm">Add your first competitor to start squeezing insights!</p>
+              <p className="text-sm">Add your first competitor to start monitoring!</p>
             </div>
           )}
         </div>
@@ -208,7 +210,7 @@ export default function TrackedCompetitors() {
         {isAdding ? (
           <div className="flex space-x-3 p-4 bg-muted/30 rounded-xl">
             <Input
-              placeholder="Enter competitor name... 🏢"
+              placeholder="Enter competitor name..."
               value={newCompetitorName}
               onChange={(e) => setNewCompetitorName(e.target.value)}
               onKeyDown={handleKeyPress}
@@ -222,7 +224,7 @@ export default function TrackedCompetitors() {
               data-testid="button-confirm-add"
               className="btn-primary px-6 py-2 text-sm rounded-xl"
             >
-              Add 🍋
+              Add
             </Button>
             <Button
               variant="ghost"
@@ -244,7 +246,7 @@ export default function TrackedCompetitors() {
             data-testid="button-add-competitor"
           >
             <Plus className="w-5 h-5 mr-2" />
-            {canAddMore ? "🍋 Add Competitor" : `Limit Reached (${trackedData?.limit || 5} max)`}
+            {canAddMore ? "Add Competitor" : `Limit Reached (${trackedData?.limit || 5} max)`}
           </Button>
         )}
 
@@ -255,8 +257,8 @@ export default function TrackedCompetitors() {
               // This would trigger analysis of tracked competitors
               // For now, we'll show a toast
               toast({
-                title: "🍋 Analysis Started!",
-                description: "Squeezing fresh insights from your tracked competitors. This may take a few minutes.",
+                title: "Analysis Started",
+                description: "Analyzing your tracked competitors. This may take a few minutes.",
               });
             }}
             variant="outline"
@@ -264,7 +266,7 @@ export default function TrackedCompetitors() {
             data-testid="button-analyze-tracked"
           >
             <Zap className="w-5 h-5 mr-2" />
-            ⚡ Squeeze Insights Now!
+            Analyze Now
           </Button>
         )}
 
@@ -272,11 +274,11 @@ export default function TrackedCompetitors() {
         {trackedData && trackedData.count > 0 && (
           <div className="mt-4 p-4 bg-soft-green border-2 border-primary/20 rounded-xl">
             <p className="text-sm text-gray-800 font-medium flex items-center">
-              🍋 <Clock className="w-4 h-4 mx-2" />
-              Automatic lemon-fresh analysis every two weeks!
+              <Clock className="w-4 h-4 mr-2" />
+              Automatic analysis every two weeks
             </p>
             <p className="text-xs text-gray-600 mt-1 ml-6">
-              We'll keep squeezing the latest competitive intelligence for you
+              We'll keep monitoring the latest competitive intelligence for you
             </p>
           </div>
         )}

@@ -103,16 +103,17 @@ export default function Landing() {
       <header className="bg-card border-b border-border">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
-            <div className="flex items-center space-x-2">
-              <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-                <BarChart3 className="w-4 h-4 text-primary-foreground" />
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center">
+                <BarChart3 className="w-5 h-5 text-primary-foreground" />
               </div>
-              <span className="text-xl font-semibold text-foreground">AI Competitor Signals</span>
+              <span className="text-xl font-bold text-foreground">Competitor Lemonade</span>
             </div>
             
             <Button 
               onClick={() => window.location.href = '/api/login'}
               data-testid="button-login"
+              className="btn-primary"
             >
               Sign In
             </Button>
@@ -125,7 +126,7 @@ export default function Landing() {
         <div className="max-w-4xl mx-auto text-center">
           <h1 className="text-4xl sm:text-5xl font-bold text-foreground mb-6">
             Track Your Competitors with 
-            <span className="text-primary"> AI Intelligence</span>
+            <span className="bg-primary text-primary-foreground px-3 py-1 rounded-lg">AI Intelligence</span>
           </h1>
           <p className="text-xl text-muted-foreground mb-8 leading-relaxed">
             Get actionable insights from news, funding, and social signals. 
@@ -148,14 +149,14 @@ export default function Landing() {
                     setSearchQuery(capitalizedValue);
                   }}
                   placeholder="Enter a competitor name (e.g., OpenAI, Tesla, Spotify)"
-                  className="w-full h-14 text-lg pl-6 pr-16 border-2 border-border focus:border-primary rounded-full shadow-lg"
+                  className="w-full h-14 text-lg pl-6 pr-16 border-2 border-border focus:border-primary rounded-full shadow-lg font-medium"
                   data-testid="input-competitor-search"
                 />
                 <Button
                   type="submit"
                   size="sm"
                   disabled={!searchQuery.trim() || searchMutation.isPending}
-                  className="absolute right-2 top-2 h-10 w-10 rounded-full p-0"
+                  className="absolute right-2 top-2 h-10 w-10 rounded-full p-0 btn-primary"
                   data-testid="button-search"
                 >
                   <Search className="w-4 h-4" />
@@ -183,19 +184,20 @@ export default function Landing() {
               size="lg" 
               onClick={() => window.location.href = '/api/login'}
               data-testid="button-get-started"
+              className="btn-primary text-lg px-8 py-4 h-auto"
             >
               Get Full Access
             </Button>
-            <Button variant="outline" size="lg" data-testid="button-learn-more">
+            <Button variant="outline" size="lg" data-testid="button-learn-more" className="text-lg px-8 py-4 h-auto border-2 border-primary text-primary hover:bg-primary hover:text-primary-foreground font-medium">
               Learn More
             </Button>
           </div>
 
           {/* Feature badges */}
           <div className="flex flex-wrap gap-2 justify-center">
-            <Badge variant="secondary">No Credit Card Required</Badge>
-            <Badge variant="secondary">5 Reports Every Two Weeks</Badge>
-            <Badge variant="secondary">AI-Powered Insights</Badge>
+            <Badge className="bg-soft-green text-foreground font-medium px-4 py-2">No Credit Card Required</Badge>
+            <Badge className="bg-soft-blue text-foreground font-medium px-4 py-2">5 Reports Every Two Weeks</Badge>
+            <Badge className="bg-primary text-primary-foreground font-medium px-4 py-2">AI-Powered Insights</Badge>
           </div>
         </div>
       </section>
@@ -206,7 +208,7 @@ export default function Landing() {
           <div className="max-w-6xl mx-auto">
             <div className="mb-8">
               <h2 className="text-3xl font-bold text-foreground mb-4">Your Competitor Analysis</h2>
-              <p className="text-muted-foreground">Here's your competitive intelligence report preview:</p>
+              <p className="text-muted-foreground font-medium">Here's your competitive intelligence report preview:</p>
             </div>
             
             <CompetitorReport 
@@ -220,26 +222,26 @@ export default function Landing() {
                 <Button
                   onClick={handleExportAttempt}
                   size="lg"
-                  className="bg-primary hover:bg-primary/90"
+                  className="btn-primary text-lg px-8 py-4 h-auto"
                   data-testid="button-export-email"
                 >
-                  <Download className="w-4 h-4 mr-2" />
+                  <Download className="w-5 h-5 mr-2" />
                   Export / Email Report
                 </Button>
               </div>
               
               {/* Bi-weekly CTA */}
-              <Card className="bg-gradient-to-r from-primary/10 to-blue-500/10 border-primary/20">
+              <Card className="bg-lemon-light border-2 border-primary/30 card-rounded hover-lift">
                 <CardContent className="p-6 text-center">
-                  <h3 className="text-lg font-semibold text-foreground mb-2">
+                  <h3 className="text-xl font-bold text-foreground mb-3">
                     Want to receive this as a bi-weekly report?
                   </h3>
-                  <p className="text-muted-foreground mb-4">
+                  <p className="text-muted-foreground mb-6 font-medium">
                     Sign up to get 5 competitor reports every two weeks, plus export and email features.
                   </p>
                   <Button
                     onClick={() => window.location.href = '/api/login'}
-                    variant="default"
+                    className="btn-primary text-lg px-8 py-4 h-auto"
                     data-testid="button-biweekly-signup"
                   >
                     Sign Up for Bi-weekly Reports
