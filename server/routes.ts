@@ -275,7 +275,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               to: userEmail,
               reportTitle: report.title,
               reportContent: report.summary,
-              competitors: report.competitors
+              competitors: report.competitors as string[]
             });
             console.log(`Report email sent automatically to ${userEmail}`);
           } catch (error) {
@@ -516,7 +516,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         to: userEmail,
         reportTitle: report.title,
         reportContent: report.summary,
-        competitors: report.competitors
+        competitors: report.competitors as string[]
       });
       
       if (emailResult.success) {
