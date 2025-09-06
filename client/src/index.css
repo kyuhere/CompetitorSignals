@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -11,9 +13,18 @@
   --popover: hsl(0 0% 100%);
   --popover-foreground: hsl(0 0% 0%);
   
-  /* Primary Brand Yellow */
-  --primary: hsl(58 100% 52%);                     /* #ffe606 bright yellow */
+  /* Glass Lemon Primary - Lemon Yellow #FFE606 */
+  --primary: hsl(56 100% 51%);                     /* #FFE606 exact lemon yellow */
   --primary-foreground: hsl(0 0% 0%);              /* Black text on yellow */
+  
+  /* Glass Lemon Extended Palette */
+  --tech-teal: hsl(162 65% 45%);                   /* #20C997 */
+  --gray-100: hsl(210 20% 98%);                    /* #F9FAFB */
+  --gray-400: hsl(0 0% 45%);                       /* #737373 */
+  --gray-900: hsl(220 39% 11%);                    /* #111827 */
+  --pastel-mint: hsl(74 42% 86%);                  /* #E6F4BD */
+  --pastel-blue: hsl(193 75% 86%);                 /* #BCEAF6 */
+  --pastel-pink: hsl(336 100% 92%);                /* #FFDEE6 */
   
   /* Secondary Colors */
   --secondary: hsl(0 0% 96%);                      /* Light gray #f5f5f5 */
@@ -45,12 +56,12 @@
   --soft-pink: hsl(338 100% 94%);                  /* #ffdee6 */
   --peach: hsl(25 90% 85%);                        /* #fcceb2 */
   
-  /* Legacy variables for compatibility */
-  --chart-1: hsl(58 100% 52%);
-  --chart-2: hsl(142 76% 36%);
-  --chart-3: hsl(45 93% 50%);
-  --chart-4: hsl(194 67% 85%);
-  --chart-5: hsl(338 100% 94%);
+  /* Glass Lemon Chart Colors */
+  --chart-1: hsl(56 100% 51%);                     /* Lemon Yellow */
+  --chart-2: hsl(162 65% 45%);                     /* Tech Teal */
+  --chart-3: hsl(193 75% 86%);                     /* Pastel Blue */
+  --chart-4: hsl(74 42% 86%);                      /* Pastel Mint */
+  --chart-5: hsl(336 100% 92%);                    /* Pastel Pink */
   
   --sidebar: hsl(0 0% 96%);
   --sidebar-foreground: hsl(0 0% 0%);
@@ -66,8 +77,17 @@
   --font-serif: Georgia, serif;
   --font-mono: Menlo, monospace;
   
-  /* Border Radius */
-  --radius: 1rem;                                  /* 16px standard radius */
+  /* Glass Lemon Effects */
+  --glass-bg: rgba(255, 255, 255, 0.7);
+  --glass-border: rgba(230, 230, 230, 0.3);
+  --glass-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+  --frosted-blur: blur(20px);
+  
+  /* Glass Lemon Gradients */
+  --gradient-primary: linear-gradient(135deg, #FFE606, #20C997);
+  
+  /* Border Radius - Glass Lemon uses 12px as base */
+  --radius: 0.75rem;                               /* 12px glass lemon standard */
   
   /* Shadows (minimal for clean look) */
   --shadow-2xs: 0px 1px 2px 0px hsl(0 0% 0% / 0.05);
@@ -84,16 +104,16 @@
 }
 
 .dark {
-  /* Dark mode with maintained brand identity */
-  --background: hsl(0 0% 3.9%);                    /* Very dark background */
+  /* Glass Lemon Dark Mode - Deep Navy Background */
+  --background: hsl(210 100% 6%);                  /* #0D1B2A deep navy */
   --foreground: hsl(0 0% 98%);                     /* Near white text */
   --card: hsl(0 0% 3.9%);
   --card-foreground: hsl(0 0% 98%);
   --popover: hsl(0 0% 3.9%);
   --popover-foreground: hsl(0 0% 98%);
   
-  /* Primary stays bright yellow */
-  --primary: hsl(58 100% 52%);                     /* Keep bright yellow */
+  /* Glass Lemon Primary stays bright */
+  --primary: hsl(56 100% 51%);                     /* Keep lemon yellow #FFE606 */
   --primary-foreground: hsl(0 0% 0%);              /* Black text on yellow */
   
   /* Dark mode secondary */
@@ -117,7 +137,11 @@
   /* Dark mode borders */
   --border: hsl(0 0% 14.9%);
   --input: hsl(0 0% 14.9%);
-  --ring: hsl(58 100% 52%);                        /* Yellow focus ring */
+  --ring: hsl(56 100% 51%);                        /* Lemon yellow focus ring */
+  
+  /* Glass Lemon Dark Mode Effects */
+  --glass-bg: rgba(0, 0, 0, 0.6);
+  --glass-border: rgba(255, 255, 255, 0.1);
   
   /* Soft colors for dark mode */
   --soft-green: hsl(78 25% 25%);
@@ -143,14 +167,76 @@
   }
 
   body {
-    @apply font-sans antialiased bg-background text-foreground;
-    font-weight: 500; /* Medium weight as default */
+    @apply antialiased bg-background text-foreground;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+    font-weight: 400; /* Glass Lemon default weight */
     letter-spacing: -0.025em;
+  }
+  
+  /* Glass Lemon Typography Scale */
+  .text-hero {
+    font-size: 3rem;
+    font-weight: 700;
+    line-height: 1.1;
+  }
+  
+  .text-h2 {
+    font-size: 2rem;
+    font-weight: 600;
+    line-height: 1.2;
+  }
+  
+  .text-h3 {
+    font-size: 1.5rem;
+    font-weight: 500;
+    line-height: 1.3;
   }
 }
 
 @layer components {
-  /* Lemonade Brand Components */
+  /* Glass Lemon Components */
+  .glass-panel {
+    background: var(--glass-bg);
+    backdrop-filter: var(--frosted-blur);
+    -webkit-backdrop-filter: var(--frosted-blur);
+    border: 1px solid var(--glass-border);
+    border-radius: 1rem;
+    box-shadow: var(--glass-shadow);
+  }
+  
+  .glass-card {
+    @apply glass-panel p-6;
+  }
+  
+  .glass-button {
+    @apply glass-panel px-6 py-3 font-semibold transition-all duration-200;
+    @apply hover:shadow-lg hover:-translate-y-0.5;
+  }
+  
+  .glass-input {
+    @apply glass-panel px-4 py-3;
+    @apply focus:ring-2 focus:ring-primary focus:border-primary;
+  }
+  
+  /* Glass Lemon Primary Button with Glow */
+  .btn-glass-primary {
+    @apply bg-primary text-primary-foreground px-8 py-4 rounded-xl font-semibold text-lg shadow-lg transition-all duration-200;
+    @apply hover:shadow-xl hover:-translate-y-0.5;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2), 0 0 0 0 hsl(var(--tech-teal));
+  }
+  
+  .btn-glass-primary:hover {
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25), 0 0 0 2px hsl(var(--tech-teal));
+  }
+  
+  /* Glass Lemon Secondary Button */
+  .btn-glass-secondary {
+    @apply glass-button text-foreground border border-gray-300;
+    @apply hover:border-primary hover:text-primary;
+  }
+  
+  /* Enhanced Lemonade Brand Components */
   .btn-primary {
     @apply bg-primary text-primary-foreground px-8 py-4 rounded-full font-bold text-lg shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105;
   }
