@@ -7,15 +7,33 @@ async function throwIfResNotOk(res: Response) {
   }
 }
 
-export async function apiRequest(
-  method: string,
-  url: string,
-  data?: unknown | undefined,
-): Promise<Response> {
-  const res = await fetch(url, {
+export async function apiRequest(method: string, url: string, data?: any): Promise<Response> {
+  const options: RequestInit = {
     method,
-    headers: data ? { "Content-Type": "application/json" } : {},
-    body: data ? JSON.stringify(data) : undefined,
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  };
+
+  // Add guest search data to headers if available and making auth request
+  if (url.includes('/api/auth/user')) {
+    const guestSearchResult = localStorage.getItem('guestSearchResult');
+    if (guestSearchResult) {
+      options.headers = {
+        ...options.headers,
+        'x-guest-search': guestSearchResult
+      };
+      // Clear the stored guest search after sending
+      localStorage.removeItem('guestSearchResult');
+    }
+  }
+
+  if (data) {
+    options.body = JSON.stringify(data);
+  }
+
+  const res = await fetch(url, {
+    ...options,
     credentials: "include",
   });
 

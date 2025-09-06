@@ -3,6 +3,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Download, Share, BarChart3, DollarSign, MessageCircle, Lightbulb, CheckCircle, TrendingUp, TrendingDown, Minus, Building2, Target, Code, Globe, Package, Users, ThumbsUp, ThumbsDown, AlertTriangle, Zap } from "lucide-react";
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 
 interface CompetitorReportProps {
   report: {
@@ -67,9 +69,51 @@ export default function CompetitorReport({ report }: CompetitorReportProps) {
     };
   }
 
-  const handleExport = () => {
-    // TODO: Implement PDF export
-    console.log("Export PDF functionality");
+  const handleExport = async () => {
+    try {
+      // Find the report content element
+      const reportElement = document.querySelector('[data-testid="card-competitor-report"]') as HTMLElement;
+      if (!reportElement) {
+        console.error('Report element not found');
+        return;
+      }
+
+      // Create canvas from the report element
+      const canvas = await html2canvas(reportElement, {
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: '#ffffff'
+      });
+
+      // Calculate dimensions
+      const imgWidth = 210; // A4 width in mm
+      const pageHeight = 295; // A4 height in mm
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      let heightLeft = imgHeight;
+
+      // Create PDF
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      let position = 0;
+
+      // Add first page
+      pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, position, imgWidth, imgHeight);
+      heightLeft -= pageHeight;
+
+      // Add additional pages if needed
+      while (heightLeft >= 0) {
+        position = heightLeft - imgHeight;
+        pdf.addPage();
+        pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, position, imgWidth, imgHeight);
+        heightLeft -= pageHeight;
+      }
+
+      // Download the PDF
+      const fileName = `${report.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_analysis.pdf`;
+      pdf.save(fileName);
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+    }
   };
 
   const handleShare = () => {
@@ -522,9 +566,46 @@ export default function CompetitorReport({ report }: CompetitorReportProps) {
               Source References
             </h3>
             <div className="space-y-4">
-              {report.signals.map((signal, signalIndex) => (
+              {report.signals.map((signal, signalIndex) => {
+                // Clean up source names and make them clickable if they're RSS feeds
+                let displaySource = signal.source;
+                let sourceUrl = null;
+                
+                if (signal.source === 'RapidAPI News') {
+                  displaySource = 'News';
+                } else if (signal.source.includes('RSS: bing.com')) {
+                  displaySource = 'Bing News';
+                  sourceUrl = 'https://www.bing.com/news';
+                } else if (signal.source.includes('RSS:')) {
+                  // Extract hostname from RSS source
+                  const match = signal.source.match(/RSS: (.+)/);
+                  if (match) {
+                    displaySource = match[1];
+                    // Try to create a link to the source
+                    if (match[1].includes('techcrunch')) {
+                      sourceUrl = 'https://techcrunch.com';
+                    } else if (match[1].includes('ycombinator')) {
+                      sourceUrl = 'https://news.ycombinator.com';
+                    }
+                  }
+                }
+                
+                return (
                 <div key={signalIndex} className="border-l-2 border-blue-200 pl-4">
-                  <h4 className="font-medium text-foreground mb-2">{signal.source}</h4>
+                  <h4 className="font-medium text-foreground mb-2">
+                    {sourceUrl ? (
+                      <a 
+                        href={sourceUrl} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-blue-600 hover:text-blue-800 hover:underline"
+                      >
+                        {displaySource}
+                      </a>
+                    ) : (
+                      displaySource
+                    )}
+                  </h4>
                   <div className="space-y-2">
                     {signal.items.filter(item => item.url).slice(0, 5).map((item, itemIndex) => (
                       <div key={itemIndex} className="flex items-start space-x-2">
@@ -547,7 +628,8 @@ export default function CompetitorReport({ report }: CompetitorReportProps) {
                     ))}
                   </div>
                 </div>
-              ))}
+                );
+              })}
             </div>
             <div className="mt-4 pt-4 border-t border-border">
               <p className="text-xs text-muted-foreground">

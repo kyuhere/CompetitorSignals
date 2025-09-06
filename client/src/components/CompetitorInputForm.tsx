@@ -82,7 +82,15 @@ export default function CompetitorInputForm({ onAnalyze, isLoading, usage }: Com
             <Textarea
               id="competitors"
               value={competitors}
-              onChange={(e) => setCompetitors(e.target.value)}
+              onChange={(e) => {
+                // Auto-capitalize first letter of each line (competitor name)
+                const lines = e.target.value.split('\n');
+                const capitalizedLines = lines.map(line => {
+                  const trimmed = line.trim();
+                  return trimmed ? trimmed.charAt(0).toUpperCase() + trimmed.slice(1).toLowerCase() : line;
+                });
+                setCompetitors(capitalizedLines.join('\n'));
+              }}
               rows={3}
               placeholder={`Enter competitor names, one per line\ne.g., OpenAI\nAnthropic\nGoogle AI`}
               className="resize-none"

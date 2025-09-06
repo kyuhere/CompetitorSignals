@@ -30,6 +30,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
+      
+      // Check if there's a guest search to migrate
+      const guestSearchData = req.headers['x-guest-search'];
+      if (guestSearchData) {
+        try {
+          const guestReport = JSON.parse(guestSearchData as string);
+          if (guestReport && guestReport.id && guestReport.id.startsWith('temp_')) {
+            // Convert guest report to permanent report
+            const reportData = {
+              userId,
+              title: guestReport.title,
+              competitors: guestReport.competitors,
+              signals: guestReport.signals,
+              summary: guestReport.summary,
+              metadata: guestReport.metadata,
+            };
+            await storage.createReport(reportData);
+          }
+        } catch (error) {
+          console.error('Error migrating guest search:', error);
+        }
+      }
+      
       res.json(user);
     } catch (error) {
       console.error("Error fetching user:", error);

@@ -18,6 +18,13 @@ export default function Landing() {
   const [loadingProgress, setLoadingProgress] = useState(0);
   const { toast } = useToast();
 
+  // Store the guest search result in localStorage for potential account creation
+  const storeGuestSearch = (result: any) => {
+    if (result && result.id && result.id.startsWith('temp_')) {
+      localStorage.setItem('guestSearchResult', JSON.stringify(result));
+    }
+  };
+
   const searchMutation = useMutation({
     mutationFn: async (competitor: string) => {
       // Reset and start progress
@@ -57,7 +64,14 @@ export default function Landing() {
     },
     onSuccess: (data) => {
       setSearchResult(data);
-      // Don't show signup dialog immediately, let them see the report first
+      storeGuestSearch(data);
+      // Auto-scroll to the analysis section after a short delay
+      setTimeout(() => {
+        const analysisSection = document.querySelector('[data-scroll-target="analysis"]');
+        if (analysisSection) {
+          analysisSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }, 500);
     },
     onError: (error: any) => {
       if (error.message.includes('429')) {
@@ -125,7 +139,14 @@ export default function Landing() {
                 <Input
                   type="text"
                   value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onChange={(e) => {
+                    // Auto-capitalize first letter of each word
+                    const capitalizedValue = e.target.value
+                      .split(' ')
+                      .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+                      .join(' ');
+                    setSearchQuery(capitalizedValue);
+                  }}
                   placeholder="Enter a competitor name (e.g., OpenAI, Tesla, Spotify)"
                   className="w-full h-14 text-lg pl-6 pr-16 border-2 border-border focus:border-primary rounded-full shadow-lg"
                   data-testid="input-competitor-search"
@@ -181,7 +202,7 @@ export default function Landing() {
 
       {/* Report Preview Section */}
       {searchResult && (
-        <section className="py-16 px-4 sm:px-6 lg:px-8 bg-muted/30">
+        <section className="py-16 px-4 sm:px-6 lg:px-8 bg-muted/30" data-scroll-target="analysis">
           <div className="max-w-6xl mx-auto">
             <div className="mb-8">
               <h2 className="text-3xl font-bold text-foreground mb-4">Your Competitor Analysis</h2>
