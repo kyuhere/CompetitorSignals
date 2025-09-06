@@ -20,11 +20,11 @@ export default function AppHeader({ usage }: AppHeaderProps) {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           <div className="flex items-center space-x-4">
-            <div className="flex items-center space-x-2">
-              <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-                <BarChart3 className="w-4 h-4 text-primary-foreground" />
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 bg-primary rounded-2xl flex items-center justify-center shadow-lg">
+                <span className="text-2xl">🍋</span>
               </div>
-              <span className="text-xl font-semibold text-foreground">AI Competitor Signals</span>
+              <span className="text-2xl font-bold text-foreground">Competitor Lemonade</span>
             </div>
           </div>
           
@@ -32,24 +32,24 @@ export default function AppHeader({ usage }: AppHeaderProps) {
             {isAuthenticated && user ? (
               <>
                 {/* User Status Indicator */}
-                <div className="flex items-center space-x-2 text-sm text-muted-foreground bg-muted px-3 py-1.5 rounded-md" data-testid="user-status">
-                  <User className="w-4 h-4 text-primary" />
-                  <span data-testid="text-user-email">{user.email || 'User'}</span>
-                  <Badge variant="secondary" data-testid="badge-user-tier">Free</Badge>
+                <div className="flex items-center space-x-3 text-sm bg-soft-green px-4 py-2 rounded-xl border-2 border-primary/20" data-testid="user-status">
+                  <User className="w-4 h-4 text-gray-700" />
+                  <span className="font-medium text-gray-800" data-testid="text-user-email">{user.email || 'User'}</span>
+                  <Badge className="bg-primary text-primary-foreground font-bold" data-testid="badge-user-tier">Free</Badge>
                 </div>
                 
                 {/* Query Limit Indicator */}
                 {usage && (
-                  <div className="flex items-center space-x-2 text-sm" data-testid="usage-indicator">
-                    <span className="text-muted-foreground">Daily limit:</span>
-                    <span className="font-medium text-foreground" data-testid="text-usage-current">{usage.current}</span>
-                    <span className="text-muted-foreground">/</span>
-                    <span className="font-medium text-foreground" data-testid="text-usage-limit">{usage.limit}</span>
+                  <div className="flex items-center space-x-3 text-sm bg-peach px-4 py-2 rounded-xl border-2 border-primary/20" data-testid="usage-indicator">
+                    <span className="font-medium text-gray-800">🍋 Daily limit:</span>
+                    <span className="font-bold text-gray-900" data-testid="text-usage-current">{usage.current}</span>
+                    <span className="text-gray-700">/</span>
+                    <span className="font-bold text-gray-900" data-testid="text-usage-limit">{usage.limit}</span>
                   </div>
                 )}
                 
                 <Button
-                  variant="ghost"
+                  className="btn-secondary rounded-xl"
                   size="sm"
                   onClick={() => window.location.href = '/api/logout'}
                   data-testid="button-logout"
