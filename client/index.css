@@ -180,4 +180,37 @@
   .bg-soft-green { background-color: var(--soft-green); }
   .bg-lemon-yellow { background-color: var(--lemon-yellow); }
   .bg-lemon-light { background-color: var(--lemon-light); }
+  
+  /* Glass panel styles */
+  .glass-panel {
+    background: rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+  }
+  
+  .glass-button {
+    @apply rounded-xl transition-all duration-200;
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(5px);
+  }
+  
+  .glass-button:hover {
+    background: rgba(255, 255, 255, 0.2);
+  }
+  
+  .btn-glass-primary {
+    @apply bg-primary text-primary-foreground hover:bg-primary/90 font-semibold transition-all duration-200;
+    backdrop-filter: blur(10px);
+  }
+  
+  .btn-glass-secondary {
+    @apply border-2 border-primary text-primary hover:bg-primary hover:text-primary-foreground font-semibold transition-all duration-200;
+    background: rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(10px);
+  }
+  
+  /* Gradient backgrounds */
+  :root {
+    --gradient-primary: linear-gradient(135deg, var(--lemon-yellow) 0%, var(--lemon-light) 100%);
+  }
 }
