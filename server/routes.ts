@@ -6,6 +6,7 @@ import { insertCompetitorReportSchema, insertTrackedCompetitorSchema } from "@sh
 import { z } from "zod";
 import { signalAggregator } from "./services/signalAggregator";
 import { summarizeCompetitorSignals, generateFastPreview } from "./services/openai";
+import { sendCompetitorReport } from "./email";
 
 // Store active streaming sessions
 const streamingSessions = new Map<string, any>();
@@ -468,6 +469,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error analyzing tracked competitors:", error);
       res.status(500).json({ message: "Failed to analyze tracked competitors" });
+    }
+  });
+
+  // Email report endpoint
+  app.post('/api/reports/:reportId/email', isAuthenticated, async (req: any, res) => {
+    try {
+      const { reportId } = req.params;
+      const userId = req.user.claims.sub;
+      const userEmail = req.user.claims.email;
+      
+      if (!userEmail) {
+        return res.status(400).json({ message: "User email not found" });
+      }
+      
+      // Get the report
+      const report = await storage.getReport(reportId);
+      if (!report) {
+        return res.status(404).json({ message: "Report not found" });
+      }
+      
+      // Verify the report belongs to the user
+      if (report.userId !== userId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+      
+      // Send the email
+      const emailResult = await sendCompetitorReport({
+        to: userEmail,
+        reportTitle: report.title,
+        reportContent: report.summary,
+        competitors: report.competitors
+      });
+      
+      if (emailResult.success) {
+        res.json({ 
+          success: true, 
+          message: "Report sent successfully to your email",
+          emailId: emailResult.id 
+        });
+      } else {
+        res.status(500).json({ message: "Failed to send email" });
+      }
+    } catch (error) {
+      console.error("Error sending email report:", error);
+      res.status(500).json({ message: "Failed to send email report" });
     }
   });
 
