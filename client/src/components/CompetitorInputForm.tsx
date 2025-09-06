@@ -50,10 +50,12 @@ export default function CompetitorInputForm({ onAnalyze, isLoading, usage }: Com
     if (usage && competitorList.length > usage.limit) {
       return;
     }
-
+    
     onAnalyze({
       competitors: competitors.trim(),
       sources,
+      autoTrack: true,
+      competitorList
     });
   };
 

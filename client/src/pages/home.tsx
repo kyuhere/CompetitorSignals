@@ -51,6 +51,21 @@ export default function Home() {
       }, 1000);
       
       try {
+        // Auto-track competitors if requested
+        if (data.autoTrack && data.competitorList) {
+          for (const competitorName of data.competitorList) {
+            try {
+              await apiRequest("POST", "/api/competitors/tracked", {
+                competitorName,
+                trackingEnabled: true
+              });
+            } catch (error) {
+              // Ignore errors for duplicate competitors or limit exceeded
+              console.log(`Could not track ${competitorName}:`, error);
+            }
+          }
+        }
+        
         const response = await apiRequest("POST", "/api/analyze", data);
         const result = await response.json();
         clearInterval(progressInterval);
@@ -68,9 +83,10 @@ export default function Home() {
       setCurrentReport(report);
       queryClient.invalidateQueries({ queryKey: ["/api/usage"] });
       queryClient.invalidateQueries({ queryKey: ["/api/reports"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/competitors/tracked"] });
       toast({
         title: "Analysis Complete",
-        description: "Your competitor report has been generated successfully.",
+        description: "Your competitor report has been generated and competitors have been tracked.",
       });
     },
     onError: (error) => {
@@ -110,15 +126,11 @@ export default function Home() {
       <AppHeader usage={usage} />
       
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <Tabs defaultValue="tracking" className="w-full">
-          <TabsList className="grid w-full grid-cols-3 mb-8">
-            <TabsTrigger value="tracking" className="flex items-center" data-testid="tab-tracking">
-              <Building2 className="w-4 h-4 mr-2" />
-              Competitor Tracking
-            </TabsTrigger>
+        <Tabs defaultValue="analysis" className="w-full">
+          <TabsList className="grid w-full grid-cols-2 mb-8">
             <TabsTrigger value="analysis" className="flex items-center" data-testid="tab-analysis">
               <TrendingUp className="w-4 h-4 mr-2" />
-              One-Time Analysis
+              Competitor Analysis
             </TabsTrigger>
             <TabsTrigger value="reports" className="flex items-center" data-testid="tab-reports">
               <BarChart3 className="w-4 h-4 mr-2" />
@@ -126,67 +138,19 @@ export default function Home() {
             </TabsTrigger>
           </TabsList>
 
-          {/* Competitor Tracking Tab */}
-          <TabsContent value="tracking" className="space-y-6">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-              <div className="space-y-6">
-                <TrackedCompetitors />
-                
-                {/* Weekly Analysis Schedule Card */}
-                <Card data-testid="card-weekly-schedule">
-                  <CardHeader>
-                    <CardTitle className="flex items-center">
-                      <Zap className="w-5 h-5 mr-2" />
-                      Automated Analysis
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-muted-foreground mb-4">
-                      Your tracked competitors will be automatically analyzed every two weeks. 
-                      You'll receive comprehensive reports showing market movements, funding news, 
-                      product updates, and competitive insights.
-                    </p>
-                    <div className="bg-blue-50 dark:bg-blue-950 p-4 rounded-lg">
-                      <p className="text-sm font-medium text-blue-800 dark:text-blue-200">
-                        Next scheduled analysis: In 2 weeks
-                      </p>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-              
-              <div>
-                {/* Recent Analysis Results */}
-                {currentReport ? (
-                  <CompetitorReport report={currentReport} />
-                ) : (
-                  <Card className="h-96 flex items-center justify-center">
-                    <CardContent className="text-center">
-                      <Building2 className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
-                      <h3 className="text-lg font-medium text-foreground mb-2">No Recent Analysis</h3>
-                      <p className="text-muted-foreground">
-                        Add competitors to your tracking list to see automated analysis reports here.
-                      </p>
-                    </CardContent>
-                  </Card>
-                )}
-              </div>
-            </div>
-          </TabsContent>
-
-          {/* One-Time Analysis Tab */}
+          {/* Main Analysis Tab */}
           <TabsContent value="analysis" className="space-y-6">
             <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
-              {/* Left Column: Input Form */}
+              {/* Left Column: Input Form and Tracked Competitors */}
               <div className="xl:col-span-1 space-y-6">
                 <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center">
                       <TrendingUp className="w-5 h-5 mr-2" />
-                      Quick Analysis
+                      Competitor Analysis
                     </CardTitle>
                     <p className="text-sm text-muted-foreground">
-                      Analyze specific competitors instantly without adding them to your tracking list.
+                      Enter competitors to analyze and automatically track them for future insights.
                     </p>
                   </CardHeader>
                   <CardContent>
@@ -197,6 +161,9 @@ export default function Home() {
                     />
                   </CardContent>
                 </Card>
+                
+                {/* Tracked Competitors Section */}
+                <TrackedCompetitors onAnalyzeTracked={handleAnalysis} />
               </div>
 
               {/* Right Column: Report Display */}
@@ -207,9 +174,9 @@ export default function Home() {
                   <Card className="h-96 flex items-center justify-center">
                     <CardContent className="text-center">
                       <BarChart3 className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
-                      <h3 className="text-lg font-medium text-foreground mb-2">No Report Selected</h3>
+                      <h3 className="text-lg font-medium text-foreground mb-2">No Analysis Yet</h3>
                       <p className="text-muted-foreground">
-                        Enter competitor names in the form to generate your analysis report.
+                        Enter competitor names to generate your analysis report.
                       </p>
                     </CardContent>
                   </Card>

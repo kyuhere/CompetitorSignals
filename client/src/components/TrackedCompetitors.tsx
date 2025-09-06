@@ -6,8 +6,12 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import { Plus, X, Building2, Clock, TrendingUp } from "lucide-react";
+import { Plus, X, Building2, Clock, TrendingUp, BarChart3 } from "lucide-react";
 import type { TrackedCompetitor } from "@shared/schema";
+
+interface TrackedCompetitorsProps {
+  onAnalyzeTracked?: (data: any) => void;
+}
 
 interface TrackedCompetitorsResponse {
   competitors: TrackedCompetitor[];
@@ -15,14 +19,14 @@ interface TrackedCompetitorsResponse {
   limit: number;
 }
 
-export default function TrackedCompetitors() {
+export default function TrackedCompetitors({ onAnalyzeTracked }: TrackedCompetitorsProps) {
   const [newCompetitorName, setNewCompetitorName] = useState("");
   const [isAdding, setIsAdding] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
   // Fetch tracked competitors
-  const { data: trackedData, isLoading } = useQuery<TrackedCompetitorsResponse>({
+  const { data: trackedCompetitors, isLoading } = useQuery<TrackedCompetitorsResponse>({
     queryKey: ['/api/competitors/tracked'],
   });
 
@@ -70,6 +74,50 @@ export default function TrackedCompetitors() {
     },
   });
 
+  // Analyze all tracked competitors
+  const analyzeAllMutation = useMutation({
+    mutationFn: async () => {
+      if (!trackedCompetitors?.competitors?.length) {
+        throw new Error("No competitors to analyze");
+      }
+      
+      // Use the unified analysis system
+      const competitorNames = trackedCompetitors.competitors.map(c => c.competitorName).join('\n');
+      const analysisData = {
+        competitors: competitorNames,
+        sources: {
+          news: true,
+          funding: true,
+          social: true,
+          products: false
+        },
+        autoTrack: false // Don't re-track since they're already tracked
+      };
+      
+      if (onAnalyzeTracked) {
+        onAnalyzeTracked(analysisData);
+        return { success: true };
+      } else {
+        const response = await apiRequest("POST", "/api/analyze", analysisData);
+        return response.json();
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/reports"] });
+      toast({
+        title: "Analysis Complete",
+        description: "Your tracked competitors have been analyzed successfully.",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Analysis Failed",
+        description: error instanceof Error ? error.message : "Failed to analyze competitors",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleAddCompetitor = () => {
     if (!newCompetitorName.trim()) {
       toast({
@@ -99,7 +147,7 @@ export default function TrackedCompetitors() {
     }
   };
 
-  const canAddMore = trackedData ? trackedData.count < trackedData.limit : true;
+  const canAddMore = trackedCompetitors ? trackedCompetitors.count < trackedCompetitors.limit : true;
 
   if (isLoading) {
     return (
@@ -130,7 +178,7 @@ export default function TrackedCompetitors() {
             Tracked Competitors
           </CardTitle>
           <Badge variant="secondary" data-testid="text-competitor-count">
-            {trackedData?.count || 0} / {trackedData?.limit || 5}
+            {trackedCompetitors?.count || 0} / {trackedCompetitors?.limit || 5}
           </Badge>
         </div>
         <p className="text-sm text-muted-foreground">
@@ -141,7 +189,7 @@ export default function TrackedCompetitors() {
       <CardContent className="space-y-4">
         {/* Competitor List */}
         <div className="space-y-2">
-          {trackedData?.competitors?.map((competitor) => (
+          {trackedCompetitors?.competitors?.map((competitor) => (
             <div
               key={competitor.id}
               className="flex items-center justify-between p-3 border border-border rounded-lg"
@@ -180,7 +228,7 @@ export default function TrackedCompetitors() {
             </div>
           ))}
           
-          {(!trackedData?.competitors || trackedData.competitors.length === 0) && (
+          {(!trackedCompetitors?.competitors || trackedCompetitors.competitors.length === 0) && (
             <div className="text-center py-8 text-muted-foreground">
               <Building2 className="w-12 h-12 mx-auto mb-4 opacity-50" />
               <p>No competitors being tracked yet</p>
@@ -230,32 +278,30 @@ export default function TrackedCompetitors() {
             className="w-full"
           >
             <Plus className="w-4 h-4 mr-2" />
-            {canAddMore ? "Add Competitor" : `Limit Reached (${trackedData?.limit || 5} max)`}
+            {canAddMore ? "Add Competitor" : `Limit Reached (${trackedCompetitors?.limit || 5} max)`}
           </Button>
         )}
 
-        {/* Manual Analysis Button */}
-        {trackedData && trackedData.count > 0 && (
-          <Button
-            onClick={() => {
-              // This would trigger analysis of tracked competitors
-              // For now, we'll show a toast
-              toast({
-                title: "Analysis Started",
-                description: "Your tracked competitors are being analyzed. This may take a few minutes.",
-              });
-            }}
-            variant="outline"
-            className="w-full"
-            data-testid="button-analyze-tracked"
-          >
-            <TrendingUp className="w-4 h-4 mr-2" />
-            Analyze Tracked Competitors Now
-          </Button>
+        {/* Analyze All Button */}
+        {trackedCompetitors?.competitors && trackedCompetitors.competitors.length > 0 && (
+          <div className="pt-4 border-t">
+            <Button
+              onClick={() => analyzeAllMutation.mutate()}
+              disabled={analyzeAllMutation.isPending}
+              className="w-full"
+              data-testid="button-analyze-all"
+            >
+              <BarChart3 className="w-4 h-4 mr-2" />
+              {analyzeAllMutation.isPending ? "Analyzing..." : `Analyze All ${trackedCompetitors?.competitors?.length || 0} Competitors`}
+            </Button>
+            <p className="text-xs text-muted-foreground mt-2 text-center">
+              Get fresh competitive intelligence for all your tracked competitors
+            </p>
+          </div>
         )}
 
         {/* Weekly Analysis Notice */}
-        {trackedData && trackedData.count > 0 && (
+        {trackedCompetitors && trackedCompetitors.count > 0 && (
           <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg">
             <p className="text-sm text-blue-800 dark:text-blue-200 flex items-center">
               <Clock className="w-4 h-4 mr-2" />
