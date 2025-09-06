@@ -10,6 +10,17 @@ interface CompetitorReportProps {
     title: string;
     competitors: string[];
     summary: string;
+    signals?: Array<{
+      source: string;
+      competitor: string;
+      items: Array<{
+        title: string;
+        content: string;
+        url?: string;
+        publishedAt?: string;
+        type: 'news' | 'funding' | 'social' | 'product';
+      }>;
+    }>;
     metadata: {
       signalCount: number;
       sources: string[];
@@ -500,6 +511,49 @@ export default function CompetitorReport({ report }: CompetitorReportProps) {
                 </li>
               ))}
             </ul>
+          </div>
+        )}
+
+        {/* Source References */}
+        {report.signals && report.signals.length > 0 && (
+          <div className="mt-8 p-6 bg-muted/50 rounded-lg">
+            <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center">
+              <Globe className="w-5 h-5 text-blue-600 mr-2" />
+              Source References
+            </h3>
+            <div className="space-y-4">
+              {report.signals.map((signal, signalIndex) => (
+                <div key={signalIndex} className="border-l-2 border-blue-200 pl-4">
+                  <h4 className="font-medium text-foreground mb-2">{signal.source}</h4>
+                  <div className="space-y-2">
+                    {signal.items.filter(item => item.url).slice(0, 5).map((item, itemIndex) => (
+                      <div key={itemIndex} className="flex items-start space-x-2">
+                        <div className="w-1.5 h-1.5 bg-blue-600 rounded-full mt-2 flex-shrink-0"></div>
+                        <div className="flex-1">
+                          <a 
+                            href={item.url} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="text-sm text-blue-600 hover:text-blue-800 hover:underline font-medium"
+                            data-testid={`source-link-${signalIndex}-${itemIndex}`}
+                          >
+                            {item.title}
+                          </a>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {item.publishedAt ? new Date(item.publishedAt).toLocaleDateString() : ''} • {item.type}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="mt-4 pt-4 border-t border-border">
+              <p className="text-xs text-muted-foreground">
+                <strong>Total Sources:</strong> {report.signals.reduce((acc, signal) => acc + signal.items.filter(item => item.url).length, 0)} articles and references analyzed
+              </p>
+            </div>
           </div>
         )}
 
