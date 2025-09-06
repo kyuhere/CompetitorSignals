@@ -125,9 +125,10 @@ export default function Home() {
     <div className="min-h-screen bg-background">
       <AppHeader usage={usage} />
       
-      {/* Hero Section */}
-      <div className="bg-white py-16 mb-8">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+      {/* Hero Section - Glass Lemon Style */}
+      <div className="relative py-16 mb-8">
+        <div className="absolute inset-0" style={{background: 'var(--gradient-primary)', opacity: 0.08}}></div>
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <h1 className="text-4xl lg:text-6xl font-extrabold leading-tight mb-4">
             <span className="bg-primary text-primary-foreground px-4 py-2 rounded-2xl inline-block">
               Competitor Lemonade
@@ -155,16 +156,16 @@ export default function Home() {
       
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <Tabs defaultValue="tracking" className="w-full">
-          <TabsList className="grid w-full grid-cols-3 mb-8 bg-muted/50 p-1 rounded-2xl">
-            <TabsTrigger value="tracking" className="flex items-center font-bold text-sm rounded-xl data-[state=active]:bg-primary data-[state=active]:text-primary-foreground" data-testid="tab-tracking">
+          <TabsList className="grid w-full grid-cols-3 mb-8 glass-panel p-1 rounded-2xl">
+            <TabsTrigger value="tracking" className="glass-button flex items-center font-semibold text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground" data-testid="tab-tracking">
               <Target className="w-4 h-4 mr-2" />
               Competitor Tracking
             </TabsTrigger>
-            <TabsTrigger value="analysis" className="flex items-center font-bold text-sm rounded-xl data-[state=active]:bg-primary data-[state=active]:text-primary-foreground" data-testid="tab-analysis">
+            <TabsTrigger value="analysis" className="glass-button flex items-center font-semibold text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground" data-testid="tab-analysis">
               <TrendingUp className="w-4 h-4 mr-2" />
               One-Time Analysis
             </TabsTrigger>
-            <TabsTrigger value="reports" className="flex items-center font-bold text-sm rounded-xl data-[state=active]:bg-primary data-[state=active]:text-primary-foreground" data-testid="tab-reports">
+            <TabsTrigger value="reports" className="glass-button flex items-center font-semibold text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground" data-testid="tab-reports">
               <BarChart3 className="w-4 h-4 mr-2" />
               Report History
             </TabsTrigger>

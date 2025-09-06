@@ -120,9 +120,10 @@ export default function Landing() {
           </div>
         </div>
       </header>
-      {/* Hero Section */}
-      <section className="py-24 px-4 sm:px-6 lg:px-8 bg-white">
-        <div className="max-w-5xl mx-auto text-center">
+      {/* Hero Section - Glass Lemon with gradient background */}
+      <section className="py-24 px-4 sm:px-6 lg:px-8 relative">
+        <div className="absolute inset-0" style={{background: 'var(--gradient-primary)', opacity: 0.1}}></div>
+        <div className="relative max-w-5xl mx-auto text-center">
           <h1 className="text-5xl sm:text-6xl lg:text-7xl font-black text-black mb-4 leading-tight">
             Your rivals, <span className="bg-primary text-black px-4 py-2 rounded-lg pt-[4px] pb-[4px] pl-[0px] pr-[0px]">freshly pressed.</span>
           </h1>
@@ -148,7 +149,7 @@ export default function Landing() {
               <Button
                 type="submit"
                 disabled={!searchQuery.trim() || searchMutation.isPending}
-                className="btn-primary h-16 px-8 text-lg rounded-full flex items-center gap-2"
+                className="btn-glass-primary h-16 px-8 text-lg rounded-full flex items-center gap-2"
                 data-testid="button-search"
               >
                 <span className="text-xl">🍋</span>
@@ -178,7 +179,7 @@ export default function Landing() {
                 size="lg" 
                 onClick={() => window.location.href = '/api/login'}
                 data-testid="button-get-started"
-                className="btn-primary text-lg px-8 py-4 h-auto rounded-full"
+                className="btn-glass-primary text-lg px-8 py-4 h-auto rounded-full"
               >
                 Get Full Access
               </Button>
@@ -186,7 +187,7 @@ export default function Landing() {
                 variant="outline" 
                 size="lg" 
                 data-testid="button-learn-more" 
-                className="text-lg px-8 py-4 h-auto bg-gray-100 text-black hover:bg-primary hover:text-black font-medium border-2 border-gray-300 hover:border-primary rounded-full transition-all duration-200"
+                className="btn-glass-secondary text-lg px-8 py-4 h-auto rounded-full"
               >
                 Learn More
               </Button>
