@@ -68,6 +68,16 @@ export async function sendCompetitorReport({
 function generateReportEmailHTML(title: string, reportContent: any, competitors: string[]): string {
   const competitorsList = competitors.join(', ');
   
+  // Parse report content if it's a string
+  let parsedContent = reportContent;
+  if (typeof reportContent === 'string') {
+    try {
+      parsedContent = JSON.parse(reportContent);
+    } catch (e) {
+      parsedContent = { executiveSummary: reportContent };
+    }
+  }
+  
   return `
     <!DOCTYPE html>
     <html>
@@ -200,48 +210,45 @@ function generateReportEmailHTML(title: string, reportContent: any, competitors:
             })}</p>
           </div>
 
-          ${reportContent.executiveSummary ? `
+          ${parsedContent.executive_summary ? `
           <div class="section">
             <h2>🎯 Executive Summary</h2>
-            <p>${reportContent.executiveSummary}</p>
+            <p>${parsedContent.executive_summary}</p>
           </div>
           ` : ''}
 
-          ${reportContent.keyTakeaways && reportContent.keyTakeaways.length > 0 ? `
+          ${parsedContent.key_takeaways && parsedContent.key_takeaways.length > 0 ? `
           <div class="section">
             <h2>🔥 15 Key Takeaways</h2>
             <p style="margin-bottom: 15px; font-style: italic;">The most important insights from your competitor analysis:</p>
             <ul class="insights-list">
-              ${reportContent.keyTakeaways.map((takeaway: string) => `<li>${takeaway}</li>`).join('')}
+              ${parsedContent.key_takeaways.map((takeaway: string) => `<li>${takeaway}</li>`).join('')}
             </ul>
           </div>
           ` : ''}
 
-          ${reportContent.keyInsights && reportContent.keyInsights.length > 0 ? `
+          ${parsedContent.strategic_insights && parsedContent.strategic_insights.length > 0 ? `
           <div class="section">
-            <h2>💡 Key Insights</h2>
+            <h2>🚀 Strategic Insights</h2>
             <ul class="insights-list">
-              ${reportContent.keyInsights.map((insight: string) => `<li>${insight}</li>`).join('')}
+              ${parsedContent.strategic_insights.map((insight: string) => `<li>${insight}</li>`).join('')}
             </ul>
           </div>
           ` : ''}
 
-          ${reportContent.competitorAnalysis ? `
+          ${parsedContent.competitors && parsedContent.competitors.length > 0 ? `
           <div class="section">
             <h2>🏢 Competitor Analysis</h2>
-            ${Object.entries(reportContent.competitorAnalysis).map(([company, analysis]: [string, any]) => `
-              <h3>${company}</h3>
-              <p>${analysis.summary || analysis}</p>
+            ${parsedContent.competitors.map((competitor: any) => `
+              <h3>${competitor.competitor}</h3>
+              <p><strong>Activity Level:</strong> ${competitor.activity_level}</p>
+              ${competitor.recent_developments && competitor.recent_developments.length > 0 ? `
+                <h4>Recent Developments:</h4>
+                <ul class="insights-list">
+                  ${competitor.recent_developments.map((dev: string) => `<li>${dev}</li>`).join('')}
+                </ul>
+              ` : ''}
             `).join('')}
-          </div>
-          ` : ''}
-
-          ${reportContent.strategicRecommendations && reportContent.strategicRecommendations.length > 0 ? `
-          <div class="section">
-            <h2>🚀 Strategic Recommendations</h2>
-            <ul class="insights-list">
-              ${reportContent.strategicRecommendations.map((rec: string) => `<li>${rec}</li>`).join('')}
-            </ul>
           </div>
           ` : ''}
 
