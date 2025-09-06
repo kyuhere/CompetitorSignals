@@ -21,7 +21,19 @@ interface CompetitorSignals {
   items: SignalItem[];
 }
 
-class SignalAggregator {\n  // Calculate text similarity using Jaccard index\n  private calculateSimilarity(text1: string, text2: string): number {\n    if (!text1 || !text2) return 0;\n    \n    const words1 = new Set(text1.toLowerCase().split(/\\s+/));\n    const words2 = new Set(text2.toLowerCase().split(/\\s+/));\n    \n    const intersection = new Set([...words1].filter(x => words2.has(x)));\n    const union = new Set([...words1, ...words2]);\n    \n    return intersection.size / union.size;\n  }
+class SignalAggregator {
+  // Calculate text similarity using Jaccard index
+  private calculateSimilarity(text1: string, text2: string): number {
+    if (!text1 || !text2) return 0;
+    
+    const words1 = new Set(text1.toLowerCase().split(/\\s+/));
+    const words2 = new Set(text2.toLowerCase().split(/\\s+/));
+    
+    const intersection = new Set([...words1].filter(x => words2.has(x)));
+    const union = new Set([...words1, ...words2]);
+    
+    return intersection.size / union.size;
+  }
   async aggregateSignals(
     competitors: string[],
     urls: string[] = [],
@@ -253,9 +265,12 @@ class SignalAggregator {\n  // Calculate text similarity using Jaccard index\n  
           // Exact URL match
           if (t.url === item.url && t.url) return true;
           
-          // Similar title match (80% similarity)
-          const titleSimilarity = this.calculateSimilarity(t.title, item.title);
-          return titleSimilarity < 0.8;
+          // Similar title match - simple word comparison  
+          const title1Words = t.title.toLowerCase().split(' ');
+          const title2Words = item.title.toLowerCase().split(' ');
+          const commonWords = title1Words.filter(word => title2Words.includes(word));
+          const similarity = commonWords.length / Math.max(title1Words.length, title2Words.length);
+          return similarity < 0.8;
         });
       });
       
