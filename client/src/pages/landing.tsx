@@ -124,7 +124,7 @@ export default function Landing() {
       <section className="py-24 px-4 sm:px-6 lg:px-8 bg-white">
         <div className="max-w-5xl mx-auto text-center">
           <h1 className="text-5xl sm:text-6xl lg:text-7xl font-black text-black mb-4 leading-tight">
-            Your rivals, <span className="bg-primary text-black px-4 py-2 rounded-lg">freshly pressed.</span>
+            Your rivals, <span className="bg-primary text-black px-4 py-2 rounded-lg pt-[4px] pb-[4px] pl-[0px] pr-[0px]">freshly pressed.</span>
           </h1>
           <p className="text-xl text-gray-600 mb-12 leading-relaxed max-w-4xl mx-auto">
             We squeeze competitor moves into growth opportunities.
