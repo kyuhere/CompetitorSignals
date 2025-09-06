@@ -125,7 +125,7 @@ export default function Landing() {
         <div className="max-w-5xl mx-auto text-center">
           <h1 className="text-5xl sm:text-6xl lg:text-7xl font-black text-black mb-8 leading-tight">
             Squeeze the most out of<br />your 
-            <span className="bg-primary text-black px-4 py-2 rounded-lg text-[55px]">competitor insights</span>
+            <span className="bg-primary text-black px-4 py-2 rounded-lg text-[55px] pt-[0px] pb-[0px]">competitor insights</span>
           </h1>
           <p className="text-xl text-gray-600 mb-12 leading-relaxed max-w-4xl mx-auto">
             Generate comprehensive competitor analysis reports from any company name or URL. Get detailed insights on market positioning, pricing, technology, and strategic opportunities.
