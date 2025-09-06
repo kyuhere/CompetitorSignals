@@ -26,15 +26,20 @@ export async function sendCompetitorReport({
     console.log(`Attempting to send email to: ${to}`);
     console.log(`Using API key: ${process.env.RESEND_API_KEY ? 'Present' : 'Missing'}`);
     
-    const result = await resend.emails.send({
+    const { data, error } = await resend.emails.send({
       from: 'Competitor Lemonade <onboarding@resend.dev>',
-      to: to,
+      to: [to],
       subject: `🍋 ${reportTitle} - Competitor Analysis Report`,
       html: htmlContent,
     });
     
-    console.log('Email sent successfully:', result);
-    return { success: true, id: result.data?.id };
+    if (error) {
+      console.error('Resend API error:', error);
+      return { success: false, error: error.message };
+    }
+    
+    console.log('Email sent successfully:', data);
+    return { success: true, id: data?.id };
   } catch (error: any) {
     console.error('Failed to send email - Full error:', error);
     console.error('Error details:', {
