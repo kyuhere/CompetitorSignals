@@ -266,6 +266,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (isLoggedIn) {
         // Save report for logged-in users
         report = await storage.createReport(reportData);
+        
+        // Automatically send email to user after report is created
+        const userEmail = req.user.claims.email;
+        if (userEmail) {
+          try {
+            await sendCompetitorReport({
+              to: userEmail,
+              reportTitle: report.title,
+              reportContent: report.summary,
+              competitors: report.competitors
+            });
+            console.log(`Report email sent automatically to ${userEmail}`);
+          } catch (error) {
+            console.error('Failed to send automatic email:', error);
+            // Don't fail the entire request if email fails
+          }
+        }
       } else {
         // Return temporary report for guests
         report = {
