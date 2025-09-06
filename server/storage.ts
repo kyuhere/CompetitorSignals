@@ -23,6 +23,7 @@ export interface IStorage {
   
   // Competitor report operations
   createReport(report: InsertCompetitorReport): Promise<CompetitorReport>;
+  getReport(id: string): Promise<CompetitorReport | undefined>;
   getReportById(id: string): Promise<CompetitorReport | undefined>;
   getUserReports(userId: string, limit?: number): Promise<CompetitorReport[]>;
   
@@ -69,12 +70,16 @@ export class DatabaseStorage implements IStorage {
     return newReport;
   }
 
-  async getReportById(id: string): Promise<CompetitorReport | undefined> {
+  async getReport(id: string): Promise<CompetitorReport | undefined> {
     const [report] = await db
       .select()
       .from(competitorReports)
       .where(eq(competitorReports.id, id));
     return report;
+  }
+
+  async getReportById(id: string): Promise<CompetitorReport | undefined> {
+    return this.getReport(id);
   }
 
   async getUserReports(userId: string, limit = 10): Promise<CompetitorReport[]> {
