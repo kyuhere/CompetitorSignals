@@ -2,12 +2,15 @@ import {
   users,
   competitorReports,
   rateLimits,
+  trackedCompetitors,
   type User,
   type UpsertUser,
   type CompetitorReport,
   type InsertCompetitorReport,
   type RateLimit,
   type InsertRateLimit,
+  type TrackedCompetitor,
+  type InsertTrackedCompetitor,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, sql } from "drizzle-orm";
@@ -27,6 +30,12 @@ export interface IStorage {
   getRateLimit(userId?: string, sessionId?: string): Promise<RateLimit | undefined>;
   upsertRateLimit(rateLimit: InsertRateLimit): Promise<RateLimit>;
   resetDailyLimits(): Promise<void>;
+  
+  // Tracked competitors operations
+  addTrackedCompetitor(competitor: InsertTrackedCompetitor): Promise<TrackedCompetitor>;
+  getUserTrackedCompetitors(userId: string): Promise<TrackedCompetitor[]>;
+  removeTrackedCompetitor(userId: string, competitorId: string): Promise<void>;
+  getTrackedCompetitorCount(userId: string): Promise<number>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -138,6 +147,47 @@ export class DatabaseStorage implements IStorage {
         lastReset: new Date(),
       })
       .where(sql`last_reset < ${yesterday}`);
+  }
+
+  // Tracked competitors operations
+  async addTrackedCompetitor(competitor: InsertTrackedCompetitor): Promise<TrackedCompetitor> {
+    const [newCompetitor] = await db
+      .insert(trackedCompetitors)
+      .values(competitor)
+      .returning();
+    return newCompetitor;
+  }
+
+  async getUserTrackedCompetitors(userId: string): Promise<TrackedCompetitor[]> {
+    return await db
+      .select()
+      .from(trackedCompetitors)
+      .where(and(
+        eq(trackedCompetitors.userId, userId),
+        eq(trackedCompetitors.isActive, true)
+      ))
+      .orderBy(desc(trackedCompetitors.addedAt));
+  }
+
+  async removeTrackedCompetitor(userId: string, competitorId: string): Promise<void> {
+    await db
+      .update(trackedCompetitors)
+      .set({ isActive: false })
+      .where(and(
+        eq(trackedCompetitors.userId, userId),
+        eq(trackedCompetitors.id, competitorId)
+      ));
+  }
+
+  async getTrackedCompetitorCount(userId: string): Promise<number> {
+    const result = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(trackedCompetitors)
+      .where(and(
+        eq(trackedCompetitors.userId, userId),
+        eq(trackedCompetitors.isActive, true)
+      ));
+    return result[0]?.count || 0;
   }
 }
 

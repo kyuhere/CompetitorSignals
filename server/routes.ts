@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
-import { insertCompetitorReportSchema } from "@shared/schema";
+import { insertCompetitorReportSchema, insertTrackedCompetitorSchema } from "@shared/schema";
 import { z } from "zod";
 import { signalAggregator } from "./services/signalAggregator";
 import { summarizeCompetitorSignals, generateFastPreview } from "./services/openai";
@@ -324,6 +324,85 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching report:", error);
       res.status(500).json({ message: "Failed to fetch report" });
+    }
+  });
+
+  // Tracked Competitors API
+  
+  // Get user's tracked competitors
+  app.get('/api/competitors/tracked', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const trackedCompetitors = await storage.getUserTrackedCompetitors(userId);
+      const count = await storage.getTrackedCompetitorCount(userId);
+      
+      res.json({
+        competitors: trackedCompetitors,
+        count,
+        limit: 5
+      });
+    } catch (error) {
+      console.error("Error fetching tracked competitors:", error);
+      res.status(500).json({ message: "Failed to fetch tracked competitors" });
+    }
+  });
+  
+  // Add a tracked competitor
+  app.post('/api/competitors/tracked', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      
+      const validation = insertTrackedCompetitorSchema.safeParse({
+        userId,
+        ...req.body
+      });
+      
+      if (!validation.success) {
+        return res.status(400).json({ 
+          message: "Invalid request data",
+          errors: validation.error.issues 
+        });
+      }
+      
+      // Check if competitor already exists
+      const existingCompetitors = await storage.getUserTrackedCompetitors(userId);
+      const competitorExists = existingCompetitors.some(
+        c => c.competitorName.toLowerCase() === validation.data.competitorName.toLowerCase()
+      );
+      
+      if (competitorExists) {
+        return res.status(400).json({ 
+          message: "This competitor is already being tracked" 
+        });
+      }
+      
+      // Check limit (5 competitors max)
+      const currentCount = await storage.getTrackedCompetitorCount(userId);
+      if (currentCount >= 5) {
+        return res.status(400).json({ 
+          message: "You can track up to 5 competitors. Remove one to add another." 
+        });
+      }
+      
+      const newCompetitor = await storage.addTrackedCompetitor(validation.data);
+      res.json(newCompetitor);
+    } catch (error) {
+      console.error("Error adding tracked competitor:", error);
+      res.status(500).json({ message: "Failed to add competitor" });
+    }
+  });
+  
+  // Remove a tracked competitor
+  app.delete('/api/competitors/tracked/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { id } = req.params;
+      
+      await storage.removeTrackedCompetitor(userId, id);
+      res.json({ message: "Competitor removed successfully" });
+    } catch (error) {
+      console.error("Error removing tracked competitor:", error);
+      res.status(500).json({ message: "Failed to remove competitor" });
     }
   });
 
