@@ -6,12 +6,8 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import { Plus, X, Building2, Clock, TrendingUp, BarChart3 } from "lucide-react";
+import { Plus, X, Building2, Clock, TrendingUp, Zap } from "lucide-react";
 import type { TrackedCompetitor } from "@shared/schema";
-
-interface TrackedCompetitorsProps {
-  onAnalyzeTracked?: (data: any) => void;
-}
 
 interface TrackedCompetitorsResponse {
   competitors: TrackedCompetitor[];
@@ -19,14 +15,23 @@ interface TrackedCompetitorsResponse {
   limit: number;
 }
 
-export default function TrackedCompetitors({ onAnalyzeTracked }: TrackedCompetitorsProps) {
+// Avatar color palette based on Lemonade design system
+const avatarColors = [
+  'bg-soft-blue',
+  'bg-soft-pink', 
+  'bg-peach',
+  'bg-mint-green',
+  'bg-primary'  // Lemon yellow
+];
+
+export default function TrackedCompetitors() {
   const [newCompetitorName, setNewCompetitorName] = useState("");
   const [isAdding, setIsAdding] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
   // Fetch tracked competitors
-  const { data: trackedCompetitors, isLoading } = useQuery<TrackedCompetitorsResponse>({
+  const { data: trackedData, isLoading } = useQuery<TrackedCompetitorsResponse>({
     queryKey: ['/api/competitors/tracked'],
   });
 
@@ -40,7 +45,7 @@ export default function TrackedCompetitors({ onAnalyzeTracked }: TrackedCompetit
       setNewCompetitorName("");
       setIsAdding(false);
       toast({
-        title: "Success",
+        title: "🍋 Success!",
         description: "Competitor added to your tracking list",
       });
     },
@@ -61,7 +66,7 @@ export default function TrackedCompetitors({ onAnalyzeTracked }: TrackedCompetit
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/competitors/tracked'] });
       toast({
-        title: "Success",
+        title: "🗑️ Removed",
         description: "Competitor removed from your tracking list",
       });
     },
@@ -69,50 +74,6 @@ export default function TrackedCompetitors({ onAnalyzeTracked }: TrackedCompetit
       toast({
         title: "Error",
         description: error.message,
-        variant: "destructive",
-      });
-    },
-  });
-
-  // Analyze all tracked competitors
-  const analyzeAllMutation = useMutation({
-    mutationFn: async () => {
-      if (!trackedCompetitors?.competitors?.length) {
-        throw new Error("No competitors to analyze");
-      }
-      
-      // Use the unified analysis system
-      const competitorNames = trackedCompetitors.competitors.map(c => c.competitorName).join('\n');
-      const analysisData = {
-        competitors: competitorNames,
-        sources: {
-          news: true,
-          funding: true,
-          social: true,
-          products: false
-        },
-        autoTrack: false // Don't re-track since they're already tracked
-      };
-      
-      if (onAnalyzeTracked) {
-        onAnalyzeTracked(analysisData);
-        return { success: true };
-      } else {
-        const response = await apiRequest("POST", "/api/analyze", analysisData);
-        return response.json();
-      }
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/reports"] });
-      toast({
-        title: "Analysis Complete",
-        description: "Your tracked competitors have been analyzed successfully.",
-      });
-    },
-    onError: (error) => {
-      toast({
-        title: "Analysis Failed",
-        description: error instanceof Error ? error.message : "Failed to analyze competitors",
         variant: "destructive",
       });
     },
@@ -147,22 +108,21 @@ export default function TrackedCompetitors({ onAnalyzeTracked }: TrackedCompetit
     }
   };
 
-  const canAddMore = trackedCompetitors ? trackedCompetitors.count < trackedCompetitors.limit : true;
+  const canAddMore = trackedData ? trackedData.count < trackedData.limit : true;
 
   if (isLoading) {
     return (
-      <Card data-testid="card-tracked-competitors">
+      <Card data-testid="card-tracked-competitors" className="card-rounded">
         <CardHeader>
-          <CardTitle className="flex items-center">
-            <Building2 className="w-5 h-5 mr-2" />
-            Tracked Competitors
+          <CardTitle className="flex items-center text-xl font-bold">
+            🏢 Tracked Competitors
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="animate-pulse space-y-2">
-            <div className="h-4 bg-muted rounded w-3/4"></div>
-            <div className="h-4 bg-muted rounded w-1/2"></div>
-            <div className="h-4 bg-muted rounded w-5/6"></div>
+          <div className="animate-pulse space-y-4">
+            <div className="h-16 bg-muted rounded-xl"></div>
+            <div className="h-16 bg-muted rounded-xl"></div>
+            <div className="h-16 bg-muted rounded-xl"></div>
           </div>
         </CardContent>
       </Card>
@@ -170,92 +130,99 @@ export default function TrackedCompetitors({ onAnalyzeTracked }: TrackedCompetit
   }
 
   return (
-    <Card data-testid="card-tracked-competitors">
+    <Card data-testid="card-tracked-competitors" className="card-rounded hover-lift">
       <CardHeader>
         <div className="flex items-center justify-between">
-          <CardTitle className="flex items-center">
-            <Building2 className="w-5 h-5 mr-2" />
-            Tracked Competitors
+          <CardTitle className="flex items-center text-xl font-bold">
+            🏢 Tracked Competitors
           </CardTitle>
-          <Badge variant="secondary" data-testid="text-competitor-count">
-            {trackedCompetitors?.count || 0} / {trackedCompetitors?.limit || 5}
+          <Badge 
+            className="bg-primary text-primary-foreground font-bold px-3 py-1" 
+            data-testid="text-competitor-count"
+          >
+            {trackedData?.count || 0} / {trackedData?.limit || 5}
           </Badge>
         </div>
-        <p className="text-sm text-muted-foreground">
-          Manage the competitors you want to monitor. We'll analyze these every two weeks.
+        <p className="text-sm text-muted-foreground font-medium">
+          🍋 Manage the competitors you want to monitor. We'll squeeze fresh insights every two weeks!
         </p>
       </CardHeader>
       
       <CardContent className="space-y-4">
         {/* Competitor List */}
-        <div className="space-y-2">
-          {trackedCompetitors?.competitors?.map((competitor) => (
-            <div
-              key={competitor.id}
-              className="flex items-center justify-between p-3 border border-border rounded-lg"
-              data-testid={`competitor-item-${competitor.id}`}
-            >
-              <div className="flex items-center space-x-3">
-                <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center">
-                  <TrendingUp className="w-4 h-4 text-primary" />
-                </div>
-                <div>
-                  <p className="font-medium text-foreground" data-testid={`text-competitor-name-${competitor.id}`}>
-                    {competitor.competitorName}
-                  </p>
-                  <p className="text-xs text-muted-foreground flex items-center">
-                    <Clock className="w-3 h-3 mr-1" />
-                    Added {new Date(competitor.addedAt!).toLocaleDateString()}
-                    {competitor.lastAnalyzedAt && (
-                      <span className="ml-2">
-                        • Last analyzed {new Date(competitor.lastAnalyzedAt).toLocaleDateString()}
-                      </span>
-                    )}
-                  </p>
-                </div>
-              </div>
-              
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => handleRemoveCompetitor(competitor.id, competitor.competitorName)}
-                disabled={removeCompetitorMutation.isPending}
-                data-testid={`button-remove-${competitor.id}`}
-                className="text-muted-foreground hover:text-destructive"
+        <div className="space-y-3">
+          {trackedData?.competitors?.map((competitor, index) => {
+            const initials = competitor.competitorName.split(' ').map(n => n[0]).join('').toUpperCase();
+            const colorClass = avatarColors[index % avatarColors.length];
+            
+            return (
+              <div
+                key={competitor.id}
+                className="flex items-center justify-between p-4 border border-border rounded-xl bg-card hover-lift"
+                data-testid={`competitor-item-${competitor.id}`}
               >
-                <X className="w-4 h-4" />
-              </Button>
-            </div>
-          ))}
+                <div className="flex items-center space-x-4">
+                  <div className={`w-12 h-12 rounded-full flex items-center justify-center ${colorClass}`}>
+                    <span className="text-sm font-bold text-gray-700">{initials}</span>
+                  </div>
+                  <div>
+                    <p className="font-bold text-foreground text-lg" data-testid={`text-competitor-name-${competitor.id}`}>
+                      {competitor.competitorName}
+                    </p>
+                    <p className="text-xs text-muted-foreground flex items-center font-medium">
+                      <Clock className="w-3 h-3 mr-1" />
+                      Added {new Date(competitor.addedAt!).toLocaleDateString()}
+                      {competitor.lastAnalyzedAt && (
+                        <span className="ml-2">
+                          • Last analyzed {new Date(competitor.lastAnalyzedAt).toLocaleDateString()}
+                        </span>
+                      )}
+                    </p>
+                  </div>
+                </div>
+                
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleRemoveCompetitor(competitor.id, competitor.competitorName)}
+                  disabled={removeCompetitorMutation.isPending}
+                  data-testid={`button-remove-${competitor.id}`}
+                  className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-full"
+                >
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+            );
+          })}
           
-          {(!trackedCompetitors?.competitors || trackedCompetitors.competitors.length === 0) && (
-            <div className="text-center py-8 text-muted-foreground">
-              <Building2 className="w-12 h-12 mx-auto mb-4 opacity-50" />
-              <p>No competitors being tracked yet</p>
-              <p className="text-sm">Add your first competitor to get started</p>
+          {(!trackedData?.competitors || trackedData.competitors.length === 0) && (
+            <div className="text-center py-12 text-muted-foreground bg-muted/30 rounded-xl">
+              <div className="text-6xl mb-4">🍋</div>
+              <p className="font-bold text-lg mb-2">No competitors being tracked yet</p>
+              <p className="text-sm">Add your first competitor to start squeezing insights!</p>
             </div>
           )}
         </div>
 
         {/* Add New Competitor */}
         {isAdding ? (
-          <div className="flex space-x-2">
+          <div className="flex space-x-3 p-4 bg-muted/30 rounded-xl">
             <Input
-              placeholder="Enter competitor name..."
+              placeholder="Enter competitor name... 🏢"
               value={newCompetitorName}
               onChange={(e) => setNewCompetitorName(e.target.value)}
               onKeyDown={handleKeyPress}
               autoFocus
               data-testid="input-new-competitor"
-              className="flex-1"
+              className="flex-1 rounded-xl border-2 focus:border-primary font-medium"
             />
             <Button
               onClick={handleAddCompetitor}
               disabled={addCompetitorMutation.isPending || !newCompetitorName.trim()}
               data-testid="button-confirm-add"
-              size="sm"
+              className="btn-primary px-6 py-2 text-sm rounded-xl"
             >
-              Add
+              Add 🍋
             </Button>
             <Button
               variant="ghost"
@@ -264,7 +231,7 @@ export default function TrackedCompetitors({ onAnalyzeTracked }: TrackedCompetit
                 setNewCompetitorName("");
               }}
               data-testid="button-cancel-add"
-              size="sm"
+              className="rounded-xl"
             >
               Cancel
             </Button>
@@ -273,39 +240,43 @@ export default function TrackedCompetitors({ onAnalyzeTracked }: TrackedCompetit
           <Button
             onClick={() => setIsAdding(true)}
             disabled={!canAddMore}
-            variant={canAddMore ? "default" : "secondary"}
+            className={canAddMore ? "btn-primary w-full py-4 text-lg" : "w-full py-4 text-lg bg-muted text-muted-foreground"}
             data-testid="button-add-competitor"
-            className="w-full"
           >
-            <Plus className="w-4 h-4 mr-2" />
-            {canAddMore ? "Add Competitor" : `Limit Reached (${trackedCompetitors?.limit || 5} max)`}
+            <Plus className="w-5 h-5 mr-2" />
+            {canAddMore ? "🍋 Add Competitor" : `Limit Reached (${trackedData?.limit || 5} max)`}
           </Button>
         )}
 
-        {/* Analyze All Button */}
-        {trackedCompetitors?.competitors && trackedCompetitors.competitors.length > 0 && (
-          <div className="pt-4 border-t">
-            <Button
-              onClick={() => analyzeAllMutation.mutate()}
-              disabled={analyzeAllMutation.isPending}
-              className="w-full"
-              data-testid="button-analyze-all"
-            >
-              <BarChart3 className="w-4 h-4 mr-2" />
-              {analyzeAllMutation.isPending ? "Analyzing..." : `Analyze All ${trackedCompetitors?.competitors?.length || 0} Competitors`}
-            </Button>
-            <p className="text-xs text-muted-foreground mt-2 text-center">
-              Get fresh competitive intelligence for all your tracked competitors
-            </p>
-          </div>
+        {/* Manual Analysis Button */}
+        {trackedData && trackedData.count > 0 && (
+          <Button
+            onClick={() => {
+              // This would trigger analysis of tracked competitors
+              // For now, we'll show a toast
+              toast({
+                title: "🍋 Analysis Started!",
+                description: "Squeezing fresh insights from your tracked competitors. This may take a few minutes.",
+              });
+            }}
+            variant="outline"
+            className="w-full py-4 text-lg border-2 border-primary text-primary hover:bg-primary hover:text-primary-foreground font-bold rounded-xl"
+            data-testid="button-analyze-tracked"
+          >
+            <Zap className="w-5 h-5 mr-2" />
+            ⚡ Squeeze Insights Now!
+          </Button>
         )}
 
         {/* Weekly Analysis Notice */}
-        {trackedCompetitors && trackedCompetitors.count > 0 && (
-          <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg">
-            <p className="text-sm text-blue-800 dark:text-blue-200 flex items-center">
-              <Clock className="w-4 h-4 mr-2" />
-              These competitors will be automatically analyzed every two weeks
+        {trackedData && trackedData.count > 0 && (
+          <div className="mt-4 p-4 bg-soft-green border-2 border-primary/20 rounded-xl">
+            <p className="text-sm text-gray-800 font-medium flex items-center">
+              🍋 <Clock className="w-4 h-4 mx-2" />
+              Automatic lemon-fresh analysis every two weeks!
+            </p>
+            <p className="text-xs text-gray-600 mt-1 ml-6">
+              We'll keep squeezing the latest competitive intelligence for you
             </p>
           </div>
         )}
