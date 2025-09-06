@@ -195,10 +195,13 @@ class SignalAggregator {
         items.push(...productItems);
       }
 
+      // Global deduplication across all sources
+      const deduplicatedItems = this.deduplicateAllItems(items);
+      
       return {
         source: "Aggregated Sources",
         competitor,
-        items: items.slice(0, 20), // Limit to most recent 20 items
+        items: deduplicatedItems.slice(0, 15), // Reduced limit for better quality
       };
     } catch (error) {
       console.error(`Error getting signals for ${competitor}:`, error);
@@ -259,18 +262,31 @@ class SignalAggregator {
         return true;
       });
       
-      // Simple but effective deduplication
+      // Enhanced deduplication to prevent duplicate stories
       const uniqueResults = filteredResults.filter((item, index, self) => {
         return index === self.findIndex(t => {
-          // Exact URL match
+          // Exact URL match - these are definitely duplicates
           if (t.url === item.url && t.url) return true;
           
-          // Aggressive title similarity - check if titles share 70% of words
-          const title1Words = t.title.toLowerCase().split(/\s+/).filter(w => w.length > 2);
-          const title2Words = item.title.toLowerCase().split(/\s+/).filter(w => w.length > 2);
+          // Title similarity check - detect stories about the same event
+          const title1Words = t.title.toLowerCase()
+            .replace(/[^\w\s]/g, '') // Remove punctuation
+            .split(/\s+/)
+            .filter(w => w.length > 3); // Only significant words
+          
+          const title2Words = item.title.toLowerCase()
+            .replace(/[^\w\s]/g, '')
+            .split(/\s+/)
+            .filter(w => w.length > 3);
+          
+          if (title1Words.length === 0 || title2Words.length === 0) return false;
+          
+          // Count common significant words
           const commonWords = title1Words.filter(word => title2Words.includes(word));
-          const similarity = commonWords.length / Math.max(title1Words.length, title2Words.length);
-          return similarity < 0.7; // More aggressive threshold
+          const similarity = commonWords.length / Math.min(title1Words.length, title2Words.length);
+          
+          // If 60% or more of the shorter title's words match, it's likely the same story
+          return similarity >= 0.6;
         });
       });
       
@@ -302,6 +318,41 @@ class SignalAggregator {
     }
     
     return 'news';
+  }
+
+  // Global deduplication method to prevent duplicate stories across all sources
+  private deduplicateAllItems(items: SignalItem[]): SignalItem[] {
+    const uniqueItems = items.filter((item, index, self) => {
+      return index === self.findIndex(t => {
+        // Exact URL match - these are definitely duplicates
+        if (t.url === item.url && t.url && t.url.length > 10) return true;
+        
+        // Title similarity check - detect stories about the same event
+        const title1Words = t.title.toLowerCase()
+          .replace(/[^\w\s]/g, '') // Remove punctuation
+          .split(/\s+/)
+          .filter(w => w.length > 3); // Only significant words
+        
+        const title2Words = item.title.toLowerCase()
+          .replace(/[^\w\s]/g, '')
+          .split(/\s+/)
+          .filter(w => w.length > 3);
+        
+        if (title1Words.length === 0 || title2Words.length === 0) return false;
+        
+        // Count common significant words
+        const commonWords = title1Words.filter(word => title2Words.includes(word));
+        const similarity = commonWords.length / Math.min(title1Words.length, title2Words.length);
+        
+        // If 60% or more of the shorter title's words match, it's likely the same story
+        return similarity >= 0.6;
+      });
+    });
+
+    // Sort by date (newest first) for better quality
+    return uniqueItems.sort((a, b) => 
+      new Date(b.publishedAt || 0).getTime() - new Date(a.publishedAt || 0).getTime()
+    );
   }
 
   private async getFundingSignals(competitor: string): Promise<SignalItem[]> {
