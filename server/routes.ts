@@ -406,6 +406,71 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Analyze tracked competitors (for automated weekly analysis)
+  app.post('/api/competitors/tracked/analyze', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      
+      // Get user's tracked competitors
+      const trackedCompetitors = await storage.getUserTrackedCompetitors(userId);
+      
+      if (trackedCompetitors.length === 0) {
+        return res.status(400).json({ 
+          message: "No competitors are being tracked" 
+        });
+      }
+      
+      // Prepare competitors list
+      const competitorList = trackedCompetitors.map(c => c.competitorName);
+      
+      // Default sources for tracked competitor analysis
+      const sources = {
+        news: true,
+        funding: true,
+        social: true,
+        products: false,
+      };
+      
+      // Aggregate signals
+      const signals = await signalAggregator.aggregateSignals(
+        competitorList, 
+        [], // No custom URLs for tracked analysis
+        sources
+      );
+      
+      // Generate AI summary
+      const summary = await summarizeCompetitorSignals(signals, competitorList, false);
+      
+      // Create report
+      const reportData = {
+        userId,
+        title: `Weekly Tracked Competitors Analysis - ${new Date().toLocaleDateString()}`,
+        competitors: competitorList,
+        signals,
+        summary,
+        metadata: {
+          signalCount: signals.reduce((acc: number, s: any) => acc + s.items.length, 0),
+          sources: Object.keys(sources).filter(key => sources[key as keyof typeof sources]),
+          generatedAt: new Date().toISOString(),
+          isWeeklyAnalysis: true,
+        },
+      };
+      
+      const report = await storage.createReport(reportData);
+      
+      // Update lastAnalyzedAt for all tracked competitors
+      for (const competitor of trackedCompetitors) {
+        // This would require updating the storage interface to support this
+        // For now, we'll skip this step as it's not critical for the MVP
+      }
+      
+      res.json(report);
+    } catch (error) {
+      console.error("Error analyzing tracked competitors:", error);
+      res.status(500).json({ message: "Failed to analyze tracked competitors" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

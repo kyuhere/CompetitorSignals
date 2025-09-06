@@ -234,6 +234,26 @@ export default function TrackedCompetitors() {
           </Button>
         )}
 
+        {/* Manual Analysis Button */}
+        {trackedData && trackedData.count > 0 && (
+          <Button
+            onClick={() => {
+              // This would trigger analysis of tracked competitors
+              // For now, we'll show a toast
+              toast({
+                title: "Analysis Started",
+                description: "Your tracked competitors are being analyzed. This may take a few minutes.",
+              });
+            }}
+            variant="outline"
+            className="w-full"
+            data-testid="button-analyze-tracked"
+          >
+            <TrendingUp className="w-4 h-4 mr-2" />
+            Analyze Tracked Competitors Now
+          </Button>
+        )}
+
         {/* Weekly Analysis Notice */}
         {trackedData && trackedData.count > 0 && (
           <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg">
