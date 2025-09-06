@@ -207,6 +207,16 @@ function generateReportEmailHTML(title: string, reportContent: any, competitors:
           </div>
           ` : ''}
 
+          ${reportContent.keyTakeaways && reportContent.keyTakeaways.length > 0 ? `
+          <div class="section">
+            <h2>🔥 15 Key Takeaways</h2>
+            <p style="margin-bottom: 15px; font-style: italic;">The most important insights from your competitor analysis:</p>
+            <ul class="insights-list">
+              ${reportContent.keyTakeaways.map((takeaway: string) => `<li>${takeaway}</li>`).join('')}
+            </ul>
+          </div>
+          ` : ''}
+
           ${reportContent.keyInsights && reportContent.keyInsights.length > 0 ? `
           <div class="section">
             <h2>💡 Key Insights</h2>

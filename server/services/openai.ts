@@ -180,6 +180,23 @@ Please generate a comprehensive competitive intelligence analysis with structure
       ]
     }
   ],
+  "key_takeaways": [
+    "• Key takeaway 1: Most important finding for your business [Source: bing.com/news]",
+    "• Key takeaway 2: Competitor strategy change to monitor [Source: bing.com/news]",
+    "• Key takeaway 3: Market opportunity to capitalize on [Source: bing.com/news]",
+    "• Key takeaway 4: Threat or challenge to address [Source: bing.com/news]",
+    "• Key takeaway 5: Innovation or trend to watch [Source: bing.com/news]",
+    "• Key takeaway 6: Partnership or alliance development [Source: bing.com/news]",
+    "• Key takeaway 7: Pricing or positioning insight [Source: bing.com/news]",
+    "• Key takeaway 8: Customer sentiment or feedback trend [Source: bing.com/news]",
+    "• Key takeaway 9: Technology or product advancement [Source: bing.com/news]",
+    "• Key takeaway 10: Funding or investment activity [Source: bing.com/news]",
+    "• Key takeaway 11: Market expansion or entry news [Source: bing.com/news]",
+    "• Key takeaway 12: Leadership or organizational change [Source: bing.com/news]",
+    "• Key takeaway 13: Regulatory or industry development [Source: bing.com/news]",
+    "• Key takeaway 14: Strategic weakness to exploit [Source: bing.com/news]",
+    "• Key takeaway 15: Future outlook or prediction [Source: bing.com/news]"
+  ],
   "strategic_insights": [
     "• Cross-competitor trend 1 with market implications [Source: bing.com/news]",
     "• Industry development 2 affecting competitive landscape [Source: bing.com/news]",
