@@ -224,7 +224,7 @@ class SignalAggregator {
 
       for (const query of searchQueries) {
         try {
-          const rssUrl = `https://www.bing.com/news/search?format=RSS&q=${encodeURIComponent(query)}&sortby=date&since=90days&count=10`;
+          const rssUrl = `https://www.bing.com/news/search?format=RSS&q=${encodeURIComponent(query)}&sortby=date&since=90days&count=3`;
           const rssItems = await parseRSSFeed(rssUrl);
           
           const results = rssItems.map((item: any) => ({
@@ -259,25 +259,25 @@ class SignalAggregator {
         return true;
       });
       
-      // Sophisticated deduplication - remove similar titles and URLs
+      // Simple but effective deduplication
       const uniqueResults = filteredResults.filter((item, index, self) => {
         return index === self.findIndex(t => {
           // Exact URL match
           if (t.url === item.url && t.url) return true;
           
-          // Similar title match - simple word comparison  
-          const title1Words = t.title.toLowerCase().split(' ');
-          const title2Words = item.title.toLowerCase().split(' ');
+          // Aggressive title similarity - check if titles share 70% of words
+          const title1Words = t.title.toLowerCase().split(/\s+/).filter(w => w.length > 2);
+          const title2Words = item.title.toLowerCase().split(/\s+/).filter(w => w.length > 2);
           const commonWords = title1Words.filter(word => title2Words.includes(word));
           const similarity = commonWords.length / Math.max(title1Words.length, title2Words.length);
-          return similarity < 0.8;
+          return similarity < 0.7; // More aggressive threshold
         });
       });
       
       // Sort by date (newest first) and limit results
       const sortedResults = uniqueResults
         .sort((a, b) => new Date(b.publishedAt || 0).getTime() - new Date(a.publishedAt || 0).getTime())
-        .slice(0, 10); // Reduced to 10 most recent and relevant results
+        .slice(0, 5); // Dramatically reduced to prevent duplicates
         
       return sortedResults;
     } catch (error) {
