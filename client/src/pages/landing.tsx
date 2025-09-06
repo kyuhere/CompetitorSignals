@@ -100,14 +100,14 @@ export default function Landing() {
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="bg-card border-b border-border">
+      <header className="bg-white border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center space-x-3">
               <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center">
-                <BarChart3 className="w-5 h-5 text-primary-foreground" />
+                <span className="text-2xl">🍋</span>
               </div>
-              <span className="text-xl font-bold text-foreground">Competitor Lemonade</span>
+              <span className="text-xl font-bold text-black">Competitor Lemonade</span>
             </div>
             
             <Button 
@@ -122,83 +122,87 @@ export default function Landing() {
       </header>
 
       {/* Hero Section */}
-      <section className="py-20 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-4xl mx-auto text-center">
-          <h1 className="text-4xl sm:text-5xl font-bold text-foreground mb-6">
-            Track Your Competitors with 
-            <span className="bg-primary text-primary-foreground px-3 py-1 rounded-lg">AI Intelligence</span>
+      <section className="py-24 px-4 sm:px-6 lg:px-8 bg-white">
+        <div className="max-w-5xl mx-auto text-center">
+          <h1 className="text-5xl sm:text-6xl lg:text-7xl font-black text-black mb-8 leading-tight">
+            Squeeze the most out of<br />your 
+            <span className="bg-primary text-black px-4 py-2 rounded-lg">competitor insights</span>
           </h1>
-          <p className="text-xl text-muted-foreground mb-8 leading-relaxed">
-            Get actionable insights from news, funding, and social signals. 
-            Try it now with one free competitor search.
+          <p className="text-xl text-gray-600 mb-12 leading-relaxed max-w-4xl mx-auto">
+            Generate comprehensive competitor analysis reports from any company name or URL. Get detailed insights on market positioning, pricing, technology, and strategic opportunities.
           </p>
           
-          {/* Google-style Search Box */}
-          <div className="max-w-2xl mx-auto mb-8">
-            <form onSubmit={handleSearch} className="relative">
-              <div className="relative">
+          {/* Search Box */}
+          <div className="max-w-4xl mx-auto mb-12">
+            <form onSubmit={handleSearch} className="flex gap-4 items-center">
+              <div className="flex-1 relative">
                 <Input
                   type="text"
                   value={searchQuery}
                   onChange={(e) => {
-                    // Auto-capitalize first letter of each word
-                    const capitalizedValue = e.target.value
-                      .split(' ')
-                      .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-                      .join(' ');
-                    setSearchQuery(capitalizedValue);
+                    setSearchQuery(e.target.value);
                   }}
-                  placeholder="Enter a competitor name (e.g., OpenAI, Tesla, Spotify)"
-                  className="w-full h-14 text-lg pl-6 pr-16 border-2 border-border focus:border-primary rounded-full shadow-lg font-medium"
+                  placeholder="Enter competitor name or website URL (e.g., 'OpenAI' or 'https://openai.com')"
+                  className="w-full h-16 text-lg pl-6 pr-6 border-2 border-primary focus:border-primary rounded-full shadow-lg font-medium bg-white"
                   data-testid="input-competitor-search"
                 />
-                <Button
-                  type="submit"
-                  size="sm"
-                  disabled={!searchQuery.trim() || searchMutation.isPending}
-                  className="absolute right-2 top-2 h-10 w-10 rounded-full p-0 btn-primary"
-                  data-testid="button-search"
-                >
-                  <Search className="w-4 h-4" />
-                </Button>
               </div>
-              {searchMutation.isPending && (
-                <div className="mt-4 space-y-2">
-                  <div className="flex items-center justify-between text-sm text-muted-foreground">
-                    <span>
-                      {loadingProgress < 30 ? "Gathering competitor signals..." :
-                       loadingProgress < 70 ? "Processing data in parallel..." :
-                       loadingProgress < 90 ? "AI analysis in progress..." :
-                       "Finalizing report..."}
-                    </span>
-                    <span>{Math.round(loadingProgress)}%</span>
-                  </div>
-                  <Progress value={loadingProgress} className="w-full h-2" />
-                </div>
-              )}
+              <Button
+                type="submit"
+                disabled={!searchQuery.trim() || searchMutation.isPending}
+                className="btn-primary h-16 px-8 text-lg rounded-full flex items-center gap-2"
+                data-testid="button-search"
+              >
+                <span className="text-xl">🍋</span>
+                Analyze Competitor
+              </Button>
             </form>
+            {searchMutation.isPending && (
+              <div className="mt-6 space-y-3">
+                <div className="flex items-center justify-between text-sm text-gray-600">
+                  <span>
+                    {loadingProgress < 30 ? "Gathering competitor signals..." :
+                     loadingProgress < 70 ? "Processing data in parallel..." :
+                     loadingProgress < 90 ? "AI analysis in progress..." :
+                     "Finalizing report..."}
+                  </span>
+                  <span>{Math.round(loadingProgress)}%</span>
+                </div>
+                <Progress value={loadingProgress} className="w-full h-3" />
+              </div>
+            )}
           </div>
           
-          <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
-            <Button 
-              size="lg" 
-              onClick={() => window.location.href = '/api/login'}
-              data-testid="button-get-started"
-              className="btn-primary text-lg px-8 py-4 h-auto"
-            >
-              Get Full Access
-            </Button>
-            <Button variant="outline" size="lg" data-testid="button-learn-more" className="text-lg px-8 py-4 h-auto border-2 border-primary text-primary hover:bg-primary hover:text-primary-foreground font-medium">
-              Learn More
-            </Button>
-          </div>
+          {/* Only show buttons if no search is in progress */}
+          {!searchMutation.isPending && (
+            <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
+              <Button 
+                size="lg" 
+                onClick={() => window.location.href = '/api/login'}
+                data-testid="button-get-started"
+                className="btn-primary text-lg px-8 py-4 h-auto rounded-full"
+              >
+                Get Full Access
+              </Button>
+              <Button 
+                variant="outline" 
+                size="lg" 
+                data-testid="button-learn-more" 
+                className="text-lg px-8 py-4 h-auto bg-gray-100 text-black hover:bg-primary hover:text-black font-medium border-2 border-gray-300 hover:border-primary rounded-full transition-all duration-200"
+              >
+                Learn More
+              </Button>
+            </div>
+          )}
 
           {/* Feature badges */}
-          <div className="flex flex-wrap gap-2 justify-center">
-            <Badge className="bg-soft-green text-foreground font-medium px-4 py-2">No Credit Card Required</Badge>
-            <Badge className="bg-soft-blue text-foreground font-medium px-4 py-2">5 Reports Every Two Weeks</Badge>
-            <Badge className="bg-primary text-primary-foreground font-medium px-4 py-2">AI-Powered Insights</Badge>
-          </div>
+          {!searchMutation.isPending && (
+            <div className="flex flex-wrap gap-3 justify-center">
+              <Badge className="bg-gray-100 text-gray-800 font-medium px-4 py-2 rounded-full border">No Credit Card Required</Badge>
+              <Badge className="bg-gray-100 text-gray-800 font-medium px-4 py-2 rounded-full border">5 Reports Every Two Weeks</Badge>
+              <Badge className="bg-primary text-black font-bold px-4 py-2 rounded-full">AI-Powered Insights</Badge>
+            </div>
+          )}
         </div>
       </section>
 
