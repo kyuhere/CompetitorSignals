@@ -23,17 +23,26 @@ export async function sendCompetitorReport({
   const htmlContent = generateReportEmailHTML(reportTitle, reportContent, competitors);
   
   try {
+    console.log(`Attempting to send email to: ${to}`);
+    console.log(`Using API key: ${process.env.RESEND_API_KEY ? 'Present' : 'Missing'}`);
+    
     const result = await resend.emails.send({
-      from: 'Competitor Lemonade <reports@resend.dev>',
+      from: 'Competitor Lemonade <onboarding@resend.dev>',
       to: to,
       subject: `🍋 ${reportTitle} - Competitor Analysis Report`,
       html: htmlContent,
     });
     
+    console.log('Email sent successfully:', result);
     return { success: true, id: result.data?.id };
-  } catch (error) {
-    console.error('Failed to send email:', error);
-    throw new Error('Failed to send email report');
+  } catch (error: any) {
+    console.error('Failed to send email - Full error:', error);
+    console.error('Error details:', {
+      message: error?.message,
+      status: error?.status,
+      name: error?.name
+    });
+    return { success: false, error: error?.message || 'Unknown error' };
   }
 }
 

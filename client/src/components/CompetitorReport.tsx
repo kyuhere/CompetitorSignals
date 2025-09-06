@@ -692,7 +692,7 @@ export default function CompetitorReport({ report }: CompetitorReportProps) {
                             className="text-sm text-blue-600 hover:text-blue-800 hover:underline font-medium"
                             data-testid={`source-link-${signalIndex}-${itemIndex}`}
                           >
-                            {item.title}
+                            {item.title.replace(/&#x27;/g, "'").replace(/&quot;/g, '"').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')}
                           </a>
                           <p className="text-xs text-muted-foreground mt-1">
                             {item.publishedAt ? new Date(item.publishedAt).toLocaleDateString() : ''} • {item.type}
