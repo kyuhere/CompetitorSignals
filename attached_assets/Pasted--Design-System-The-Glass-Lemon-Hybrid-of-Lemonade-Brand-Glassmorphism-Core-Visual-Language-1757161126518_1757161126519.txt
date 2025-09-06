@@ -1,0 +1,209 @@
+🍋 Design System: The Glass Lemon
+
+Hybrid of Lemonade Brand + Glassmorphism
+
+🌐 Core Visual Language
+
+This system emphasizes transparency, depth, and brightness.
+
+Glassmorphism: frosted cards, blur effects, layered depth
+
+Lemonade branding: bold yellow as a primary accent
+
+Clarity first: always maintain high contrast for text readability
+
+Floating feel: generous whitespace, subtle shadows
+
+🎨 Color Palette
+Brand Anchors
+
+Lemon Yellow (Primary CTA): #FFE606
+
+Black (Core Text): #000000
+
+White (Background/Frost): #FFFFFF
+
+Supporting Neutrals
+
+Gray-100: #F9FAFB
+
+Gray-400: #737373
+
+Gray-900: #111827
+
+Accents
+
+Tech Teal: #20C997 (secondary highlight)
+
+Pastel Mint: #E6F4BD
+
+Pastel Blue: #BCEAF6
+
+Pastel Pink: #FFDEE6
+
+Special Effects
+
+Gradient-1: linear-gradient(135deg, #FFE606, #20C997)
+
+Frosted Panel: rgba(255,255,255,0.7) with backdrop-filter: blur(20px)
+
+Shadow-glass: 0 8px 24px rgba(0,0,0,0.15)
+
+🖋 Typography System
+Font Stack
+
+Primary: Inter, sans-serif
+
+Type Scale
+
+Hero/H1: 3rem / bold
+
+H2: 2rem / semi-bold
+
+H3: 1.5rem / medium
+
+Body: 1rem / regular
+
+Caption/Small: 0.875rem / medium
+
+Font Weights
+
+Headings: 700
+
+Body: 400
+
+Buttons: 600
+
+📏 Spacing System
+
+Base unit: 8px
+
+Token	Value
+space-1	8px
+space-2	16px
+space-3	24px
+space-4	32px
+space-5	40px
+space-6	48px
+space-8	64px
+space-10	80px
+🪟 Components
+Buttons
+
+Primary CTA:
+
+Background: Lemon Yellow #FFE606
+
+Text: Black
+
+Border-radius: 12px
+
+Shadow: 0 4px 12px rgba(0,0,0,0.2)
+
+Hover: Glow teal border + subtle lift
+
+Secondary Button:
+
+Glass panel style: Frosted white bg, blurred
+
+Text: Black
+
+Border: 1px solid #E6E6E6
+
+Cards
+
+Background: Frosted panel (rgba(255,255,255,0.7))
+
+Blur: 20px
+
+Radius: 16px
+
+Shadow: Glass shadow
+
+Content padded: 24px
+
+Inputs
+
+Background: rgba(255,255,255,0.7)
+
+Border: 1px solid #E6E6E6
+
+Radius: 10px
+
+Focus: Border turns Lemon Yellow, glow shadow
+
+📐 Layout Principles
+
+Container max-width: 1200px
+
+Grid: 12 columns
+
+Section padding: 64px top/bottom
+
+Mobile-first responsiveness
+
+Breakpoints:
+
+Mobile: <640px
+
+Tablet: 641–1024px
+
+Desktop: >1024px
+
+✨ Interaction States
+
+Hover: Slight lift (+2px), glow outline (teal or yellow)
+
+Active: Pressed in, darker shadow
+
+Focus: 2px Lemon Yellow outline
+
+Disabled: Lower opacity, cursor not-allowed
+
+🌙 Dark Mode Adaptation
+
+Background: #0D1B2A (deep navy)
+
+Frost panels: rgba(0,0,0,0.6) with blur
+
+Text: White or Gray-100
+
+Yellow/teal remain accents, slightly muted
+
+📊 Data Visualization
+
+Chart-1: Lemon Yellow #FFE606
+
+Chart-2: Teal #20C997
+
+Chart-3: Pastel Blue #BCEAF6
+
+Grid lines: light gray
+
+Labels: Black/White depending on mode
+
+🗣 Content & Messaging
+
+Voice: Confident but approachable
+
+Tone: Professional with creative energy
+
+Microcopy examples:
+
+Empty state → “No insights yet. Add your first competitor to start tracking.”
+
+Success → “Your report is ready – time to squeeze the moat!”
+
+Error → “Hmm, that didn’t work. Try again or refresh.”
+
+🎭 Signature Glass Lemon Style
+
+Use glass panels layered over yellow/pastel gradients
+
+Keep black text as anchor for clarity
+
+Reserve yellow for CTAs + highlights
+
+Accent with teal glow for modern tech feel
+
+Reports appear as floating frosted cards
