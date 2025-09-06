@@ -8,6 +8,10 @@ import html2canvas from 'html2canvas';
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { useState } from "react";
 
 interface CompetitorReportProps {
   report: {
@@ -37,17 +41,21 @@ interface CompetitorReportProps {
 
 export default function CompetitorReport({ report }: CompetitorReportProps) {
   const { toast } = useToast();
+  const [emailDialogOpen, setEmailDialogOpen] = useState(false);
+  const [emailAddress, setEmailAddress] = useState("");
   
   // Email mutation
   const emailMutation = useMutation({
-    mutationFn: async () => {
-      return apiRequest('POST', `/api/reports/${report.id}/email`);
+    mutationFn: async (email: string) => {
+      return apiRequest('POST', `/api/reports/${report.id}/email`, { email });
     },
     onSuccess: () => {
       toast({
         title: "📧 Email Sent!",
         description: "Your competitor analysis report has been sent to your email address.",
       });
+      setEmailDialogOpen(false);
+      setEmailAddress("");
     },
     onError: (error: Error) => {
       toast({
@@ -59,7 +67,15 @@ export default function CompetitorReport({ report }: CompetitorReportProps) {
   });
   
   const handleEmailReport = () => {
-    emailMutation.mutate();
+    if (emailAddress.trim() && emailAddress.includes('@')) {
+      emailMutation.mutate(emailAddress.trim());
+    } else {
+      toast({
+        title: "Invalid Email",
+        description: "Please enter a valid email address.",
+        variant: "destructive",
+      });
+    }
   };
   let analysis;
   try {
@@ -236,17 +252,56 @@ export default function CompetitorReport({ report }: CompetitorReportProps) {
           </div>
           
           <div className="flex items-center space-x-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleEmailReport}
-              disabled={emailMutation.isPending}
-              data-testid="button-email-report"
-              className="btn-glass-secondary"
-            >
-              <Mail className="w-4 h-4 mr-2" />
-              {emailMutation.isPending ? "Sending..." : "Email Report"}
-            </Button>
+            <Dialog open={emailDialogOpen} onOpenChange={setEmailDialogOpen}>
+              <DialogTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  data-testid="button-email-report"
+                  className="btn-glass-secondary"
+                >
+                  <Mail className="w-4 h-4 mr-2" />
+                  Email Report
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                  <DialogTitle>📧 Email Report</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="email">Email Address</Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      placeholder="Enter your email address"
+                      value={emailAddress}
+                      onChange={(e) => setEmailAddress(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          handleEmailReport();
+                        }
+                      }}
+                    />
+                  </div>
+                  <div className="flex justify-end space-x-2">
+                    <Button
+                      variant="outline"
+                      onClick={() => setEmailDialogOpen(false)}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      onClick={handleEmailReport}
+                      disabled={emailMutation.isPending}
+                    >
+                      <Mail className="w-4 h-4 mr-2" />
+                      {emailMutation.isPending ? "Sending..." : "Send Email"}
+                    </Button>
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
             <Button
               variant="outline"
               size="sm"

@@ -490,14 +490,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Email report endpoint
-  app.post('/api/reports/:reportId/email', isAuthenticated, async (req: any, res) => {
+  app.post('/api/reports/:reportId/email', async (req: any, res) => {
     try {
       const { reportId } = req.params;
-      const userId = req.user.claims.sub;
-      const userEmail = req.user.claims.email;
+      const { email } = req.body;
       
-      if (!userEmail) {
-        return res.status(400).json({ message: "User email not found" });
+      if (!email) {
+        return res.status(400).json({ message: "Email address is required" });
+      }
+      
+      // Basic email validation
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        return res.status(400).json({ message: "Invalid email address format" });
       }
       
       // Get the report
@@ -506,14 +511,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Report not found" });
       }
       
-      // Verify the report belongs to the user
-      if (report.userId !== userId) {
-        return res.status(403).json({ message: "Access denied" });
-      }
-      
       // Send the email
       const emailResult = await sendCompetitorReport({
-        to: userEmail,
+        to: email,
         reportTitle: report.title,
         reportContent: report.summary,
         competitors: report.competitors as string[]
