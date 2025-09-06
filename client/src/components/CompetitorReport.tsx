@@ -602,6 +602,39 @@ export default function CompetitorReport({ report }: CompetitorReportProps) {
                       >
                         {displaySource}
                       </a>
+                    ) : displaySource === 'Aggregated Sources' ? (
+                      <div className="space-y-1">
+                        <span className="text-foreground font-medium">Multiple Sources:</span>
+                        <div className="flex flex-wrap gap-2 mt-2">
+                          <a 
+                            href="https://techcrunch.com" 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full hover:bg-blue-200 transition-colors"
+                          >
+                            TechCrunch
+                          </a>
+                          <a 
+                            href="https://news.ycombinator.com" 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="text-xs bg-orange-100 text-orange-800 px-2 py-1 rounded-full hover:bg-orange-200 transition-colors"
+                          >
+                            Hacker News
+                          </a>
+                          <a 
+                            href="https://www.bing.com/news" 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full hover:bg-green-200 transition-colors"
+                          >
+                            Bing News
+                          </a>
+                          <span className="text-xs bg-gray-100 text-gray-800 px-2 py-1 rounded-full">
+                            RSS Feeds
+                          </span>
+                        </div>
+                      </div>
                     ) : (
                       displaySource
                     )}
