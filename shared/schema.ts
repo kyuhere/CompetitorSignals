@@ -76,3 +76,22 @@ export const insertRateLimitSchema = createInsertSchema(rateLimits).omit({
 
 export type InsertRateLimit = z.infer<typeof insertRateLimitSchema>;
 export type RateLimit = typeof rateLimits.$inferSelect;
+
+// Tracked competitors table - stores competitors that users want to monitor
+export const trackedCompetitors = pgTable("tracked_competitors", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  competitorName: varchar("competitor_name", { length: 255 }).notNull(),
+  isActive: boolean("is_active").default(true),
+  addedAt: timestamp("added_at").defaultNow(),
+  lastAnalyzedAt: timestamp("last_analyzed_at"),
+});
+
+
+export const insertTrackedCompetitorSchema = createInsertSchema(trackedCompetitors).omit({
+  id: true,
+  addedAt: true,
+});
+
+export type InsertTrackedCompetitor = z.infer<typeof insertTrackedCompetitorSchema>;
+export type TrackedCompetitor = typeof trackedCompetitors.$inferSelect;
