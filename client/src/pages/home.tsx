@@ -126,7 +126,7 @@ export default function Home() {
       <AppHeader usage={usage} />
       
       {/* Hero Section */}
-      <div className="section-yellow py-16 mb-8">
+      <div className="bg-white py-16 mb-8">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <h1 className="text-4xl lg:text-6xl font-extrabold leading-tight mb-4">
             <span className="bg-primary text-primary-foreground px-4 py-2 rounded-2xl inline-block">
