@@ -196,7 +196,7 @@ class SignalAggregator {
       }
 
       // Global deduplication across all sources
-      const deduplicatedItems = this.deduplicateAllItems(items);
+      const deduplicatedItems = await this.deduplicateAllItems(items);
       
       return {
         source: "Aggregated Sources",
@@ -321,7 +321,8 @@ class SignalAggregator {
   }
 
   // Global deduplication method to prevent duplicate stories across all sources
-  private deduplicateAllItems(items: SignalItem[]): SignalItem[] {
+  private async deduplicateAllItems(items: SignalItem[]): Promise<SignalItem[]> {
+    // First, basic deduplication
     const uniqueItems = items.filter((item, index, self) => {
       return index === self.findIndex(t => {
         // Exact URL match - these are definitely duplicates
@@ -349,10 +350,101 @@ class SignalAggregator {
       });
     });
 
+    // AI-powered relevance filtering
+    const relevantItems = await this.filterRelevantStories(uniqueItems);
+
     // Sort by date (newest first) for better quality
-    return uniqueItems.sort((a, b) => 
+    return relevantItems.sort((a, b) => 
       new Date(b.publishedAt || 0).getTime() - new Date(a.publishedAt || 0).getTime()
     );
+  }
+
+  // AI-powered content relevance filtering
+  private async filterRelevantStories(items: SignalItem[]): Promise<SignalItem[]> {
+    if (!process.env.OPENAI_API_KEY || items.length === 0) {
+      return items;
+    }
+
+    try {
+      // Filter out obvious irrelevant stories first
+      const preFiltered = items.filter(item => {
+        const url = item.url?.toLowerCase() || '';
+        const title = item.title?.toLowerCase() || '';
+        
+        // Filter out stories from the competitor's own website
+        if (url.includes('openai.com') || url.includes('chatgpt.com')) return false;
+        
+        // Filter out generic AI/tech news that mentions multiple companies
+        if (title.includes('ai news') || title.includes('tech roundup') || title.includes('weekly digest')) return false;
+        
+        return true;
+      });
+
+      // For remaining items, use AI to check relevance
+      const relevantItems: SignalItem[] = [];
+      
+      for (const item of preFiltered.slice(0, 10)) { // Limit to avoid API costs
+        try {
+          const isRelevant = await this.checkStoryRelevance(item);
+          if (isRelevant) {
+            relevantItems.push(item);
+          }
+        } catch (error) {
+          console.error('Error checking story relevance:', error);
+          // Include item if AI check fails
+          relevantItems.push(item);
+        }
+      }
+
+      return relevantItems;
+    } catch (error) {
+      console.error('Error in AI filtering:', error);
+      return items; // Return original items if filtering fails
+    }
+  }
+
+  // Check if a story is actually relevant to competitor analysis
+  private async checkStoryRelevance(item: SignalItem): Promise<boolean> {
+    try {
+      const OpenAI = (await import('openai')).default;
+      const openai = new OpenAI({ 
+        apiKey: process.env.OPENAI_API_KEY 
+      });
+      
+      const prompt = `Analyze this news story and determine if it's relevant for competitor intelligence analysis.
+
+Title: ${item.title}
+Content: ${item.content?.substring(0, 500)}
+
+A story is RELEVANT if it contains:
+- Specific business developments (funding, partnerships, product launches)
+- Market strategy changes or competitive moves
+- Financial performance or business metrics
+- Leadership changes or organizational updates
+- Customer acquisition or market expansion news
+
+A story is NOT RELEVANT if it:
+- Is generic AI/tech industry news mentioning multiple companies
+- Is about the company's own website, blog posts, or self-promotional content
+- Is a roundup/digest mentioning the company briefly
+- Is primarily about other companies with just a mention
+- Is opinion pieces or general industry commentary
+
+Respond with only "RELEVANT" or "NOT_RELEVANT"`;
+
+      const response = await openai.chat.completions.create({
+        model: "gpt-4o-mini", // Fast and cost-effective
+        messages: [{ role: "user", content: prompt }],
+        max_tokens: 10,
+        temperature: 0,
+      });
+
+      const result = response.choices[0]?.message?.content?.trim().toUpperCase();
+      return result === 'RELEVANT';
+    } catch (error) {
+      console.error('Error in OpenAI relevance check:', error);
+      return true; // Default to including the story if check fails
+    }
   }
 
   private async getFundingSignals(competitor: string): Promise<SignalItem[]> {
