@@ -105,7 +105,7 @@ export default function Landing() {
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center space-x-3">
               <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center">
-                <span className="text-2xl">🍋</span>
+                <span className="text-[22px]">🍋</span>
               </div>
               <span className="text-xl font-bold text-black">Competitor Lemonade</span>
             </div>
