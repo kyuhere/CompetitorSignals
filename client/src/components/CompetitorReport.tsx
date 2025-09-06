@@ -2,9 +2,12 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Download, Share, BarChart3, DollarSign, MessageCircle, Lightbulb, CheckCircle, TrendingUp, TrendingDown, Minus, Building2, Target, Code, Globe, Package, Users, ThumbsUp, ThumbsDown, AlertTriangle, Zap } from "lucide-react";
+import { Download, Share, Mail, BarChart3, DollarSign, MessageCircle, Lightbulb, CheckCircle, TrendingUp, TrendingDown, Minus, Building2, Target, Code, Globe, Package, Users, ThumbsUp, ThumbsDown, AlertTriangle, Zap } from "lucide-react";
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
+import { useMutation } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 
 interface CompetitorReportProps {
   report: {
@@ -33,6 +36,31 @@ interface CompetitorReportProps {
 }
 
 export default function CompetitorReport({ report }: CompetitorReportProps) {
+  const { toast } = useToast();
+  
+  // Email mutation
+  const emailMutation = useMutation({
+    mutationFn: async () => {
+      return apiRequest('POST', `/api/reports/${report.id}/email`);
+    },
+    onSuccess: () => {
+      toast({
+        title: "📧 Email Sent!",
+        description: "Your competitor analysis report has been sent to your email address.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Email Failed",
+        description: error.message || "Failed to send email. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+  
+  const handleEmailReport = () => {
+    emailMutation.mutate();
+  };
   let analysis;
   try {
     // Handle both string and object formats
@@ -211,8 +239,20 @@ export default function CompetitorReport({ report }: CompetitorReportProps) {
             <Button
               variant="outline"
               size="sm"
+              onClick={handleEmailReport}
+              disabled={emailMutation.isPending}
+              data-testid="button-email-report"
+              className="btn-glass-secondary"
+            >
+              <Mail className="w-4 h-4 mr-2" />
+              {emailMutation.isPending ? "Sending..." : "Email Report"}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
               onClick={handleExport}
               data-testid="button-export-pdf"
+              className="btn-glass-secondary"
             >
               <Download className="w-4 h-4 mr-2" />
               Export PDF
@@ -222,6 +262,7 @@ export default function CompetitorReport({ report }: CompetitorReportProps) {
               size="sm"
               onClick={handleShare}
               data-testid="button-share"
+              className="btn-glass-secondary"
             >
               <Share className="w-4 h-4 mr-2" />
               Share
