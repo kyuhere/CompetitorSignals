@@ -5,7 +5,7 @@ import { setupAuth, isAuthenticated } from "./replitAuth";
 import { insertCompetitorReportSchema, insertTrackedCompetitorSchema } from "@shared/schema";
 import { z } from "zod";
 import { signalAggregator } from "./services/signalAggregator";
-import { redditSentimentService } from "./services/redditSentiment";
+
 import { summarizeCompetitorSignals, generateFastPreview } from "./services/openai";
 import { sendCompetitorReport } from "./email";
 
@@ -215,25 +215,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       );
       
-      // Get Reddit sentiment analysis for the first competitor
-      let redditSentiment = null;
-      if (competitorList.length > 0) {
-        if (streamRes) {
-          streamRes.write(`data: ${JSON.stringify({
-            type: "progress",
-            message: "Analyzing Reddit sentiment...",
-            progress: 60
-          })}\n\n`);
-        }
-        
-        try {
-          redditSentiment = await redditSentimentService.getRedditSentiment(competitorList[0]);
-          console.log(`Reddit sentiment analysis completed for ${competitorList[0]}`);
-        } catch (error) {
-          console.error('Reddit sentiment analysis failed:', error);
-          // Continue without Reddit data if it fails
-        }
-      }
+      
       
       // Send signals collected update
       if (streamRes) {
@@ -286,8 +268,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           signalCount: signals.reduce((acc: number, s: any) => acc + s.items.length, 0),
           sources: Object.keys(sources).filter(key => sources[key as keyof typeof sources]),
           generatedAt: new Date().toISOString(),
-          hasRedditAnalysis: !!redditSentiment,
-          redditSentiment: redditSentiment,
         },
       };
       
@@ -326,8 +306,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               to: userEmail,
               reportTitle: report.title,
               reportContent: report.summary,
-              competitors: report.competitors as string[],
-              redditSentiment: (report.metadata as any)?.redditSentiment
+              competitors: report.competitors as string[]
             });
             console.log(`Report email sent automatically to ${userEmail}`);
           } catch (error) {
