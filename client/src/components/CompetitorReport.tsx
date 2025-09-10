@@ -265,7 +265,7 @@ export default function CompetitorReport({ report }: CompetitorReportProps) {
             ))}
           </ul>
         ) : (
-          <p className="text-sm text-foreground">{content}</p>
+          <div className="text-sm text-foreground">{content}</div>
         )}
       </div>
     );
@@ -692,7 +692,7 @@ export default function CompetitorReport({ report }: CompetitorReportProps) {
                             )}
                             
                             <div className="mt-4 p-3 bg-white/50 dark:bg-black/30 rounded">
-                              <p className="text-sm text-foreground">{g2Data.summary}</p>
+                              <div className="text-sm text-foreground">{g2Data.summary}</div>
                             </div>
                           </div>
                         )}
@@ -758,7 +758,7 @@ export default function CompetitorReport({ report }: CompetitorReportProps) {
                             )}
                             
                             <div className="mt-4 p-3 bg-white/50 dark:bg-black/30 rounded">
-                              <p className="text-sm text-foreground">{hnData.summary}</p>
+                              <div className="text-sm text-foreground">{hnData.summary}</div>
                             </div>
                           </div>
                         )}

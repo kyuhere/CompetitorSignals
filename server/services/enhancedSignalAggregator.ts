@@ -107,13 +107,15 @@ export class EnhancedSignalAggregator {
 
       console.log(`[EnhancedAggregator] Enhanced data processed: ${enhancedData.length} competitors`);
       enhancedData.forEach((data, index) => {
-        console.log(`[EnhancedAggregator] Enhanced data ${index + 1}:`, {
-          competitor: data.competitor,
-          hasG2: !!data.g2,
-          hasHN: !!data.hackerNews,
-          g2Reviews: data.g2?.totalReviews || 0,
-          hnMentions: data.hackerNews?.totalMentions || 0
-        });
+        if (data) {
+          console.log(`[EnhancedAggregator] Enhanced data ${index + 1}:`, {
+            competitor: data.competitor,
+            hasG2: !!data.g2,
+            hasHN: !!data.hackerNews,
+            g2Reviews: data.g2?.totalReviews || 0,
+            hnMentions: data.hackerNews?.totalMentions || 0
+          });
+        }
       });
 
       const combinedResults = {
@@ -298,9 +300,18 @@ Provide analysis in this exact JSON format:
       if (!content) throw new Error('No response from OpenAI');
 
       try {
-        return JSON.parse(content);
+        // Clean up markdown JSON formatting if present
+        let cleanContent = content;
+        if (cleanContent.startsWith('```json')) {
+          cleanContent = cleanContent.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+        } else if (cleanContent.startsWith('```')) {
+          cleanContent = cleanContent.replace(/^```\s*/, '').replace(/\s*```$/, '');
+        }
+        
+        return JSON.parse(cleanContent);
       } catch (parseError) {
         console.error('JSON parse error:', parseError);
+        console.error('Original content:', content);
         return this.getFallbackAnalysis(traditionalSignals, enhancedData, competitorNames);
       }
     } catch (error) {
