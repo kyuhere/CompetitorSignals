@@ -155,6 +155,12 @@ export class SocialSentimentService {
         return 'neutral';
       }
 
+      // If OpenAI API key is not available, use a simple fallback
+      if (!process.env.OPENAI_API_KEY) {
+        console.log('Using fallback sentiment analysis (no OpenAI API key)');
+        return this.analyzeSentimentFallback(redditSentiment, hackerNewsSentiment);
+      }
+
       const prompt = `
 Analyze the following sentiment summaries and determine the overall sentiment about "${query}":
 
@@ -181,6 +187,37 @@ Respond with only one word: positive, negative, or neutral`;
       return 'neutral';
     } catch (error) {
       console.error('Error analyzing overall sentiment:', error);
+      // Fallback to simple analysis on API error
+      return this.analyzeSentimentFallback(redditSentiment, hackerNewsSentiment);
+    }
+  }
+
+  private analyzeSentimentFallback(
+    redditSentiment: string, 
+    hackerNewsSentiment: string
+  ): 'positive' | 'negative' | 'neutral' {
+    const combined = `${redditSentiment} ${hackerNewsSentiment}`.toLowerCase();
+    
+    // Simple keyword-based sentiment analysis
+    const positiveWords = ['positive', 'good', 'great', 'excellent', 'love', 'amazing', 'wonderful', 'fantastic', 'impressive'];
+    const negativeWords = ['negative', 'bad', 'terrible', 'awful', 'hate', 'horrible', 'disappointing', 'concerns', 'issues'];
+    
+    let positiveScore = 0;
+    let negativeScore = 0;
+    
+    positiveWords.forEach(word => {
+      if (combined.includes(word)) positiveScore++;
+    });
+    
+    negativeWords.forEach(word => {
+      if (combined.includes(word)) negativeScore++;
+    });
+    
+    if (positiveScore > negativeScore) {
+      return 'positive';
+    } else if (negativeScore > positiveScore) {
+      return 'negative';
+    } else {
       return 'neutral';
     }
   }

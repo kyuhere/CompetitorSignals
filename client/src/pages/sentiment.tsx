@@ -147,9 +147,9 @@ export default function SentimentPage() {
             </form>
             
             <div className="mt-4 text-sm text-muted-foreground">
-              <p className="mb-2">
+              <div className="mb-2">
                 <strong>What we analyze:</strong>
-              </p>
+              </div>
               <ul className="list-disc list-inside space-y-1">
                 <li><strong>Reddit:</strong> Public discussions from relevant subreddits (news, business, technology)</li>
                 <li><strong>Hacker News:</strong> Comments and discussions from the tech community</li>
