@@ -406,7 +406,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      // Check if competitor already exists
+      // Check if competitor already exists (only active ones)
       const existingCompetitors = await storage.getUserTrackedCompetitors(userId);
       const competitorExists = existingCompetitors.some(
         c => c.competitorName.toLowerCase() === validation.data.competitorName.toLowerCase()
@@ -461,7 +461,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           locked: true,
           daysRemaining,
           unlockDate: unlockDate.toISOString(),
-          canUpgrade: true
+          canUpgrade: true,
+          competitorId: id
         });
       }
       

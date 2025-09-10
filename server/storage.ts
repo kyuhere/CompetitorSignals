@@ -157,6 +157,31 @@ export class DatabaseStorage implements IStorage {
 
   // Tracked competitors operations
   async addTrackedCompetitor(competitor: InsertTrackedCompetitor): Promise<TrackedCompetitor> {
+    // Check if there's an inactive competitor with the same name that we can reactivate
+    const [existingInactive] = await db
+      .select()
+      .from(trackedCompetitors)
+      .where(and(
+        eq(trackedCompetitors.userId, competitor.userId),
+        eq(trackedCompetitors.competitorName, competitor.competitorName),
+        eq(trackedCompetitors.isActive, false)
+      ));
+
+    if (existingInactive) {
+      // Reactivate the existing competitor
+      const [reactivated] = await db
+        .update(trackedCompetitors)
+        .set({ 
+          isActive: true, 
+          addedAt: new Date(),  // Reset the lock timer
+          lastAnalyzedAt: null 
+        })
+        .where(eq(trackedCompetitors.id, existingInactive.id))
+        .returning();
+      return reactivated;
+    }
+
+    // Create new competitor if none exists
     const [newCompetitor] = await db
       .insert(trackedCompetitors)
       .values(competitor)

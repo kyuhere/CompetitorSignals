@@ -79,10 +79,11 @@ export default function TrackedCompetitors() {
     },
     onError: (error: any) => {
       if (error.locked) {
+        const competitor = trackedData?.competitors.find(c => c.id === error.competitorId);
         setLockInfo({
           daysRemaining: error.daysRemaining,
           unlockDate: error.unlockDate,
-          competitorName: error.competitorName || "competitor"
+          competitorName: competitor?.competitorName || "competitor"
         });
         setLockDialogOpen(true);
       } else {
@@ -156,7 +157,7 @@ export default function TrackedCompetitors() {
             className="bg-primary text-primary-foreground font-bold px-3 py-1" 
             data-testid="text-competitor-count"
           >
-            {trackedData?.count || 0} / {trackedData?.limit || 5}
+            {trackedData?.count || 0} / {trackedData?.limit || 3}
           </Badge>
         </div>
         <p className="text-sm text-muted-foreground font-medium">
@@ -260,7 +261,7 @@ export default function TrackedCompetitors() {
             data-testid="button-add-competitor"
           >
             <Plus className="w-5 h-5 mr-2" />
-            {canAddMore ? "Add Competitor" : `Limit Reached (${trackedData?.limit || 5} max)`}
+            {canAddMore ? "Add Competitor" : `Limit Reached (${trackedData?.limit || 3} max)`}
           </Button>
         )}
 
