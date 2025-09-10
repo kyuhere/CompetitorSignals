@@ -35,6 +35,7 @@ export interface IStorage {
   // Tracked competitors operations
   addTrackedCompetitor(competitor: InsertTrackedCompetitor): Promise<TrackedCompetitor>;
   getUserTrackedCompetitors(userId: string): Promise<TrackedCompetitor[]>;
+  getTrackedCompetitorById(userId: string, competitorId: string): Promise<TrackedCompetitor | undefined>;
   removeTrackedCompetitor(userId: string, competitorId: string): Promise<void>;
   getTrackedCompetitorCount(userId: string): Promise<number>;
 }
@@ -172,6 +173,18 @@ export class DatabaseStorage implements IStorage {
         eq(trackedCompetitors.isActive, true)
       ))
       .orderBy(desc(trackedCompetitors.addedAt));
+  }
+
+  async getTrackedCompetitorById(userId: string, competitorId: string): Promise<TrackedCompetitor | undefined> {
+    const [competitor] = await db
+      .select()
+      .from(trackedCompetitors)
+      .where(and(
+        eq(trackedCompetitors.userId, userId),
+        eq(trackedCompetitors.id, competitorId),
+        eq(trackedCompetitors.isActive, true)
+      ));
+    return competitor;
   }
 
   async removeTrackedCompetitor(userId: string, competitorId: string): Promise<void> {

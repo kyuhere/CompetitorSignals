@@ -381,7 +381,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({
         competitors: trackedCompetitors,
         count,
-        limit: 5
+        limit: 3
       });
     } catch (error) {
       console.error("Error fetching tracked competitors:", error);
@@ -418,11 +418,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      // Check limit (5 competitors max)
+      // Check limit (3 competitors max)
       const currentCount = await storage.getTrackedCompetitorCount(userId);
-      if (currentCount >= 5) {
+      if (currentCount >= 3) {
         return res.status(400).json({ 
-          message: "You can track up to 5 competitors. Remove one to add another." 
+          message: "You can track up to 3 competitors. Remove one to add another." 
         });
       }
       
@@ -434,11 +434,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  // Remove a tracked competitor
+  // Remove a tracked competitor (with monthly lock)
   app.delete('/api/competitors/tracked/:id', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const { id } = req.params;
+      
+      // Get the competitor to check when it was added
+      const competitor = await storage.getTrackedCompetitorById(userId, id);
+      if (!competitor) {
+        return res.status(404).json({ message: "Competitor not found" });
+      }
+      
+      // Check if 30 days have passed since adding
+      const addedDate = new Date(competitor.addedAt!);
+      const now = new Date();
+      const daysSinceAdded = Math.floor((now.getTime() - addedDate.getTime()) / (1000 * 60 * 60 * 24));
+      
+      if (daysSinceAdded < 30) {
+        const daysRemaining = 30 - daysSinceAdded;
+        const unlockDate = new Date(addedDate);
+        unlockDate.setDate(unlockDate.getDate() + 30);
+        
+        return res.status(400).json({ 
+          message: "Competitors are locked for 30 days after adding",
+          locked: true,
+          daysRemaining,
+          unlockDate: unlockDate.toISOString(),
+          canUpgrade: true
+        });
+      }
       
       await storage.removeTrackedCompetitor(userId, id);
       res.json({ message: "Competitor removed successfully" });

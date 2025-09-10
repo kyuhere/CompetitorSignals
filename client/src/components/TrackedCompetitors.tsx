@@ -3,10 +3,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import { Plus, X, Building2, Clock, TrendingUp, Zap } from "lucide-react";
+import { Plus, X, Building2, Clock, TrendingUp, Zap, Lock, Crown } from "lucide-react";
 import type { TrackedCompetitor } from "@shared/schema";
 
 interface TrackedCompetitorsResponse {
@@ -27,6 +28,12 @@ const avatarColors = [
 export default function TrackedCompetitors() {
   const [newCompetitorName, setNewCompetitorName] = useState("");
   const [isAdding, setIsAdding] = useState(false);
+  const [lockDialogOpen, setLockDialogOpen] = useState(false);
+  const [lockInfo, setLockInfo] = useState<{
+    daysRemaining: number;
+    unlockDate: string;
+    competitorName: string;
+  } | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -70,12 +77,21 @@ export default function TrackedCompetitors() {
         description: "Competitor removed from your tracking list",
       });
     },
-    onError: (error: Error) => {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
+    onError: (error: any) => {
+      if (error.locked) {
+        setLockInfo({
+          daysRemaining: error.daysRemaining,
+          unlockDate: error.unlockDate,
+          competitorName: error.competitorName || "competitor"
+        });
+        setLockDialogOpen(true);
+      } else {
+        toast({
+          title: "Error",
+          description: error.message,
+          variant: "destructive",
+        });
+      }
     },
   });
 
@@ -93,9 +109,7 @@ export default function TrackedCompetitors() {
   };
 
   const handleRemoveCompetitor = (competitorId: string, competitorName: string) => {
-    if (confirm(`Are you sure you want to remove "${competitorName}" from your tracking list?`)) {
-      removeCompetitorMutation.mutate(competitorId);
-    }
+    removeCompetitorMutation.mutate(competitorId);
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -282,6 +296,59 @@ export default function TrackedCompetitors() {
             </p>
           </div>
         )}
+
+        {/* Lock Dialog */}
+        <Dialog open={lockDialogOpen} onOpenChange={setLockDialogOpen}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center text-xl">
+                <Lock className="w-6 h-6 mr-2 text-orange-500" />
+                Competitor Locked
+              </DialogTitle>
+              <DialogDescription className="text-base">
+                You can only track 3 competitors and they're locked until the end of the month.
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="space-y-4">
+              <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-medium text-orange-800">Unlock in:</span>
+                  <span className="text-lg font-bold text-orange-600">
+                    {lockInfo?.daysRemaining} days
+                  </span>
+                </div>
+                <p className="text-xs text-orange-700">
+                  Available on {lockInfo?.unlockDate ? new Date(lockInfo.unlockDate).toLocaleDateString() : 'N/A'}
+                </p>
+              </div>
+
+              <div className="flex flex-col space-y-3">
+                <Button
+                  className="w-full bg-gradient-to-r from-yellow-400 to-orange-500 hover:from-yellow-500 hover:to-orange-600 text-white font-bold py-3"
+                  onClick={() => {
+                    toast({
+                      title: "Premium Coming Soon!",
+                      description: "Upgrade to premium for unlimited competitor tracking",
+                    });
+                    setLockDialogOpen(false);
+                  }}
+                >
+                  <Crown className="w-5 h-5 mr-2" />
+                  Upgrade to Premium
+                </Button>
+                
+                <Button
+                  variant="outline"
+                  onClick={() => setLockDialogOpen(false)}
+                  className="w-full"
+                >
+                  Got it
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
       </CardContent>
     </Card>
   );
