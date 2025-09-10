@@ -386,11 +386,12 @@ export default function CompetitorReport({ report }: CompetitorReportProps) {
               </div>
 
               <Tabs defaultValue="overview" className="w-full">
-                <TabsList className="grid w-full grid-cols-4">
+                <TabsList className="grid w-full grid-cols-5">
                   <TabsTrigger value="overview">Overview</TabsTrigger>
                   <TabsTrigger value="analysis">Analysis</TabsTrigger>
                   <TabsTrigger value="market">Market</TabsTrigger>
                   <TabsTrigger value="tech">Tech & Innovation</TabsTrigger>
+                  <TabsTrigger value="social">Social Sentiment</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="overview" className="space-y-8 mt-6">
@@ -659,6 +660,70 @@ export default function CompetitorReport({ report }: CompetitorReportProps) {
                     </div>
                   </div>
                 </TabsContent>
+
+                <TabsContent value="social" className="space-y-6 mt-6">
+                  {/* Hacker News Sentiment */}
+                  {report.metadata?.hasHackerNewsSentiment && report.metadata?.hackerNewsSentiment ? (
+                    <div className="space-y-6">
+                      <div className="bg-orange-50 dark:bg-orange-950 p-6 rounded-lg">
+                        <h4 className="font-medium text-foreground mb-4 flex items-center">
+                          <MessageCircle className="w-4 h-4 text-orange-600 mr-2" />
+                          Hacker News Community Sentiment
+                        </h4>
+                        <div className="space-y-4">
+                          <div className="bg-background p-4 rounded-lg border">
+                            <p className="text-sm text-foreground mb-2">
+                              <strong>Overall Sentiment:</strong> {report.metadata.hackerNewsSentiment.overallSentiment}
+                            </p>
+                            <p className="text-sm text-muted-foreground">
+                              Based on {report.metadata.hackerNewsSentiment.comments?.length || 0} recent comments about "{report.metadata.hackerNewsSentiment.query}"
+                            </p>
+                          </div>
+                          
+                          {report.metadata.hackerNewsSentiment.comments?.length > 0 && (
+                            <div className="space-y-3">
+                              <h5 className="font-medium text-foreground">Key Community Discussions:</h5>
+                              {report.metadata.hackerNewsSentiment.comments.slice(0, 3).map((comment, index) => (
+                                <div key={index} className="bg-background p-4 rounded-lg border">
+                                  <div className="flex items-start justify-between mb-3">
+                                    <h6 className="font-medium text-foreground text-sm">
+                                      {comment.storyTitle}
+                                    </h6>
+                                    <div className="text-xs text-muted-foreground ml-2 flex-shrink-0">
+                                      {comment.points ? `${comment.points} points` : 'no points'}
+                                    </div>
+                                  </div>
+                                  <blockquote className="border-l-2 border-orange-200 pl-3 text-sm text-muted-foreground italic mb-3">
+                                    "{comment.text.length > 200 ? comment.text.substring(0, 200) + '...' : comment.text}"
+                                  </blockquote>
+                                  <div className="flex items-center justify-between text-xs text-muted-foreground">
+                                    <span>by {comment.author} • {new Date(comment.createdAt).toLocaleDateString()}</span>
+                                    <a 
+                                      href={comment.url} 
+                                      target="_blank" 
+                                      rel="noopener noreferrer"
+                                      className="inline-flex items-center text-orange-600 hover:text-orange-800"
+                                    >
+                                      View Discussion <ExternalLink className="w-3 h-3 ml-1" />
+                                    </a>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-center py-8">
+                      <MessageCircle className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                      <h4 className="font-medium text-foreground mb-2">No Social Sentiment Data</h4>
+                      <p className="text-sm text-muted-foreground">
+                        No social sentiment analysis available for this competitor.
+                      </p>
+                    </div>
+                  )}
+                </TabsContent>
               </Tabs>
             </div>
           ))}
@@ -746,62 +811,7 @@ export default function CompetitorReport({ report }: CompetitorReportProps) {
           </div>
         )}
 
-        {/* Hacker News Sentiment Analysis */}
-        {report.metadata?.hasHackerNewsSentiment && report.metadata?.hackerNewsSentiment && (
-          <div className="mt-8 p-6 bg-muted rounded-lg">
-            <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center">
-              <MessageCircle className="w-5 h-5 text-orange-500 mr-2" />
-              Hacker News Sentiment
-              {report.metadata.analyzedCompetitor && (
-                <span className="ml-2 text-sm text-muted-foreground">
-                  ({report.metadata.analyzedCompetitor})
-                </span>
-              )}
-            </h3>
-            <div className="space-y-4">
-              <div className="bg-background p-4 rounded-lg border">
-                <p className="text-sm text-foreground mb-3">
-                  <strong>Overall Sentiment:</strong> {report.metadata.hackerNewsSentiment.overallSentiment}
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  Query: "{report.metadata.hackerNewsSentiment.query}"
-                </p>
-              </div>
-              
-              {report.metadata.hackerNewsSentiment.comments?.length > 0 && (
-                <div className="space-y-3">
-                  <h4 className="font-medium text-foreground">Key Comments:</h4>
-                  {report.metadata.hackerNewsSentiment.comments.slice(0, 3).map((comment, index) => (
-                    <div key={index} className="bg-background p-4 rounded-lg border">
-                      <div className="flex items-start justify-between mb-2">
-                        <h5 className="font-medium text-foreground text-sm line-clamp-2">
-                          {comment.storyTitle}
-                        </h5>
-                        <div className="text-xs text-muted-foreground ml-2 flex-shrink-0">
-                          by {comment.author} • {comment.points ? `${comment.points} points` : 'no points'}
-                        </div>
-                      </div>
-                      <blockquote className="border-l-2 border-orange-200 pl-3 text-sm text-muted-foreground mb-3 italic">
-                        "{comment.text}"
-                      </blockquote>
-                      <div className="flex items-center justify-between text-xs text-muted-foreground">
-                        <span>{new Date(comment.createdAt).toLocaleDateString()}</span>
-                        <a 
-                          href={comment.url} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center text-primary hover:text-primary/80"
-                        >
-                          View on Hacker News <ExternalLink className="w-3 h-3 ml-1" />
-                        </a>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        )}
+        
 
         {/* Source References */}
         {report.signals && report.signals.length > 0 && (
