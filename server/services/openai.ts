@@ -1,8 +1,8 @@
 import OpenAI from "openai";
 
 // Optimized for speed - using GPT-4o-mini for fast processing, GPT-4o for premium
-const openai = new OpenAI({ 
-  apiKey: process.env.OPENAI_API_KEY || process.env.OPENAI_API_KEY_ENV_VAR || "default_key" 
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY || process.env.OPENAI_API_KEY_ENV_VAR || "default_key"
 });
 
 // Model selection based on use case
@@ -223,6 +223,9 @@ CRITICAL FORMATTING REQUIREMENTS:
 - Business impact and strategic implications
 - Rate activity level based on signal volume and recency
 - Use short, clean source references like [Source: bing.com/news] instead of full URLs
+- IMPORTANT: Always populate ALL sections for each competitor even if data is limited
+- If specific data is not available, provide reasonable business estimates or note "No reliable data found"
+- Do NOT leave any section empty or undefined
 `;
 
     const response = await openai.chat.completions.create({
