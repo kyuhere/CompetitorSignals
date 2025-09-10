@@ -682,33 +682,7 @@ export default function CompetitorReport({ report }: CompetitorReportProps) {
           </div>
         )}
 
-        {/* Reddit Sentiment Analysis */}
-        {report.metadata?.hasRedditAnalysis && report.metadata?.redditSentiment && (
-          <div className="mt-8 p-6 bg-muted rounded-lg">
-            <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center">
-              <MessageCircle className="w-5 h-5 text-red-500 mr-2" />
-              Reddit Public Sentiment
-              {report.metadata.analyzedCompetitor && (
-                <span className="ml-2 text-sm text-muted-foreground">
-                  ({report.metadata.analyzedCompetitor})
-                </span>
-              )}
-            </h3>
-            <div className="space-y-4">
-              <div className="bg-background p-4 rounded-lg border">
-                <p className="text-sm text-foreground mb-3">
-                  <strong>Overall Sentiment:</strong> {report.metadata.redditSentiment.overallSentiment}
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  Query: "{report.metadata.redditSentiment.query}"
-                </p>
-              </div>
-              
-              {report.metadata.redditSentiment.posts?.length > 0 && (
-                <div className="space-y-3">
-                  <h4 className="font-medium text-foreground">Key Discussions:</h4>
-                  {report.metadata.redditSentiment.posts.slice(0, 3).map((post, index) => (
-                    <div key={index} className="bg-background p-4 rounded-lg border">
+        g border">
                       <div className="flex items-start justify-between mb-2">
                         <h5 className="font-medium text-foreground text-sm line-clamp-2">
                           {post.title}

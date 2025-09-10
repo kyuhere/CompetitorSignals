@@ -1,4 +1,3 @@
-import { redditSentimentService } from './redditSentiment';
 import { HackerNewsSentimentService } from './hackerNewsSentiment';
 import OpenAI from 'openai';
 
@@ -51,26 +50,17 @@ export class SocialSentimentService {
         return null;
       }
 
-      // Get data from both services in parallel
-      const [redditResult, hackerNewsResult] = await Promise.allSettled([
-        redditSentimentService.getRedditSentiment(query),
-        this.hackerNewsService.getHackerNewsSentiment(query)
-      ]);
+      // Get data from Hacker News only
+      const hackerNewsResult = await this.hackerNewsService.getHackerNewsSentiment(query);
 
-      // Process Reddit data
-      const redditData = redditResult.status === 'fulfilled' ? redditResult.value : null;
-      
-      // Process Hacker News data
-      const hackerNewsData = hackerNewsResult.status === 'fulfilled' ? hackerNewsResult.value : null;
-
-      // If we have no data from either source, return null
-      if (!redditData && !hackerNewsData) {
+      // If we have no data, return null
+      if (!hackerNewsResult) {
         console.log('No social sentiment data available');
         return null;
       }
 
       // Aggregate social media data
-      const socialMedia = await this.aggregateSocialMediaData(redditData, hackerNewsData, query);
+      const socialMedia = await this.aggregateSocialMediaData(null, hackerNewsResult, query);
 
       return {
         socialMedia,
@@ -92,26 +82,7 @@ export class SocialSentimentService {
     const allQuotes: Quote[] = [];
     let totalMentions = 0;
 
-    // Process Reddit data
-    if (redditData && redditData.posts) {
-      platforms.push('Reddit');
-      totalMentions += redditData.posts.length;
-      
-      redditData.posts.forEach((post: any) => {
-        if (post.quotes) {
-          post.quotes.forEach((quote: string) => {
-            allQuotes.push({
-              text: quote,
-              source: 'Reddit',
-              url: post.url,
-              author: post.subreddit ? `r/${post.subreddit}` : undefined
-            });
-          });
-        }
-      });
-    }
-
-    // Process Hacker News data
+    // Process Hacker News data only
     if (hackerNewsData && hackerNewsData.comments) {
       platforms.push('Hacker News');
       totalMentions += hackerNewsData.comments.length;
@@ -132,7 +103,7 @@ export class SocialSentimentService {
 
     // Analyze overall sentiment using OpenAI
     const overallSentiment = await this.analyzeOverallSentiment(
-      redditData?.overallSentiment || '',
+      '',
       hackerNewsData?.overallSentiment || '',
       query
     );
