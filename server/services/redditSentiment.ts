@@ -39,11 +39,7 @@ class RedditSentimentService {
 
   async searchRedditPosts(query: string, limit: number = 10): Promise<RedditPost[]> {
     try {
-      // Generate unique IDs for the search request
-      const cId = this.generateUniqueId();
-      const iId = this.generateUniqueId();
-      
-      const searchUrl = `https://www.reddit.com/search.json?q=${encodeURIComponent(query)}&type=posts&t=week&cId=${cId}&iId=${iId}&sort=new&limit=${limit}`;
+      const searchUrl = `https://www.reddit.com/search.json?q=${encodeURIComponent(query)}&type=posts&t=week&sort=new&limit=${limit}`;
       
       console.log(`Reddit search URL: ${searchUrl}`);
       
@@ -68,32 +64,36 @@ class RedditSentimentService {
         return [];
       }
 
+      // Process all posts, prioritizing news-relevant subreddits but not excluding others
       for (const child of data.data.children) {
         const postData = child.data;
         
-        // Filter for relevant subreddits only
-        if (this.RELEVANT_SUBREDDITS.includes(postData.subreddit.toLowerCase())) {
-          posts.push({
-            title: postData.title,
-            subreddit: postData.subreddit,
-            permalink: postData.permalink,
-            num_comments: postData.num_comments,
-            url: postData.url
-          });
-          console.log(`Found relevant post: ${postData.title.substring(0, 50)}... in r/${postData.subreddit}`);
-        }
+        posts.push({
+          title: postData.title,
+          subreddit: postData.subreddit,
+          permalink: postData.permalink,
+          num_comments: postData.num_comments,
+          url: postData.url
+        });
+        console.log(`Found post: ${postData.title.substring(0, 50)}... in r/${postData.subreddit}`);
       }
 
-      console.log(`Filtered to ${posts.length} relevant posts from business subreddits`);
-      return posts.slice(0, limit);
+      // Sort posts to prioritize news-relevant subreddits
+      const sortedPosts = posts.sort((a, b) => {
+        const aIsRelevant = this.RELEVANT_SUBREDDITS.includes(a.subreddit.toLowerCase());
+        const bIsRelevant = this.RELEVANT_SUBREDDITS.includes(b.subreddit.toLowerCase());
+        
+        if (aIsRelevant && !bIsRelevant) return -1;
+        if (!aIsRelevant && bIsRelevant) return 1;
+        return 0;
+      });
+
+      console.log(`Processing ${sortedPosts.length} posts (prioritizing business subreddits)`);
+      return sortedPosts.slice(0, limit);
     } catch (error) {
       console.error('Error searching Reddit posts:', error);
       return [];
     }
-  }
-
-  private generateUniqueId(): string {
-    return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
   }
 
   async fetchComments(permalink: string, limit: number = 20): Promise<string[]> {
@@ -148,17 +148,19 @@ class RedditSentimentService {
     const commentsText = limitedComments.map(c => `- ${c}`).join('\n');
 
     const prompt = `
-You are analyzing Reddit public sentiment about "${query}" based on comments from the post: "${postTitle}"
+You are an analyst. Summarize Reddit public opinion about "${query}" based on the comments below.
+
+Post title: "${postTitle}"
 
 Comments:
 ${commentsText}
 
-Provide a concise analysis including:
+Please provide:
 1. Overall sentiment (positive, negative, neutral, or mixed)
-2. Key themes or concerns mentioned
-3. Most representative opinions (if any)
+2. Key recurring themes
+3. Any standout opinions or representative quotes
 
-Keep response under 150 words and focus on actionable insights.
+Keep response concise and focused on actionable insights.
 `;
 
     try {
