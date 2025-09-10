@@ -8,6 +8,7 @@ import NotFound from "@/pages/not-found";
 import Landing from "@/pages/landing";
 import Home from "@/pages/home";
 import ReportPage from "@/pages/report";
+import SentimentPage from "@/pages/sentiment";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -15,11 +16,15 @@ function Router() {
   return (
     <Switch>
       {isLoading || !isAuthenticated ? (
-        <Route path="/" component={Landing} />
+        <>
+          <Route path="/" component={Landing} />
+          <Route path="/sentiment" component={SentimentPage} />
+        </>
       ) : (
         <>
           <Route path="/" component={Home} />
           <Route path="/report/:id" component={ReportPage} />
+          <Route path="/sentiment" component={SentimentPage} />
         </>
       )}
       <Route component={NotFound} />
