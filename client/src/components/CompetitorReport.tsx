@@ -11,7 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 
 interface CompetitorReportProps {
   report: {
@@ -122,41 +122,63 @@ export default function CompetitorReport({ report }: CompetitorReportProps) {
       });
     }
   };
-  let analysis;
-  try {
-    // Handle both string and object formats
-    if (typeof report.summary === 'string') {
-      // Try to parse as JSON first
-      try {
-        analysis = JSON.parse(report.summary);
-      } catch {
-        // If parsing fails, treat as plain text and create structure
-        analysis = {
-          executive_summary: report.summary,
-          competitor_insights: [],
-          market_signals: [],
-          recommendations: []
-        };
-      }
-    } else if (typeof report.summary === 'object' && report.summary !== null) {
-      analysis = report.summary;
-    } else {
-      throw new Error('Invalid summary format');
-    }
 
-    // Ensure required fields exist
-    if (!analysis.executive_summary) {
-      analysis.executive_summary = "Competitive intelligence analysis completed. Key insights and market signals have been identified.";
+  // Parse report summary
+  const analysis = useMemo(() => {
+    try {
+      // Handle both string and object formats
+      if (typeof report.summary === 'string') {
+        // Try to parse as JSON first
+        try {
+          const parsed = JSON.parse(report.summary);
+          return {
+            executive_summary: parsed.executive_summary || "Competitive intelligence analysis completed. Key insights and market signals have been identified.",
+            competitors: parsed.competitors || [],
+            competitor_insights: parsed.competitor_insights || [],
+            market_signals: parsed.market_signals || [],
+            recommendations: parsed.recommendations || [],
+            strategic_insights: parsed.strategic_insights || [],
+            methodology: parsed.methodology || null
+          };
+        } catch {
+          // If parsing fails, treat as plain text and create structure
+          return {
+            executive_summary: report.summary,
+            competitors: [],
+            competitor_insights: [],
+            market_signals: [],
+            recommendations: [],
+            strategic_insights: [],
+            methodology: null
+          };
+        }
+      } else if (typeof report.summary === 'object' && report.summary !== null) {
+        const summaryObj = report.summary as any;
+        return {
+          executive_summary: summaryObj.executive_summary || "Competitive intelligence analysis completed. Key insights and market signals have been identified.",
+          competitors: summaryObj.competitors || [],
+          competitor_insights: summaryObj.competitor_insights || [],
+          market_signals: summaryObj.market_signals || [],
+          recommendations: summaryObj.recommendations || [],
+          strategic_insights: summaryObj.strategic_insights || [],
+          methodology: summaryObj.methodology || null
+        };
+      } else {
+        throw new Error('Invalid summary format');
+      }
+    } catch (error) {
+      console.error("Error parsing report summary:", error);
+      return {
+        executive_summary: "Competitive intelligence analysis completed. Key insights and market signals have been identified.",
+        competitors: [],
+        competitor_insights: [],
+        market_signals: [],
+        recommendations: [],
+        strategic_insights: [],
+        methodology: null
+      };
     }
-  } catch (error) {
-    console.error("Error parsing report summary:", error);
-    analysis = {
-      executive_summary: "Competitive intelligence analysis completed. Key insights and market signals have been identified.",
-      competitor_insights: [],
-      market_signals: [],
-      recommendations: []
-    };
-  }
+  }, [report.summary]);
 
   const handleExport = async () => {
     try {
