@@ -71,7 +71,8 @@ export default function CompetitorInputForm({ onAnalyze, isLoading, usage }: Com
     .filter(name => name.length > 0).length;
 
   const isOverLimit = usage && competitorCount > usage.limit;
-  const canSubmit = competitors.trim() && !isOverLimit && usage && usage.remaining > 0;
+  // Allow submission if user has competitors to analyze, regardless of remaining tracking slots
+  const canSubmit = competitors.trim() && !isOverLimit;
 
   return (
     <Card data-testid="card-competitor-input">
@@ -180,8 +181,8 @@ export default function CompetitorInputForm({ onAnalyze, isLoading, usage }: Com
             <AlertTriangle className="h-4 w-4" />
             <AlertDescription>
               <span className="font-medium">Tracking limit notice:</span>{" "}
-              You have <span className="font-semibold" data-testid="text-remaining-queries">{usage.remaining}</span> competitor analyses remaining. 
-              Complete your tracking list to add more.
+              You have <span className="font-semibold" data-testid="text-remaining-queries">{usage.remaining}</span> tracking slots remaining. 
+              You can still analyze existing tracked competitors.
             </AlertDescription>
           </Alert>
         )}

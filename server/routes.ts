@@ -78,9 +78,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const remaining = Math.max(0, limit - current);
       
       res.json({
-        current,
-        limit,
-        remaining,
+        current: Number(current), // Ensure it's a number
+        limit: Number(limit),
+        remaining: Number(remaining),
         isLoggedIn,
         isTrackingBased: true,
         resetTime: new Date(), // Not applicable for tracking-based limits
@@ -143,27 +143,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       if (isLoggedIn) {
         const currentTrackedCount = await storage.getTrackedCompetitorCount(userId);
+        const trackedCompetitors = await storage.getUserTrackedCompetitors(userId);
+        const trackedNames = trackedCompetitors.map(c => c.competitorName.toLowerCase());
         
-        // Check if user has reached the tracking limit
-        if (currentTrackedCount >= limit) {
-          return res.status(400).json({ 
-            message: "You can track up to 3 competitors. Remove one to analyze another.",
-            limit,
-            current: currentTrackedCount,
-            isTrackingLimit: true,
-          });
+        // Check which competitors are new vs already tracked
+        const newCompetitors = competitorList.filter(name => 
+          !trackedNames.includes(name.toLowerCase())
+        );
+        const existingCompetitors = competitorList.filter(name => 
+          trackedNames.includes(name.toLowerCase())
+        );
+        
+        // Only block if user tries to add NEW competitors beyond the limit
+        if (newCompetitors.length > 0) {
+          // Check if adding new competitors would exceed the limit
+          if (currentTrackedCount + newCompetitors.length > limit) {
+            return res.status(400).json({ 
+              message: `Adding ${newCompetitors.length} new competitors would exceed your limit of ${limit}. You currently track ${currentTrackedCount} competitors. You can still analyze your existing tracked competitors.`,
+              limit,
+              current: currentTrackedCount,
+              requested: newCompetitors.length,
+              newCompetitors,
+              existingCompetitors,
+              isTrackingLimit: true,
+            });
+          }
         }
         
-        // Check if adding these competitors would exceed the limit
-        if (currentTrackedCount + competitorList.length > limit) {
-          return res.status(400).json({ 
-            message: `Adding ${competitorList.length} competitors would exceed your limit of ${limit}. You currently track ${currentTrackedCount} competitors.`,
-            limit,
-            current: currentTrackedCount,
-            requested: competitorList.length,
-            isTrackingLimit: true,
-          });
-        }
+        // Analysis is allowed for existing tracked competitors even at limit
       } else {
         // Guests can still do unlimited analyses for testing
         if (competitorList.length > 5) {
