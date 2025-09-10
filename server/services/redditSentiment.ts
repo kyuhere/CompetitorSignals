@@ -44,8 +44,8 @@ class RedditSentimentService {
       try {
         console.log(`Searching r/${subreddit} for: ${query}`);
         
-        // Use old.reddit.com for potentially better rate limits
-        const searchUrl = `https://old.reddit.com/r/${subreddit}/search.json?q=${encodeURIComponent(query)}&restrict_sr=1&type=link&sort=hot&limit=${Math.ceil(limit / this.TARGET_SUBREDDITS.length)}`;
+        // Use the exact format you specified: /r/subreddit/search.json?q=query
+        const searchUrl = `https://www.reddit.com/r/${subreddit}/search.json?q=${encodeURIComponent(query)}&restrict_sr=1&type=link&sort=hot&limit=${Math.ceil(limit / this.TARGET_SUBREDDITS.length)}`;
         
         console.log(`Reddit search URL: ${searchUrl}`);
         
@@ -107,8 +107,8 @@ class RedditSentimentService {
 
   async fetchComments(permalink: string, limit: number = 20): Promise<string[]> {
     try {
-      // Use old.reddit.com for potentially better rate limits
-      const commentsUrl = `https://old.reddit.com${permalink}.json`;
+      // Use the exact format you specified: permalink + .json
+      const commentsUrl = `https://www.reddit.com${permalink}.json`;
       
       console.log(`Fetching comments from: ${commentsUrl}`);
       

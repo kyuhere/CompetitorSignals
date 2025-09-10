@@ -90,7 +90,7 @@ export default function ReportPage() {
           <Button
             variant="ghost"
             onClick={() => setLocation("/")}
-            className="justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 hover:bg-accent h-10 px-4 py-2 flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors bg-[#ffee04]"
+            className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
             Back to Reports
