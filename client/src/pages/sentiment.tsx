@@ -46,7 +46,11 @@ export default function SentimentPage() {
 
   const sentimentMutation = useMutation({
     mutationFn: async (searchQuery: string): Promise<SocialSentimentResult> => {
-      return apiRequest('POST', '/api/sentiment/social', { query: searchQuery });
+      const response = await apiRequest('POST', '/api/sentiment/social', { query: searchQuery });
+      return {
+        ...response,
+        query: response.query || searchQuery // Ensure query is always present
+      };
     },
     onSuccess: (data) => {
       setResult(data);
