@@ -43,6 +43,8 @@ interface CompetitorReportProps {
           comments: number;
           summary: string;
           url?: string;
+          permalink: string;
+          quotes?: string[];
         }>;
         overallSentiment: string;
       };
@@ -693,26 +695,55 @@ export default function CompetitorReport({ report }: CompetitorReportProps) {
                     {report.metadata.redditSentiment.posts.slice(0, 5).map((post, index) => (
                       <div key={index} className="border border-border rounded-lg p-4 hover:bg-muted/50 transition-colors">
                         <div className="flex items-start justify-between mb-2">
-                          <h4 className="font-medium text-sm text-foreground leading-tight pr-2">
+                          <a 
+                            href={`https://reddit.com${post.permalink}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="font-medium text-sm text-foreground leading-tight pr-2 hover:text-orange-600 transition-colors"
+                            data-testid={`reddit-post-link-${index}`}
+                          >
                             {post.title}
-                          </h4>
+                          </a>
                           <a 
                             href={`https://reddit.com/r/${post.subreddit}`}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="flex items-center text-xs text-orange-600 hover:text-orange-800 hover:underline transition-colors flex-shrink-0"
-                            data-testid={`reddit-link-${index}`}
+                            data-testid={`reddit-subreddit-link-${index}`}
                           >
                             <ExternalLink className="w-3 h-3 mr-1" />
                             r/{post.subreddit}
                           </a>
                         </div>
-                        <p className="text-xs text-muted-foreground mb-2">
-                          {post.comments} comments
+                        <p className="text-xs text-muted-foreground mb-3">
+                          {post.comments} comments • <a 
+                            href={`https://reddit.com${post.permalink}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-orange-600 hover:underline"
+                          >
+                            View Discussion
+                          </a>
                         </p>
-                        <p className="text-sm text-foreground leading-relaxed">
-                          {post.summary}
-                        </p>
+                        <div className="space-y-3">
+                          <p className="text-sm text-foreground leading-relaxed">
+                            {post.summary}
+                          </p>
+                          {post.quotes && post.quotes.length > 0 && (
+                            <div className="bg-muted/30 p-3 rounded-lg border-l-4 border-orange-500">
+                              <h5 className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wide">
+                                Representative Comments
+                              </h5>
+                              <div className="space-y-2">
+                                {post.quotes.slice(0, 3).map((quote, quoteIndex) => (
+                                  <blockquote key={quoteIndex} className="text-xs text-foreground italic border-l-2 border-muted pl-2">
+                                    "{quote}"
+                                  </blockquote>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     ))}
                   </div>
