@@ -2,7 +2,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Download, Share, Mail, BarChart3, DollarSign, MessageCircle, Lightbulb, CheckCircle, TrendingUp, TrendingDown, Minus, Building2, Target, Code, Globe, Package, Users, ThumbsUp, ThumbsDown, AlertTriangle, Zap } from "lucide-react";
+import { Download, Share, Mail, BarChart3, DollarSign, MessageCircle, Lightbulb, CheckCircle, TrendingUp, TrendingDown, Minus, Building2, Target, Code, Globe, Package, Users, ThumbsUp, ThumbsDown, AlertTriangle, Zap, ExternalLink } from "lucide-react";
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { useMutation } from "@tanstack/react-query";
@@ -34,6 +34,18 @@ interface CompetitorReportProps {
       signalCount: number;
       sources: string[];
       generatedAt: string;
+      hasRedditAnalysis?: boolean;
+      redditSentiment?: {
+        query: string;
+        posts: Array<{
+          title: string;
+          subreddit: string;
+          comments: number;
+          summary: string;
+          url?: string;
+        }>;
+        overallSentiment: string;
+      };
     };
     createdAt: string;
   };
@@ -651,6 +663,62 @@ export default function CompetitorReport({ report }: CompetitorReportProps) {
                 </li>
               ))}
             </ul>
+          </div>
+        )}
+
+        {/* Reddit Sentiment Analysis */}
+        {report.metadata?.redditSentiment && (
+          <div className="mt-8 bg-gradient-to-br from-orange-50 to-red-50 dark:from-orange-950/30 dark:to-red-950/30 p-6 rounded-lg border border-orange-200 dark:border-orange-800" data-testid="reddit-sentiment-section">
+            <h2 className="text-lg font-semibold text-foreground mb-6 flex items-center">
+              <MessageCircle className="w-5 h-5 text-orange-600 mr-2" />
+              🔥 Reddit Public Sentiment
+            </h2>
+            
+            <div className="space-y-6">
+              {/* Sentiment Gauge */}
+              <div className="bg-white/80 dark:bg-gray-900/80 p-4 rounded-lg">
+                <h3 className="font-medium text-foreground mb-3">Overall Public Opinion (Last 7 Days)</h3>
+                <div className="bg-muted p-4 rounded-lg">
+                  <p className="text-sm text-foreground leading-relaxed">
+                    {report.metadata.redditSentiment.overallSentiment}
+                  </p>
+                </div>
+              </div>
+              
+              {/* Recent Discussions */}
+              {report.metadata.redditSentiment.posts && report.metadata.redditSentiment.posts.length > 0 && (
+                <div className="bg-white/80 dark:bg-gray-900/80 p-4 rounded-lg">
+                  <h3 className="font-medium text-foreground mb-4">Recent Discussions</h3>
+                  <div className="space-y-4">
+                    {report.metadata.redditSentiment.posts.slice(0, 5).map((post, index) => (
+                      <div key={index} className="border border-border rounded-lg p-4 hover:bg-muted/50 transition-colors">
+                        <div className="flex items-start justify-between mb-2">
+                          <h4 className="font-medium text-sm text-foreground leading-tight pr-2">
+                            {post.title}
+                          </h4>
+                          <a 
+                            href={`https://reddit.com/r/${post.subreddit}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center text-xs text-orange-600 hover:text-orange-800 hover:underline transition-colors flex-shrink-0"
+                            data-testid={`reddit-link-${index}`}
+                          >
+                            <ExternalLink className="w-3 h-3 mr-1" />
+                            r/{post.subreddit}
+                          </a>
+                        </div>
+                        <p className="text-xs text-muted-foreground mb-2">
+                          {post.comments} comments
+                        </p>
+                        <p className="text-sm text-foreground leading-relaxed">
+                          {post.summary}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         )}
 
