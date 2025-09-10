@@ -1,0 +1,137 @@
+When the user provides a query (usually a company name, brand, or competitor link):
+1. Extract the main search term.
+   - If it’s a link, extract the company or brand name from the URL.
+   - If it’s a phrase, use it directly.
+
+2. Build a Reddit search JSON request:
+   https://www.reddit.com/search.json?q={QUERY}&type=posts&t=week&sort=new
+
+   - Replace {QUERY} with the extracted term.
+   - Prioritize posts from news-relevant subreddits: r/news, r/worldnews, r/business, r/technology, r/stocks, r/wallstreetbets.
+   - Ignore irrelevant or meme-based subs.
+
+3. From the search response:
+   - Collect the latest 10 posts.
+   - For each post, capture:
+     • Title
+     • Subreddit
+     • Permalink
+     • Number of comments
+
+4. For each post:
+   - Fetch comments from https://www.reddit.com{permalink}.json
+   - Extract up to 20 meaningful comments (ignore “[deleted]” and “[removed]”).
+
+5. Analyze the comments:
+   - Summarize the **overall sentiment** (positive / negative / neutral).
+   - Identify **recurring themes** (e.g., leadership, pricing, scandals, trust).
+   - Highlight standout opinions or representative quotes.
+
+6. Present results in this structured format:
+
+RESULTS FOR QUERY: {QUERY}
+Recent Posts:
+1. {title} (subreddit: {sub}, comments: {n})
+   → Public sentiment summary
+2. {title} (subreddit: {sub}, comments: {n})
+   → Public sentiment summary
+...
+
+Overall Public Opinion (last 7 days):
+- Sentiment breakdown: {summary}
+- Key themes: {themes}
+- Standout opinions: {quotes or paraphrases}
+
+
+import os
+import requests
+from openai import OpenAI
+
+# Set up API client (make sure OPENAI_API_KEY is set in your Replit secrets)
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+
+HEADERS = {"User-Agent": "my-reddit-scraper/0.1"}
+
+def fetch_posts(query, limit=10):
+    url = f"https://www.reddit.com/search.json?q={query}&type=posts&t=week&sort=new&limit={limit}"
+    res = requests.get(url, headers=HEADERS)
+    res.raise_for_status()
+    return res.json()["data"]["children"]
+
+def fetch_comments(permalink, limit=20):
+    url = f"https://www.reddit.com{permalink}.json"
+    res = requests.get(url, headers=HEADERS)
+    res.raise_for_status()
+    data = res.json()
+    comments = []
+    for c in data[1]["data"]["children"]:
+        body = c["data"].get("body")
+        if body and body not in ("[deleted]", "[removed]"):
+            comments.append(body)
+        if len(comments) >= limit:
+            break
+    return comments
+
+def analyze_sentiment(comments, query, post_title):
+    if not comments:
+        return "No meaningful comments found."
+
+    # Prepare input for the model
+    comments_text = "\n".join([f"- {c}" for c in comments[:15]])  # truncate for token safety
+
+    prompt = f"""
+You are an analyst. Summarize Reddit public opinion about {query} based on the comments below.
+
+Post title: "{post_title}"
+
+Comments:
+{comments_text}
+
+Please provide:
+1. Overall sentiment (positive, negative, neutral).
+2. Key recurring themes.
+3. Any standout opinions or representative quotes.
+    """
+
+    response = client.chat.completions.create(
+        model="gpt-4o-mini",  # you can use gpt-4.1-mini or gpt-4.1 if available
+        messages=[{"role": "user", "content": prompt}],
+        temperature=0.3
+    )
+
+    return response.choices[0].message.content.strip()
+
+def get_reddit_opinion(query):
+    posts = fetch_posts(query)
+    results = []
+
+    for post in posts:
+        pdata = post["data"]
+        title = pdata["title"]
+        subreddit = pdata["subreddit"]
+        permalink = pdata["permalink"]
+        num_comments = pdata["num_comments"]
+
+        comments = fetch_comments(permalink)
+        summary = analyze_sentiment(comments, query, title)
+
+        results.append({
+            "title": title,
+            "subreddit": subreddit,
+            "comments": num_comments,
+            "summary": summary
+        })
+
+    return {
+        "query": query,
+        "posts": results
+    }
+
+if __name__ == "__main__":
+    opinion = get_reddit_opinion("tesla")
+    print(f"\n📊 Results for query: {opinion['query']}")
+    for post in opinion["posts"]:
+        print(f"\n🔹 {post['title']} (r/{post['subreddit']}, {post['comments']} comments)")
+        print(post["summary"])
+
+
