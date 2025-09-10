@@ -307,20 +307,24 @@ export default function TrackedCompetitors() {
                 Competitor Locked
               </DialogTitle>
               <DialogDescription className="text-base">
-                You can only track 3 competitors and they're locked until the end of the month.
+                You can only track 3 competitors and they're locked until the end of the month. Remove one to add another or upgrade to premium for unlimited tracking.
               </DialogDescription>
             </DialogHeader>
             
             <div className="space-y-4">
               <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-medium text-orange-800">Unlock in:</span>
+                  <span className="text-sm font-medium text-orange-800">Unlock at end of month:</span>
                   <span className="text-lg font-bold text-orange-600">
                     {lockInfo?.daysRemaining} days
                   </span>
                 </div>
                 <p className="text-xs text-orange-700">
-                  Available on {lockInfo?.unlockDate ? new Date(lockInfo.unlockDate).toLocaleDateString() : 'N/A'}
+                  Available on {lockInfo?.unlockDate ? new Date(lockInfo.unlockDate).toLocaleDateString('en-US', { 
+                    month: 'long', 
+                    day: 'numeric',
+                    year: 'numeric'
+                  }) : 'N/A'}
                 </p>
               </div>
 

@@ -446,21 +446,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Competitor not found" });
       }
       
-      // Check if 30 days have passed since adding
+      // Check if competitor was added this month (locked until end of month)
       const addedDate = new Date(competitor.addedAt!);
       const now = new Date();
-      const daysSinceAdded = Math.floor((now.getTime() - addedDate.getTime()) / (1000 * 60 * 60 * 24));
       
-      if (daysSinceAdded < 30) {
-        const daysRemaining = 30 - daysSinceAdded;
-        const unlockDate = new Date(addedDate);
-        unlockDate.setDate(unlockDate.getDate() + 30);
+      // Check if added in the current month
+      if (addedDate.getMonth() === now.getMonth() && addedDate.getFullYear() === now.getFullYear()) {
+        // Calculate end of current month
+        const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+        const daysRemaining = Math.ceil((endOfMonth.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
         
         return res.status(400).json({ 
-          message: "Competitors are locked for 30 days after adding",
+          message: "Competitors are locked until the end of the month",
           locked: true,
           daysRemaining,
-          unlockDate: unlockDate.toISOString(),
+          unlockDate: endOfMonth.toISOString(),
           canUpgrade: true,
           competitorId: id
         });
