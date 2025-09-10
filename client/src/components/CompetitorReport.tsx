@@ -61,6 +61,7 @@ interface CompetitorReportProps {
         }>;
         overallSentiment: string;
       };
+      analyzedCompetitor?: string;
     };
     createdAt: string;
   };
@@ -687,6 +688,11 @@ export default function CompetitorReport({ report }: CompetitorReportProps) {
             <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center">
               <MessageCircle className="w-5 h-5 text-red-500 mr-2" />
               Reddit Public Sentiment
+              {report.metadata.analyzedCompetitor && (
+                <span className="ml-2 text-sm text-muted-foreground">
+                  ({report.metadata.analyzedCompetitor})
+                </span>
+              )}
             </h3>
             <div className="space-y-4">
               <div className="bg-background p-4 rounded-lg border">
@@ -746,6 +752,11 @@ export default function CompetitorReport({ report }: CompetitorReportProps) {
             <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center">
               <MessageCircle className="w-5 h-5 text-orange-500 mr-2" />
               Hacker News Sentiment
+              {report.metadata.analyzedCompetitor && (
+                <span className="ml-2 text-sm text-muted-foreground">
+                  ({report.metadata.analyzedCompetitor})
+                </span>
+              )}
             </h3>
             <div className="space-y-4">
               <div className="bg-background p-4 rounded-lg border">

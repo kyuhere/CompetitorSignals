@@ -9,6 +9,7 @@ import { signalAggregator } from "./services/signalAggregator";
 import { summarizeCompetitorSignals, generateFastPreview } from "./services/openai";
 import { sendCompetitorReport } from "./email";
 import { hackerNewsSentimentService } from './services/hackerNewsSentiment';
+import { redditSentimentService } from './services/redditSentiment';
 
 // Store active streaming sessions
 const streamingSessions = new Map<string, any>();
@@ -216,14 +217,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       );
       
-      // Get Hacker News sentiment analysis for the first competitor
+      // Get Reddit and Hacker News sentiment analysis for the first competitor
+      let redditSentiment = null;
       let hackerNewsSentiment = null;
       if (competitorList.length > 0) {
         if (streamRes) {
           streamRes.write(`data: ${JSON.stringify({
             type: "progress",
+            message: "Analyzing Reddit sentiment...",
+            progress: 55
+          })}\n\n`);
+        }
+        
+        try {
+          redditSentiment = await redditSentimentService.getRedditSentiment(competitorList[0]);
+          console.log(`Reddit sentiment analysis completed for ${competitorList[0]}`);
+        } catch (error) {
+          console.error('Error getting Reddit sentiment:', error);
+          // Continue without sentiment data
+        }
+
+        if (streamRes) {
+          streamRes.write(`data: ${JSON.stringify({
+            type: "progress",
             message: "Analyzing Hacker News sentiment...",
-            progress: 60
+            progress: 65
           })}\n\n`);
         }
         
@@ -287,8 +305,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           signalCount: signals.reduce((acc: number, s: any) => acc + s.items.length, 0),
           sources: Object.keys(sources).filter(key => sources[key as keyof typeof sources]),
           generatedAt: new Date().toISOString(),
+          hasRedditAnalysis: !!redditSentiment,
+          redditSentiment,
           hasHackerNewsSentiment: !!hackerNewsSentiment,
           hackerNewsSentiment,
+          analyzedCompetitor: competitorList[0], // Note which competitor the sentiment is for
         },
       };
       
