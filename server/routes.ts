@@ -66,13 +66,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/usage', async (req: any, res) => {
     try {
       const userId = req.user?.claims?.sub;
-      const sessionId = req.sessionID;
-      
-      const rateLimit = await storage.getRateLimit(userId, sessionId);
       const isLoggedIn = !!userId;
       
-      const limit = isLoggedIn ? 5 : 999999; // Unlimited for guests during testing
-      const current = rateLimit?.queryCount || 0;
+      const limit = 3; // Maximum 3 tracked competitors
+      let current = 0;
+      
+      if (isLoggedIn) {
+        current = await storage.getTrackedCompetitorCount(userId);
+      }
+      
       const remaining = Math.max(0, limit - current);
       
       res.json({
@@ -80,7 +82,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         limit,
         remaining,
         isLoggedIn,
-        resetTime: rateLimit?.lastReset || new Date(),
+        isTrackingBased: true,
+        resetTime: new Date(), // Not applicable for tracking-based limits
       });
     } catch (error) {
       console.error("Error fetching usage:", error);
@@ -135,46 +138,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .map(name => name.trim())
         .filter(name => name.length > 0);
       
-      // Check rate limits - unlimited for guests during testing, normal limits for logged-in users
-      const limit = isLoggedIn ? 5 : 999999; // Unlimited for guests during testing
-      const rateLimit = await storage.getRateLimit(userId, sessionId);
+      // Check tracked competitor limits for logged-in users
+      const limit = 3; // Maximum 3 tracked competitors
       
-      // Reset if new day for logged-in users
-      const today = new Date();
-      const lastReset = rateLimit?.lastReset || new Date(0);
-      const shouldReset = isLoggedIn ? 
-        (today.getDate() !== lastReset.getDate() || 
-         today.getMonth() !== lastReset.getMonth() ||
-         today.getFullYear() !== lastReset.getFullYear()) :
-        false; // Don't reset for guests during testing
-      
-      let currentCount = shouldReset ? 0 : (rateLimit?.queryCount || 0);
-      
-      // Only check limits for logged-in users during testing
-      if (isLoggedIn && currentCount >= limit) {
-        return res.status(429).json({ 
-          message: "Daily query limit exceeded. Please try again tomorrow.",
-          limit,
-          current: currentCount,
-        });
+      if (isLoggedIn) {
+        const currentTrackedCount = await storage.getTrackedCompetitorCount(userId);
+        
+        // Check if user has reached the tracking limit
+        if (currentTrackedCount >= limit) {
+          return res.status(400).json({ 
+            message: "You can track up to 3 competitors. Remove one to analyze another.",
+            limit,
+            current: currentTrackedCount,
+            isTrackingLimit: true,
+          });
+        }
+        
+        // Check if adding these competitors would exceed the limit
+        if (currentTrackedCount + competitorList.length > limit) {
+          return res.status(400).json({ 
+            message: `Adding ${competitorList.length} competitors would exceed your limit of ${limit}. You currently track ${currentTrackedCount} competitors.`,
+            limit,
+            current: currentTrackedCount,
+            requested: competitorList.length,
+            isTrackingLimit: true,
+          });
+        }
+      } else {
+        // Guests can still do unlimited analyses for testing
+        if (competitorList.length > 5) {
+          return res.status(400).json({ 
+            message: `You can analyze up to 5 competitors as a guest.`,
+            limit: 5,
+            requested: competitorList.length,
+          });
+        }
       }
-      
-      // Check competitor count against tier
-      if (competitorList.length > limit) {
-        return res.status(400).json({ 
-          message: `You can analyze up to ${limit} competitors with your current tier.`,
-          limit,
-          requested: competitorList.length,
-        });
-      }
-      
-      // Update rate limit
-      await storage.upsertRateLimit({
-        userId,
-        sessionId: isLoggedIn ? undefined : sessionId,
-        queryCount: currentCount + 1,
-        lastReset: shouldReset ? today : lastReset,
-      });
       
       // Aggregate signals with streaming support
       const urlList = urls ? urls.split('\n').map(url => url.trim()).filter(url => url.length > 0) : [];
@@ -289,6 +288,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (isLoggedIn) {
         // Save report for logged-in users
         report = await storage.createReport(reportData);
+        
+        // Add competitors to tracking automatically
+        for (const competitorName of competitorList) {
+          try {
+            // Check if this competitor is already being tracked
+            const existingCompetitors = await storage.getUserTrackedCompetitors(userId);
+            const isAlreadyTracked = existingCompetitors.some(
+              c => c.competitorName.toLowerCase() === competitorName.toLowerCase()
+            );
+            
+            if (!isAlreadyTracked) {
+              await storage.addTrackedCompetitor({
+                userId,
+                competitorName,
+                isActive: true,
+              });
+            }
+          } catch (error) {
+            console.error(`Failed to add ${competitorName} to tracking:`, error);
+            // Continue with other competitors even if one fails
+          }
+        }
         
         // Automatically send email to user after report is created
         const userEmail = req.user.claims.email;

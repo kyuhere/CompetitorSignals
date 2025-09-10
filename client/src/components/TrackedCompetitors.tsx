@@ -161,7 +161,7 @@ export default function TrackedCompetitors() {
           </Badge>
         </div>
         <p className="text-sm text-muted-foreground font-medium">
-          Manage the competitors you want to monitor. We'll analyze them automatically every two weeks.
+          Manage your 3 tracked competitors. Each analysis adds competitors to this list, and we'll monitor them automatically.
         </p>
       </CardHeader>
       

@@ -9,6 +9,8 @@ interface AppHeaderProps {
     limit: number;
     remaining: number;
     isLoggedIn: boolean;
+    isTrackingBased?: boolean; // Added for tracking-based logic
+    resetTime?: string; // Added for reset time display
   };
 }
 
@@ -27,7 +29,7 @@ export default function AppHeader({ usage }: AppHeaderProps) {
               <span className="text-2xl font-bold text-foreground">Competitor Lemonade</span>
             </div>
           </div>
-          
+
           <div className="flex items-center space-x-4">
             {isAuthenticated && user ? (
               <>
@@ -37,17 +39,20 @@ export default function AppHeader({ usage }: AppHeaderProps) {
                   <span className="font-medium text-gray-800" data-testid="text-user-email">{user.email || 'User'}</span>
                   <Badge className="bg-primary text-primary-foreground font-bold" data-testid="badge-user-tier">Free</Badge>
                 </div>
-                
+
                 {/* Query Limit Indicator */}
                 {usage && (
                   <div className="flex items-center space-x-3 text-sm bg-peach px-4 py-2 rounded-xl border-2 border-primary/20" data-testid="usage-indicator">
-                    <span className="font-medium text-gray-800">🍋 Daily limit:</span>
+                    <span className="font-medium text-gray-800">🍋 {usage.isTrackingBased ? 'Tracking limit:' : 'Daily limit:'}</span>
                     <span className="font-bold text-gray-900" data-testid="text-usage-current">{usage.current}</span>
                     <span className="text-gray-700">/</span>
                     <span className="font-bold text-gray-900" data-testid="text-usage-limit">{usage.limit}</span>
+                    {usage.isLoggedIn && !usage.isTrackingBased && usage.resetTime && (
+                        <span className="text-gray-500"> • Resets {new Date(usage.resetTime).toLocaleDateString()}</span>
+                    )}
                   </div>
                 )}
-                
+
                 <Button
                   className="btn-secondary rounded-xl"
                   size="sm"
@@ -58,7 +63,7 @@ export default function AppHeader({ usage }: AppHeaderProps) {
                 </Button>
               </>
             ) : (
-              <Button 
+              <Button
                 onClick={() => window.location.href = '/api/login'}
                 data-testid="button-login"
               >
