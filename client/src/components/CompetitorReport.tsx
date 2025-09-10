@@ -180,6 +180,11 @@ export default function CompetitorReport({ report }: CompetitorReportProps) {
     }
   }, [report.summary]);
 
+  // Debug logging to check data structure
+  console.log('Report data:', report);
+  console.log('Analysis data:', analysis);
+  console.log('Competitors data:', analysis.competitors);
+
   const handleExport = async () => {
     try {
       // Find the report content element
