@@ -5,7 +5,6 @@ import { setupAuth, isAuthenticated } from "./replitAuth";
 import { insertCompetitorReportSchema, insertTrackedCompetitorSchema } from "@shared/schema";
 import { z } from "zod";
 import { signalAggregator } from "./services/signalAggregator";
-import { enhancedSignalAggregator } from "./services/enhancedSignalAggregator";
 
 import { summarizeCompetitorSignals, generateFastPreview } from "./services/openai";
 import { sendCompetitorReport } from "./email";
@@ -33,7 +32,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
-
+      
       // Check if there's a guest search to migrate
       const guestSearchData = req.headers['x-guest-search'];
       if (guestSearchData) {
@@ -55,7 +54,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.error('Error migrating guest search:', error);
         }
       }
-
+      
       res.json(user);
     } catch (error) {
       console.error("Error fetching user:", error);
@@ -63,43 +62,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Helper function to get competitor limits by plan
-  const getPlanLimits = (plan: string) => {
-    switch (plan) {
-      case 'premium':
-        return { tracked: 10, analysis: 10 };
-      case 'free':
-      default:
-        return { tracked: 3, analysis: 3 };
-    }
-  };
-
   // Get user usage stats
   app.get('/api/usage', async (req: any, res) => {
     try {
       const userId = req.user?.claims?.sub;
       const isLoggedIn = !!userId;
-
-      let plan = 'free';
-      let limit = 3; // Guest limit
+      
+      const limit = 3; // Maximum 3 tracked competitors
       let current = 0;
-
+      
       if (isLoggedIn) {
-        // Get user's plan from database
-        const user = await storage.getUser(userId);
-        plan = user?.plan || 'free';
-        const planLimits = getPlanLimits(plan);
-        limit = planLimits.tracked;
         current = await storage.getTrackedCompetitorCount(userId);
       }
-
+      
       const remaining = Math.max(0, limit - current);
-
+      
       res.json({
-        current: Number(current),
+        current: Number(current), // Ensure it's a number
         limit: Number(limit),
         remaining: Number(remaining),
-        plan,
         isLoggedIn,
         isTrackingBased: true,
         resetTime: new Date(), // Not applicable for tracking-based limits
@@ -139,51 +120,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user?.claims?.sub;
       const sessionId = req.sessionID;
       const isLoggedIn = !!userId;
-
+      
       // Validate request
       const validation = competitorAnalysisSchema.safeParse(req.body);
       if (!validation.success) {
-        return res.status(400).json({
+        return res.status(400).json({ 
           message: "Invalid request data",
-          errors: validation.error.issues
+          errors: validation.error.issues 
         });
       }
-
+      
       const { competitors, urls, sources } = validation.data;
-
+      
       // Parse competitors
       const competitorList = competitors
         .split('\n')
         .map(name => name.trim())
         .filter(name => name.length > 0);
-
-      // Get user plan and limits
-      let plan = 'free';
-      let limit = 3; // Default guest limit
-
+      
+      // Check tracked competitor limits for logged-in users
+      const limit = 3; // Maximum 3 tracked competitors
+      
       if (isLoggedIn) {
-        const user = await storage.getUser(userId);
-        plan = user?.plan || 'free';
-        const planLimits = getPlanLimits(plan);
-        limit = planLimits.tracked;
-
         const currentTrackedCount = await storage.getTrackedCompetitorCount(userId);
         const trackedCompetitors = await storage.getUserTrackedCompetitors(userId);
         const trackedNames = trackedCompetitors.map(c => c.competitorName.toLowerCase());
-
+        
         // Check which competitors are new vs already tracked
-        const newCompetitors = competitorList.filter(name =>
+        const newCompetitors = competitorList.filter(name => 
           !trackedNames.includes(name.toLowerCase())
         );
-        const existingCompetitors = competitorList.filter(name =>
+        const existingCompetitors = competitorList.filter(name => 
           trackedNames.includes(name.toLowerCase())
         );
-
+        
         // Only block if user tries to add NEW competitors beyond the limit
         if (newCompetitors.length > 0) {
           // Check if adding new competitors would exceed the limit
           if (currentTrackedCount + newCompetitors.length > limit) {
-            return res.status(400).json({
+            return res.status(400).json({ 
               message: `Adding ${newCompetitors.length} new competitors would exceed your limit of ${limit}. You currently track ${currentTrackedCount} competitors. You can still analyze your existing tracked competitors.`,
               limit,
               current: currentTrackedCount,
@@ -194,25 +169,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
             });
           }
         }
-
+        
         // Analysis is allowed for existing tracked competitors even at limit
       } else {
         // Guests can still do unlimited analyses for testing
         if (competitorList.length > 5) {
-          return res.status(400).json({
+          return res.status(400).json({ 
             message: `You can analyze up to 5 competitors as a guest.`,
             limit: 5,
             requested: competitorList.length,
           });
         }
       }
-
+      
       // Aggregate signals with streaming support
       const urlList = urls ? urls.split('\n').map(url => url.trim()).filter(url => url.length > 0) : [];
-
+      
       // Generate a unique session ID for streaming
       const streamSessionId = `${sessionId}_${Date.now()}`;
-
+      
       // Send initial progress update
       const streamRes = streamingSessions.get(streamSessionId);
       if (streamRes) {
@@ -222,57 +197,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
           progress: 20
         })}\n\n`);
       }
-
-      // Use enhanced aggregator for premium users only, traditional for free users
-      let signals, enhancedData;
-      if (isLoggedIn && plan === 'premium') {
-        console.log(`[Routes] Premium user detected, using enhanced aggregation for: ${competitorList.join(', ')}`);
-        // Premium users get enhanced analysis with G2 reviews and HN sentiment
-        const enhancedResults = await enhancedSignalAggregator.aggregateEnhancedSignals(
-          competitorList,
-          urlList,
-          sources,
-          (partialResults) => {
-            const streamRes = streamingSessions.get(streamSessionId);
-            if (streamRes) {
-              streamRes.write(`data: ${JSON.stringify({
-                type: "partial_results",
-                data: partialResults.traditional || partialResults,
-                progress: 50
-              })}\n\n`);
-            }
+      
+      // Aggregate signals in parallel with partial results callback
+      const signals = await signalAggregator.aggregateSignals(
+        competitorList, 
+        urlList, 
+        sources,
+        (partialResults) => {
+          const streamRes = streamingSessions.get(streamSessionId);
+          if (streamRes) {
+            streamRes.write(`data: ${JSON.stringify({
+              type: "partial_results",
+              data: partialResults,
+              progress: 50
+            })}\n\n`);
           }
-        );
-        signals = enhancedResults.traditional;
-        enhancedData = enhancedResults.enhanced;
-        console.log(`[Routes] Enhanced results received:`, {
-          traditionalSignals: signals?.length || 0,
-          enhancedDataCount: enhancedData?.length || 0,
-          enhancedCompetitors: enhancedData?.map(d => d.competitor) || []
-        });
-      } else {
-        console.log(`[Routes] Free user/guest detected, using traditional aggregation for: ${competitorList.join(', ')}`);
-        // Free users and guests get traditional signal aggregation
-        signals = await signalAggregator.aggregateSignals(
-          competitorList,
-          urlList,
-          sources,
-          (partialResults) => {
-            const streamRes = streamingSessions.get(streamSessionId);
-            if (streamRes) {
-              streamRes.write(`data: ${JSON.stringify({
-                type: "partial_results",
-                data: partialResults,
-                progress: 50
-              })}\n\n`);
-            }
-          }
-        );
-        enhancedData = [];
-      }
-
-
-
+        }
+      );
+      
+      
+      
       // Send signals collected update
       if (streamRes) {
         streamRes.write(`data: ${JSON.stringify({
@@ -281,47 +225,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
           progress: 70
         })}\n\n`);
       }
-
-      // Generate analysis with enhanced data for premium users
+      
+      // Generate fast preview first
       let summary;
       try {
-        if (isLoggedIn && plan === 'premium' && enhancedData && enhancedData.length > 0) {
-          // Premium users get enhanced analysis including review and sentiment data
-          const fastPreview = await generateFastPreview(signals, competitorList);
-
-          // Send preview to stream
-          if (streamRes) {
-            streamRes.write(`data: ${JSON.stringify({
-              type: "preview",
-              data: fastPreview,
-              progress: 85
-            })}\n\n`);
-          }
-
-          // Generate enhanced summary with review and sentiment data
-          summary = await enhancedSignalAggregator.generateEnhancedAnalysis(
-            signals,
-            enhancedData,
-            competitorList
-          );
-
-        } else {
-          // Free users and guests get traditional analysis
-          const fastPreview = await generateFastPreview(signals, competitorList);
-
-          // Send preview to stream
-          if (streamRes) {
-            streamRes.write(`data: ${JSON.stringify({
-              type: "preview",
-              data: fastPreview,
-              progress: 85
-            })}\n\n`);
-          }
-
-          // Generate traditional summary
-          summary = await summarizeCompetitorSignals(signals, competitorList, false);
+        const fastPreview = await generateFastPreview(signals, competitorList);
+        
+        // Send preview to stream
+        if (streamRes) {
+          streamRes.write(`data: ${JSON.stringify({
+            type: "preview",
+            data: fastPreview,
+            progress: 85
+          })}\n\n`);
         }
-
+        
+        // Then generate full summary
+        summary = await summarizeCompetitorSignals(signals, competitorList, false);
+        
         // Send completion
         if (streamRes) {
           streamRes.write(`data: ${JSON.stringify({
@@ -329,24 +250,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
             progress: 100
           })}\n\n`);
         }
-
+        
       } catch (error) {
         console.error("AI analysis error:", error);
         // Fallback to basic summary
         summary = await summarizeCompetitorSignals(signals, competitorList, false);
       }
-
-      // Create report with enhanced data
-      const hasG2Reviews = enhancedData && enhancedData.some((d: any) => d.g2 && d.g2.totalReviews > 0);
-      const hasHNSentiment = enhancedData && enhancedData.some((d: any) => d.hackerNews && d.hackerNews.totalMentions > 0);
-
-      console.log(`[Routes] Creating report metadata:`, {
-        enhancedDataLength: enhancedData?.length || 0,
-        hasG2Reviews,
-        hasHNSentiment,
-        enhancedDataSample: enhancedData?.slice(0, 2)
-      });
-
+      
+      // Create report
       const reportData = {
         userId: userId || `guest_${sessionId}`,
         title: `${competitorList.slice(0, 2).join(', ')}${competitorList.length > 2 ? ` +${competitorList.length - 2} more` : ''} Analysis`,
@@ -357,19 +268,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
           signalCount: signals.reduce((acc: number, s: any) => acc + s.items.length, 0),
           sources: Object.keys(sources).filter(key => sources[key as keyof typeof sources]),
           generatedAt: new Date().toISOString(),
-          enhanced: enhancedData && enhancedData.length > 0 ? {
-            reviewData: enhancedData,
-            hasG2Reviews,
-            hasHNSentiment,
-          } : null,
         },
       };
-
+      
       let report;
       if (isLoggedIn) {
         // Save report for logged-in users
         report = await storage.createReport(reportData);
-
+        
         // Add competitors to tracking automatically
         for (const competitorName of competitorList) {
           try {
@@ -378,7 +284,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             const isAlreadyTracked = existingCompetitors.some(
               c => c.competitorName.toLowerCase() === competitorName.toLowerCase()
             );
-
+            
             if (!isAlreadyTracked) {
               await storage.addTrackedCompetitor({
                 userId,
@@ -391,7 +297,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             // Continue with other competitors even if one fails
           }
         }
-
+        
         // Automatically send email to user after report is created
         const userEmail = req.user.claims.email;
         if (userEmail) {
@@ -416,19 +322,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
           createdAt: new Date(),
         };
       }
-
+      
       // Clean up streaming session
       streamingSessions.delete(streamSessionId);
-
+      
       res.json(report);
     } catch (error) {
       console.error("Error analyzing competitors:", error);
-
+      
       // Clean up streaming session on error
       const errorStreamSessionId = `${req.sessionID}_${Date.now()}`;
       streamingSessions.delete(errorStreamSessionId);
-
-      res.status(500).json({
+      
+      res.status(500).json({ 
         message: "Failed to analyze competitors. Please try again.",
         error: error instanceof Error ? error.message : "Unknown error"
       });
@@ -452,17 +358,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { id } = req.params;
       const userId = req.user?.claims?.sub;
-
+      
       const report = await storage.getReportById(id);
       if (!report) {
         return res.status(404).json({ message: "Report not found" });
       }
-
+      
       // Check if user owns the report (for logged-in users)
       if (userId && report.userId !== userId && !report.userId.startsWith('guest_')) {
         return res.status(403).json({ message: "Access denied" });
       }
-
+      
       res.json(report);
     } catch (error) {
       console.error("Error fetching report:", error);
@@ -471,14 +377,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Tracked Competitors API
-
+  
   // Get user's tracked competitors
   app.get('/api/competitors/tracked', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const trackedCompetitors = await storage.getUserTrackedCompetitors(userId);
       const count = await storage.getTrackedCompetitorCount(userId);
-
+      
       res.json({
         competitors: trackedCompetitors,
         count,
@@ -489,44 +395,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Failed to fetch tracked competitors" });
     }
   });
-
+  
   // Add a tracked competitor
   app.post('/api/competitors/tracked', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-
+      
       const validation = insertTrackedCompetitorSchema.safeParse({
         userId,
         ...req.body
       });
-
+      
       if (!validation.success) {
-        return res.status(400).json({
+        return res.status(400).json({ 
           message: "Invalid request data",
-          errors: validation.error.issues
+          errors: validation.error.issues 
         });
       }
-
+      
       // Check if competitor already exists (only active ones)
       const existingCompetitors = await storage.getUserTrackedCompetitors(userId);
       const competitorExists = existingCompetitors.some(
         c => c.competitorName.toLowerCase() === validation.data.competitorName.toLowerCase()
       );
-
+      
       if (competitorExists) {
-        return res.status(400).json({
-          message: "This competitor is already being tracked"
+        return res.status(400).json({ 
+          message: "This competitor is already being tracked" 
         });
       }
-
+      
       // Check limit (3 competitors max)
       const currentCount = await storage.getTrackedCompetitorCount(userId);
       if (currentCount >= 3) {
-        return res.status(400).json({
-          message: "You can track up to 3 competitors. Remove one to add another."
+        return res.status(400).json({ 
+          message: "You can track up to 3 competitors. Remove one to add another." 
         });
       }
-
+      
       const newCompetitor = await storage.addTrackedCompetitor(validation.data);
       res.json(newCompetitor);
     } catch (error) {
@@ -534,30 +440,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Failed to add competitor" });
     }
   });
-
+  
   // Remove a tracked competitor (with monthly lock)
   app.delete('/api/competitors/tracked/:id', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const { id } = req.params;
-
+      
       // Get the competitor to check when it was added
       const competitor = await storage.getTrackedCompetitorById(userId, id);
       if (!competitor) {
         return res.status(404).json({ message: "Competitor not found" });
       }
-
+      
       // Check if competitor was added this month (locked until end of month)
       const addedDate = new Date(competitor.addedAt!);
       const now = new Date();
-
+      
       // Check if added in the current month
       if (addedDate.getMonth() === now.getMonth() && addedDate.getFullYear() === now.getFullYear()) {
         // Calculate end of current month
         const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
         const daysRemaining = Math.ceil((endOfMonth.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-
-        return res.status(400).json({
+        
+        return res.status(400).json({ 
           message: "Competitors are locked until the end of the month",
           locked: true,
           daysRemaining,
@@ -566,7 +472,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           competitorId: id
         });
       }
-
+      
       await storage.removeTrackedCompetitor(userId, id);
       res.json({ message: "Competitor removed successfully" });
     } catch (error) {
@@ -579,19 +485,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/competitors/tracked/analyze', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-
+      
       // Get user's tracked competitors
       const trackedCompetitors = await storage.getUserTrackedCompetitors(userId);
-
+      
       if (trackedCompetitors.length === 0) {
-        return res.status(400).json({
-          message: "No competitors are being tracked"
+        return res.status(400).json({ 
+          message: "No competitors are being tracked" 
         });
       }
-
+      
       // Prepare competitors list
       const competitorList = trackedCompetitors.map(c => c.competitorName);
-
+      
       // Default sources for tracked competitor analysis
       const sources = {
         news: true,
@@ -599,17 +505,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         social: true,
         products: false,
       };
-
+      
       // Aggregate signals
       const signals = await signalAggregator.aggregateSignals(
-        competitorList,
+        competitorList, 
         [], // No custom URLs for tracked analysis
         sources
       );
-
+      
       // Generate AI summary
       const summary = await summarizeCompetitorSignals(signals, competitorList, false);
-
+      
       // Create report
       const reportData = {
         userId,
@@ -624,15 +530,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
           isWeeklyAnalysis: true,
         },
       };
-
+      
       const report = await storage.createReport(reportData);
-
+      
       // Update lastAnalyzedAt for all tracked competitors
       for (const competitor of trackedCompetitors) {
         // This would require updating the storage interface to support this
         // For now, we'll skip this step as it's not critical for the MVP
       }
-
+      
       res.json(report);
     } catch (error) {
       console.error("Error analyzing tracked competitors:", error);
@@ -645,23 +551,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { reportId } = req.params;
       const { email } = req.body;
-
+      
       if (!email) {
         return res.status(400).json({ message: "Email address is required" });
       }
-
+      
       // Basic email validation
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (!emailRegex.test(email)) {
         return res.status(400).json({ message: "Invalid email address format" });
       }
-
+      
       // Get the report
       const report = await storage.getReportById(reportId);
       if (!report) {
         return res.status(404).json({ message: "Report not found" });
       }
-
+      
       // Send the email
       console.log(`Attempting to send report ${reportId} to ${email}`);
       const emailResult = await sendCompetitorReport({
@@ -670,17 +576,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         reportContent: report.summary,
         competitors: report.competitors as string[]
       });
-
+      
       if (emailResult.success) {
         console.log(`Email sent successfully to ${email}, ID: ${emailResult.id}`);
-        res.json({
-          success: true,
+        res.json({ 
+          success: true, 
           message: "Report sent successfully to your email",
-          emailId: emailResult.id
+          emailId: emailResult.id 
         });
       } else {
         console.error(`Email failed for ${email}:`, emailResult.error);
-        res.status(500).json({
+        res.status(500).json({ 
           message: "Failed to send email",
           error: emailResult.error
         });
