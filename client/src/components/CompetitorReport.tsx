@@ -48,6 +48,37 @@ interface CompetitorReportProps {
         }>;
         overallSentiment: string;
       };
+      enhanced?: {
+        reviewData: Array<{
+          competitor: string;
+          g2?: {
+            platform: 'g2';
+            averageRating?: number;
+            totalReviews?: number;
+            sentiment: 'positive' | 'neutral' | 'negative';
+            sentimentScore: number;
+            topQuotes: Array<{
+              text: string;
+              url?: string;
+            }>;
+            summary: string;
+          };
+          hackerNews?: {
+            platform: 'hackernews';
+            totalMentions?: number;
+            sentiment: 'positive' | 'neutral' | 'negative';
+            sentimentScore: number;
+            topQuotes: Array<{
+              text: string;
+              author?: string;
+              url?: string;
+            }>;
+            summary: string;
+          };
+        }>;
+        hasG2Reviews: boolean;
+        hasHNSentiment: boolean;
+      };
     };
     createdAt: string;
   };
@@ -372,9 +403,10 @@ export default function CompetitorReport({ report }: CompetitorReportProps) {
               </div>
 
               <Tabs defaultValue="overview" className="w-full">
-                <TabsList className="grid w-full grid-cols-4">
+                <TabsList className="grid w-full grid-cols-5">
                   <TabsTrigger value="overview">Overview</TabsTrigger>
                   <TabsTrigger value="analysis">Analysis</TabsTrigger>
+                  <TabsTrigger value="reviews">Reviews</TabsTrigger>
                   <TabsTrigger value="market">Market</TabsTrigger>
                   <TabsTrigger value="tech">Tech & Innovation</TabsTrigger>
                 </TabsList>
@@ -583,6 +615,175 @@ export default function CompetitorReport({ report }: CompetitorReportProps) {
                       </>
                     )}
                   </div>
+                </TabsContent>
+
+                <TabsContent value="reviews" className="space-y-6 mt-6">
+                  {/* Reviews & Sentiment Analysis */}
+                  {report.metadata?.enhanced?.reviewData?.find((data: any) => data.competitor === competitor.competitor) ? (() => {
+                    const enhancedData = report.metadata.enhanced.reviewData.find((data: any) => data.competitor === competitor.competitor);
+                    const g2Data = enhancedData?.g2;
+                    const hnData = enhancedData?.hackerNews;
+                    
+                    return (
+                      <div className="space-y-6">
+                        {/* G2 Reviews Section */}
+                        {g2Data && (
+                          <div className="bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-950 dark:to-purple-950 p-6 rounded-lg">
+                            <h4 className="font-medium text-foreground mb-4 flex items-center">
+                              <BarChart3 className="w-4 h-4 text-blue-600 mr-2" />
+                              G2 Reviews & Ratings
+                            </h4>
+                            
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                              <div className="bg-white/50 dark:bg-black/30 p-4 rounded-lg text-center">
+                                <div className="text-2xl font-bold text-foreground">{g2Data.averageRating?.toFixed(1) || 'N/A'}</div>
+                                <div className="text-sm text-muted-foreground">Average Rating</div>
+                                <div className="flex justify-center mt-2">
+                                  {Array.from({length: 5}, (_, i) => (
+                                    <div
+                                      key={i}
+                                      className={`w-3 h-3 rounded-full mx-0.5 ${
+                                        i < Math.floor(g2Data.averageRating || 0) ? 'bg-yellow-400' : 'bg-gray-300'
+                                      }`}
+                                    />
+                                  ))}
+                                </div>
+                              </div>
+                              
+                              <div className="bg-white/50 dark:bg-black/30 p-4 rounded-lg text-center">
+                                <div className="text-2xl font-bold text-foreground">{g2Data.totalReviews || 0}</div>
+                                <div className="text-sm text-muted-foreground">Total Reviews</div>
+                              </div>
+                              
+                              <div className="bg-white/50 dark:bg-black/30 p-4 rounded-lg text-center">
+                                <div className={`text-2xl font-bold ${
+                                  g2Data.sentiment === 'positive' ? 'text-green-600' : 
+                                  g2Data.sentiment === 'negative' ? 'text-red-600' : 'text-yellow-600'
+                                }`}>
+                                  {g2Data.sentiment === 'positive' ? '😊' : g2Data.sentiment === 'negative' ? '😞' : '😐'}
+                                </div>
+                                <div className="text-sm text-muted-foreground">Overall Sentiment</div>
+                                <div className="text-xs text-muted-foreground mt-1">{g2Data.sentimentScore}/100</div>
+                              </div>
+                            </div>
+                            
+                            {g2Data.topQuotes?.length > 0 && (
+                              <div>
+                                <h5 className="font-medium text-foreground mb-3">Top Review Quotes</h5>
+                                <div className="space-y-3">
+                                  {g2Data.topQuotes.slice(0, 3).map((quote: any, idx: number) => (
+                                    <div key={idx} className="bg-white/50 dark:bg-black/30 p-3 rounded border-l-4 border-blue-500">
+                                      <p className="text-sm text-foreground italic">"{quote.text}"</p>
+                                      {quote.url && (
+                                        <a
+                                          href={quote.url}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="text-xs text-blue-600 hover:underline mt-1 inline-flex items-center"
+                                          data-testid={`link-g2-review-${idx}`}
+                                        >
+                                          View on G2 <ExternalLink className="w-3 h-3 ml-1" />
+                                        </a>
+                                      )}
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                            
+                            <div className="mt-4 p-3 bg-white/50 dark:bg-black/30 rounded">
+                              <p className="text-sm text-foreground">{g2Data.summary}</p>
+                            </div>
+                          </div>
+                        )}
+                        
+                        {/* Hacker News Sentiment Section */}
+                        {hnData && (
+                          <div className="bg-gradient-to-r from-orange-50 to-red-50 dark:from-orange-950 dark:to-red-950 p-6 rounded-lg">
+                            <h4 className="font-medium text-foreground mb-4 flex items-center">
+                              <MessageCircle className="w-4 h-4 text-orange-600 mr-2" />
+                              Hacker News Social Sentiment
+                            </h4>
+                            
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                              <div className="bg-white/50 dark:bg-black/30 p-4 rounded-lg text-center">
+                                <div className="text-2xl font-bold text-foreground">{hnData.totalMentions || 0}</div>
+                                <div className="text-sm text-muted-foreground">Mentions Found</div>
+                              </div>
+                              
+                              <div className="bg-white/50 dark:bg-black/30 p-4 rounded-lg text-center">
+                                <div className={`text-2xl font-bold ${
+                                  hnData.sentiment === 'positive' ? 'text-green-600' : 
+                                  hnData.sentiment === 'negative' ? 'text-red-600' : 'text-yellow-600'
+                                }`}>
+                                  {hnData.sentiment === 'positive' ? <TrendingUp className="w-6 h-6 mx-auto" /> : 
+                                   hnData.sentiment === 'negative' ? <TrendingDown className="w-6 h-6 mx-auto" /> : 
+                                   <Minus className="w-6 h-6 mx-auto" />}
+                                </div>
+                                <div className="text-sm text-muted-foreground">Sentiment Trend</div>
+                                <div className="text-xs text-muted-foreground mt-1">{hnData.sentimentScore}/100</div>
+                              </div>
+                              
+                              <div className="bg-white/50 dark:bg-black/30 p-4 rounded-lg text-center">
+                                <div className="text-lg font-bold text-foreground">HN</div>
+                                <div className="text-sm text-muted-foreground">Data Source</div>
+                              </div>
+                            </div>
+                            
+                            {hnData.topQuotes?.length > 0 && (
+                              <div>
+                                <h5 className="font-medium text-foreground mb-3">Top Discussion Quotes</h5>
+                                <div className="space-y-3">
+                                  {hnData.topQuotes.slice(0, 3).map((quote: any, idx: number) => (
+                                    <div key={idx} className="bg-white/50 dark:bg-black/30 p-3 rounded border-l-4 border-orange-500">
+                                      <p className="text-sm text-foreground italic">"{quote.text}"</p>
+                                      <div className="flex items-center justify-between mt-2">
+                                        <span className="text-xs text-muted-foreground">by {quote.author || 'Anonymous'}</span>
+                                        {quote.url && (
+                                          <a
+                                            href={quote.url}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="text-xs text-orange-600 hover:underline inline-flex items-center"
+                                            data-testid={`link-hn-comment-${idx}`}
+                                          >
+                                            View on HN <ExternalLink className="w-3 h-3 ml-1" />
+                                          </a>
+                                        )}
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                            
+                            <div className="mt-4 p-3 bg-white/50 dark:bg-black/30 rounded">
+                              <p className="text-sm text-foreground">{hnData.summary}</p>
+                            </div>
+                          </div>
+                        )}
+                        
+                        {/* No Enhanced Data Available */}
+                        {!g2Data && !hnData && (
+                          <div className="bg-muted/50 p-6 rounded-lg text-center">
+                            <MessageCircle className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
+                            <h4 className="font-medium text-foreground mb-2">Enhanced Reviews & Sentiment</h4>
+                            <p className="text-sm text-muted-foreground">
+                              Premium review and social sentiment analysis is available for logged-in users.
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })() : (
+                    <div className="bg-muted/50 p-6 rounded-lg text-center">
+                      <MessageCircle className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
+                      <h4 className="font-medium text-foreground mb-2">Enhanced Reviews & Sentiment</h4>
+                      <p className="text-sm text-muted-foreground">
+                        Premium review and social sentiment analysis is available for logged-in users.
+                      </p>
+                    </div>
+                  )}
                 </TabsContent>
 
                 <TabsContent value="market" className="space-y-6 mt-6">
