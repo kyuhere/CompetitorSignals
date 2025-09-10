@@ -39,18 +39,34 @@ class RedditSentimentService {
 
   async searchRedditPosts(query: string, limit: number = 10): Promise<RedditPost[]> {
     try {
-      const searchUrl = `https://www.reddit.com/search.json?q=${encodeURIComponent(query)}&type=posts&t=week&sort=new&limit=${limit}`;
+      // Generate unique IDs for the search request
+      const cId = this.generateUniqueId();
+      const iId = this.generateUniqueId();
+      
+      const searchUrl = `https://www.reddit.com/search.json?q=${encodeURIComponent(query)}&type=posts&t=week&cId=${cId}&iId=${iId}&sort=new&limit=${limit}`;
+      
+      console.log(`Reddit search URL: ${searchUrl}`);
       
       const response = await fetch(searchUrl, {
         headers: this.HEADERS
       });
 
       if (!response.ok) {
+        console.error(`Reddit search failed: ${response.status} ${response.statusText}`);
+        const errorText = await response.text();
+        console.error('Reddit API response:', errorText);
         throw new Error(`Reddit search failed: ${response.status}`);
       }
 
       const data = await response.json();
+      console.log(`Reddit API returned ${data?.data?.children?.length || 0} posts`);
+      
       const posts: RedditPost[] = [];
+
+      if (!data?.data?.children) {
+        console.log('No children found in Reddit response');
+        return [];
+      }
 
       for (const child of data.data.children) {
         const postData = child.data;
@@ -64,14 +80,20 @@ class RedditSentimentService {
             num_comments: postData.num_comments,
             url: postData.url
           });
+          console.log(`Found relevant post: ${postData.title.substring(0, 50)}... in r/${postData.subreddit}`);
         }
       }
 
+      console.log(`Filtered to ${posts.length} relevant posts from business subreddits`);
       return posts.slice(0, limit);
     } catch (error) {
       console.error('Error searching Reddit posts:', error);
       return [];
     }
+  }
+
+  private generateUniqueId(): string {
+    return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
   }
 
   async fetchComments(permalink: string, limit: number = 20): Promise<string[]> {
@@ -161,18 +183,32 @@ Keep response under 150 words and focus on actionable insights.
   }
 
   async getRedditSentiment(query: string): Promise<RedditSentimentResult> {
-    console.log(`Fetching Reddit sentiment for: ${query}`);
+    console.log(`Starting Reddit sentiment analysis for: ${query}`);
 
     // Extract company name if query is a URL
     const searchQuery = this.extractCompanyFromUrl(query);
+    console.log(`Search query after URL extraction: ${searchQuery}`);
     
     const posts = await this.searchRedditPosts(searchQuery, 8);
+    console.log(`Found ${posts.length} posts for analysis`);
+    
+    if (posts.length === 0) {
+      console.log('No posts found, returning empty result');
+      return {
+        query: searchQuery,
+        posts: [],
+        overallSentiment: `No recent Reddit discussions found about ${searchQuery} in relevant business/news subreddits in the past week.`
+      };
+    }
+
     const analyses: PostAnalysis[] = [];
 
     for (const post of posts) {
-      console.log(`Analyzing post: ${post.title.substring(0, 50)}...`);
+      console.log(`Analyzing post: ${post.title.substring(0, 50)}... from r/${post.subreddit}`);
       
       const comments = await this.fetchComments(post.permalink, 20);
+      console.log(`Fetched ${comments.length} comments for post: ${post.title.substring(0, 30)}...`);
+      
       const summary = await this.analyzeSentiment(comments, searchQuery, post.title);
 
       analyses.push({
@@ -187,14 +223,24 @@ Keep response under 150 words and focus on actionable insights.
       await new Promise(resolve => setTimeout(resolve, 500));
     }
 
+    console.log(`Completed analysis of ${analyses.length} posts`);
+
     // Generate overall sentiment summary
     const overallSentiment = await this.generateOverallSentiment(analyses, searchQuery);
 
-    return {
+    const result = {
       query: searchQuery,
       posts: analyses,
       overallSentiment
     };
+
+    console.log(`Reddit sentiment analysis completed. Result:`, {
+      query: result.query,
+      postsCount: result.posts.length,
+      overallSentimentLength: result.overallSentiment.length
+    });
+
+    return result;
   }
 
   private extractCompanyFromUrl(input: string): string {
