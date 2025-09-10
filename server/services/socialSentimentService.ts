@@ -143,9 +143,9 @@ Based on these inputs, classify the overall sentiment as one of: positive, negat
 Respond with only one word: positive, negative, or neutral`;
 
       const response = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
+        model: "gpt-4o",
         messages: [{ role: "user", content: prompt }],
-        max_tokens: 10,
+        max_tokens: 15,
         temperature: 0.1
       });
 

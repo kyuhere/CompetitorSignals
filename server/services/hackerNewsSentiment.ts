@@ -71,8 +71,15 @@ export class HackerNewsSentimentService {
 
   private async searchHackerNewsComments(query: string): Promise<HackerNewsComment[]> {
     try {
-      // Search for comments from the past week
-      const response = await fetch(`${this.baseUrl}/search_by_date?query=${encodeURIComponent(query)}&tags=comment&hitsPerPage=20&numericFilters=created_at_i>${Math.floor(Date.now() / 1000) - (7 * 24 * 60 * 60)}`);
+      // Clean the query to get just the company name
+      const cleanQuery = query.toLowerCase().replace(/[^a-z0-9\s]/g, '').trim();
+      
+      // Search for comments from the past week with more specific query matching
+      const searchUrl = `${this.baseUrl}/search_by_date?query=${encodeURIComponent(cleanQuery)}&tags=comment&hitsPerPage=30&numericFilters=created_at_i>${Math.floor(Date.now() / 1000) - (7 * 24 * 60 * 60)}`;
+      
+      console.log(`Searching Hacker News with URL: ${searchUrl}`);
+      
+      const response = await fetch(searchUrl);
       
       if (!response.ok) {
         throw new Error(`Hacker News search failed: ${response.status}`);
@@ -80,25 +87,47 @@ export class HackerNewsSentimentService {
       
       const data = await response.json();
       
-      // Filter and map the results
-      const comments: HackerNewsComment[] = data.hits
-        .filter((hit: any) => hit.comment_text && hit.comment_text.length > 50)
+      // Helper function to decode HTML entities
+      const decodeHtml = (html: string): string => {
+        return html
+          .replace(/&amp;/g, '&')
+          .replace(/&lt;/g, '<')
+          .replace(/&gt;/g, '>')
+          .replace(/&quot;/g, '"')
+          .replace(/&#x27;/g, "'")
+          .replace(/&#x2F;/g, '/')
+          .replace(/<[^>]*>/g, '') // Remove HTML tags
+          .replace(/&nbsp;/g, ' ')
+          .trim();
+      };
+      
+      // Filter for comments that actually mention the company/query and are substantial
+      const relevantComments = data.hits
+        .filter((hit: any) => {
+          if (!hit.comment_text || hit.comment_text.length < 100) return false;
+          
+          const commentText = hit.comment_text.toLowerCase();
+          const storyTitle = (hit.story_title || '').toLowerCase();
+          
+          // Check if the query appears in the comment or story title
+          return commentText.includes(cleanQuery) || storyTitle.includes(cleanQuery);
+        })
         .map((hit: any) => ({
           id: String(hit.objectID),
           created_at: hit.created_at,
           author: hit.author || 'Anonymous',
-          comment_text: hit.comment_text,
+          comment_text: decodeHtml(hit.comment_text),
           story_id: hit.story_id ? String(hit.story_id) : null,
-          story_title: hit.story_title || 'Hacker News Discussion',
+          story_title: decodeHtml(hit.story_title || 'Hacker News Discussion'),
           story_url: hit.story_url || `https://news.ycombinator.com/item?id=${hit.story_id}`,
           points: hit.points,
           num_comments: hit.num_comments,
           url: `https://news.ycombinator.com/item?id=${hit.objectID}`
         }))
-        .slice(0, 10); // Limit to top 10 for analysis
+        .slice(0, 15); // Get more comments for better analysis
 
-      console.log(`Found ${comments.length} Hacker News comments for: ${query}`);
-      return comments;
+      console.log(`Found ${relevantComments.length} relevant Hacker News comments for: ${query}`);
+      return relevantComments;
       
     } catch (error) {
       console.error('Error searching Hacker News comments:', error);
@@ -126,19 +155,19 @@ ${commentTexts}
 Provide a 2-3 sentence summary of the overall sentiment (positive, negative, or mixed) and the main themes discussed. Focus on what the developer/tech community thinks about this company/product. Be concise and professional.`;
 
       const completion = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
+        model: "gpt-4o",
         messages: [
           {
             role: "system",
-            content: "You are an expert at analyzing social sentiment from Hacker News discussions. Provide concise, professional summaries of community opinion."
+            content: "You are an expert at analyzing social sentiment from Hacker News discussions. Provide concise, professional summaries of community opinion focusing on developer and tech community perspectives."
           },
           {
             role: "user",
             content: prompt
           }
         ],
-        max_tokens: 200,
-        temperature: 0.3
+        max_tokens: 300,
+        temperature: 0.2
       });
 
       return completion.choices[0]?.message?.content || "Unable to analyze sentiment";
