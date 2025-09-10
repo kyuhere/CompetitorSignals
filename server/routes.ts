@@ -8,8 +8,6 @@ import { signalAggregator } from "./services/signalAggregator";
 
 import { summarizeCompetitorSignals, generateFastPreview } from "./services/openai";
 import { sendCompetitorReport } from "./email";
-import { hackerNewsSentimentService } from './services/hackerNewsSentiment';
-import { socialSentimentService } from './services/socialSentimentService';
 
 // Store active streaming sessions
 const streamingSessions = new Map<string, any>();
@@ -217,25 +215,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       );
       
-      // Get Hacker News sentiment analysis for the first competitor
-      let hackerNewsSentiment = null;
-      if (competitorList.length > 0) {
-        if (streamRes) {
-          streamRes.write(`data: ${JSON.stringify({
-            type: "progress",
-            message: "Analyzing Hacker News sentiment...",
-            progress: 60
-          })}\n\n`);
-        }
-        
-        try {
-          hackerNewsSentiment = await hackerNewsSentimentService.getHackerNewsSentiment(competitorList[0]);
-          console.log(`Hacker News sentiment analysis completed for ${competitorList[0]}`);
-        } catch (error) {
-          console.error('Error getting Hacker News sentiment:', error);
-          // Continue without sentiment data
-        }
-      }
+      
       
       // Send signals collected update
       if (streamRes) {
@@ -288,9 +268,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           signalCount: signals.reduce((acc: number, s: any) => acc + s.items.length, 0),
           sources: Object.keys(sources).filter(key => sources[key as keyof typeof sources]),
           generatedAt: new Date().toISOString(),
-          hasHackerNewsSentiment: !!hackerNewsSentiment,
-          hackerNewsSentiment,
-          analyzedCompetitor: competitorList[0], // Note which competitor the sentiment is for
         },
       };
       
@@ -617,40 +594,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error sending email report:", error);
       res.status(500).json({ message: "Failed to send email report" });
-    }
-  });
-
-  // Social sentiment analysis endpoint
-  app.post('/api/sentiment/social', async (req: any, res) => {
-    try {
-      const { query } = req.body;
-      
-      if (!query || typeof query !== 'string' || query.trim().length === 0) {
-        return res.status(400).json({ 
-          message: "Query parameter is required and must be a non-empty string" 
-        });
-      }
-
-      console.log(`Starting social sentiment analysis for: ${query}`);
-      
-      const result = await socialSentimentService.getFullSentimentAnalysis(query.trim());
-      
-      if (!result) {
-        return res.json({
-          reviews: null,
-          socialMedia: null,
-          query: query.trim(),
-          message: "No social sentiment data available for the given query"
-        });
-      }
-
-      res.json(result);
-    } catch (error) {
-      console.error("Error in social sentiment analysis:", error);
-      res.status(500).json({ 
-        message: "Failed to analyze social sentiment. Please try again.",
-        error: error instanceof Error ? error.message : "Unknown error"
-      });
     }
   });
 
