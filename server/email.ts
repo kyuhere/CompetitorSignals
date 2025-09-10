@@ -11,16 +11,18 @@ interface EmailReportParams {
   reportTitle: string;
   reportContent: any;
   competitors: string[];
+  redditSentiment?: any;
 }
 
 export async function sendCompetitorReport({
   to,
   reportTitle,
   reportContent,
-  competitors
+  competitors,
+  redditSentiment
 }: EmailReportParams) {
   // Generate HTML email content
-  const htmlContent = generateReportEmailHTML(reportTitle, reportContent, competitors);
+  const htmlContent = generateReportEmailHTML(reportTitle, reportContent, competitors, redditSentiment);
   
   try {
     console.log(`Attempting to send email to: ${to}`);
@@ -65,7 +67,7 @@ export async function sendCompetitorReport({
   }
 }
 
-function generateReportEmailHTML(title: string, reportContent: any, competitors: string[]): string {
+function generateReportEmailHTML(title: string, reportContent: any, competitors: string[], redditSentiment?: any): string {
   const competitorsList = competitors.join(', ');
   
   // Parse report content if it's a string
