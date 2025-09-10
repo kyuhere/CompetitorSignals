@@ -8,6 +8,7 @@ import { signalAggregator } from "./services/signalAggregator";
 
 import { summarizeCompetitorSignals, generateFastPreview } from "./services/openai";
 import { sendCompetitorReport } from "./email";
+import { hackerNewsSentimentService } from './services/hackerNewsSentiment';
 
 // Store active streaming sessions
 const streamingSessions = new Map<string, any>();
@@ -215,7 +216,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       );
       
-      
+      // Get Hacker News sentiment analysis for the first competitor
+      let hackerNewsSentiment = null;
+      if (competitorList.length > 0) {
+        if (streamRes) {
+          streamRes.write(`data: ${JSON.stringify({
+            type: "progress",
+            message: "Analyzing Hacker News sentiment...",
+            progress: 60
+          })}\n\n`);
+        }
+        
+        try {
+          hackerNewsSentiment = await hackerNewsSentimentService.getHackerNewsSentiment(competitorList[0]);
+          console.log(`Hacker News sentiment analysis completed for ${competitorList[0]}`);
+        } catch (error) {
+          console.error('Error getting Hacker News sentiment:', error);
+          // Continue without sentiment data
+        }
+      }
       
       // Send signals collected update
       if (streamRes) {
@@ -268,6 +287,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           signalCount: signals.reduce((acc: number, s: any) => acc + s.items.length, 0),
           sources: Object.keys(sources).filter(key => sources[key as keyof typeof sources]),
           generatedAt: new Date().toISOString(),
+          hasHackerNewsSentiment: !!hackerNewsSentiment,
+          hackerNewsSentiment,
         },
       };
       

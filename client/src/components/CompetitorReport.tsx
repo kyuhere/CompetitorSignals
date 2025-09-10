@@ -48,6 +48,19 @@ interface CompetitorReportProps {
         }>;
         overallSentiment: string;
       };
+      hasHackerNewsSentiment?: boolean;
+      hackerNewsSentiment?: {
+        query: string;
+        comments: Array<{
+          text: string;
+          author: string;
+          storyTitle: string;
+          url: string;
+          createdAt: string;
+          points: number | null;
+        }>;
+        overallSentiment: string;
+      };
     };
     createdAt: string;
   };
@@ -665,6 +678,117 @@ export default function CompetitorReport({ report }: CompetitorReportProps) {
                 </li>
               ))}
             </ul>
+          </div>
+        )}
+
+        {/* Reddit Sentiment Analysis */}
+        {report.metadata?.hasRedditAnalysis && report.metadata?.redditSentiment && (
+          <div className="mt-8 p-6 bg-muted rounded-lg">
+            <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center">
+              <MessageCircle className="w-5 h-5 text-red-500 mr-2" />
+              Reddit Public Sentiment
+            </h3>
+            <div className="space-y-4">
+              <div className="bg-background p-4 rounded-lg border">
+                <p className="text-sm text-foreground mb-3">
+                  <strong>Overall Sentiment:</strong> {report.metadata.redditSentiment.overallSentiment}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  Query: "{report.metadata.redditSentiment.query}"
+                </p>
+              </div>
+              
+              {report.metadata.redditSentiment.posts?.length > 0 && (
+                <div className="space-y-3">
+                  <h4 className="font-medium text-foreground">Key Discussions:</h4>
+                  {report.metadata.redditSentiment.posts.slice(0, 3).map((post, index) => (
+                    <div key={index} className="bg-background p-4 rounded-lg border">
+                      <div className="flex items-start justify-between mb-2">
+                        <h5 className="font-medium text-foreground text-sm line-clamp-2">
+                          {post.title}
+                        </h5>
+                        <div className="text-xs text-muted-foreground ml-2 flex-shrink-0">
+                          r/{post.subreddit} • {post.comments} comments
+                        </div>
+                      </div>
+                      <p className="text-sm text-muted-foreground mb-3">{post.summary}</p>
+                      {post.quotes && post.quotes.length > 0 && (
+                        <div className="space-y-2">
+                          <p className="text-xs font-medium text-foreground">Notable quotes:</p>
+                          {post.quotes.slice(0, 2).map((quote, quoteIndex) => (
+                            <blockquote key={quoteIndex} className="border-l-2 border-muted-foreground/30 pl-3 text-sm italic text-muted-foreground">
+                              "{quote}"
+                            </blockquote>
+                          ))}
+                        </div>
+                      )}
+                      {post.url && (
+                        <a 
+                          href={post.url} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center text-xs text-primary hover:text-primary/80 mt-2"
+                        >
+                          View on Reddit <ExternalLink className="w-3 h-3 ml-1" />
+                        </a>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Hacker News Sentiment Analysis */}
+        {report.metadata?.hasHackerNewsSentiment && report.metadata?.hackerNewsSentiment && (
+          <div className="mt-8 p-6 bg-muted rounded-lg">
+            <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center">
+              <MessageCircle className="w-5 h-5 text-orange-500 mr-2" />
+              Hacker News Sentiment
+            </h3>
+            <div className="space-y-4">
+              <div className="bg-background p-4 rounded-lg border">
+                <p className="text-sm text-foreground mb-3">
+                  <strong>Overall Sentiment:</strong> {report.metadata.hackerNewsSentiment.overallSentiment}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  Query: "{report.metadata.hackerNewsSentiment.query}"
+                </p>
+              </div>
+              
+              {report.metadata.hackerNewsSentiment.comments?.length > 0 && (
+                <div className="space-y-3">
+                  <h4 className="font-medium text-foreground">Key Comments:</h4>
+                  {report.metadata.hackerNewsSentiment.comments.slice(0, 3).map((comment, index) => (
+                    <div key={index} className="bg-background p-4 rounded-lg border">
+                      <div className="flex items-start justify-between mb-2">
+                        <h5 className="font-medium text-foreground text-sm line-clamp-2">
+                          {comment.storyTitle}
+                        </h5>
+                        <div className="text-xs text-muted-foreground ml-2 flex-shrink-0">
+                          by {comment.author} • {comment.points ? `${comment.points} points` : 'no points'}
+                        </div>
+                      </div>
+                      <blockquote className="border-l-2 border-orange-200 pl-3 text-sm text-muted-foreground mb-3 italic">
+                        "{comment.text}"
+                      </blockquote>
+                      <div className="flex items-center justify-between text-xs text-muted-foreground">
+                        <span>{new Date(comment.createdAt).toLocaleDateString()}</span>
+                        <a 
+                          href={comment.url} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center text-primary hover:text-primary/80"
+                        >
+                          View on Hacker News <ExternalLink className="w-3 h-3 ml-1" />
+                        </a>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         )}
 
