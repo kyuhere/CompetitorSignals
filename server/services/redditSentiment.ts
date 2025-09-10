@@ -66,7 +66,7 @@ class RedditSentimentService {
         return [];
       }
 
-      // Process all posts, prioritizing news-relevant subreddits but not excluding others
+      // Process all posts from Reddit search results (matching original Python implementation)
       for (const child of data.data.children) {
         const postData = child.data;
         
@@ -80,18 +80,8 @@ class RedditSentimentService {
         console.log(`Found post: ${postData.title.substring(0, 50)}... in r/${postData.subreddit}`);
       }
 
-      // Sort posts to prioritize news-relevant subreddits
-      const sortedPosts = posts.sort((a, b) => {
-        const aIsRelevant = this.RELEVANT_SUBREDDITS.includes(a.subreddit.toLowerCase());
-        const bIsRelevant = this.RELEVANT_SUBREDDITS.includes(b.subreddit.toLowerCase());
-        
-        if (aIsRelevant && !bIsRelevant) return -1;
-        if (!aIsRelevant && bIsRelevant) return 1;
-        return 0;
-      });
-
-      console.log(`Processing ${sortedPosts.length} posts (prioritizing business subreddits)`);
-      return sortedPosts.slice(0, limit);
+      console.log(`Processing ${posts.length} posts from Reddit search`);
+      return posts.slice(0, limit);
     } catch (error) {
       console.error('Error searching Reddit posts:', error);
       return [];
