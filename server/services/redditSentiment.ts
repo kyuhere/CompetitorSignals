@@ -17,6 +17,8 @@ interface PostAnalysis {
   comments: number;
   summary: string;
   url?: string;
+  permalink: string;
+  quotes?: string[];
 }
 
 interface RedditSentimentResult {
@@ -138,9 +140,9 @@ class RedditSentimentService {
     }
   }
 
-  async analyzeSentiment(comments: string[], query: string, postTitle: string): Promise<string> {
+  async analyzeSentiment(comments: string[], query: string, postTitle: string): Promise<{ summary: string; quotes: string[] }> {
     if (!comments.length) {
-      return "No meaningful comments found.";
+      return { summary: "No meaningful comments found.", quotes: [] };
     }
 
     // Limit comments for token efficiency
@@ -160,7 +162,13 @@ Please provide:
 2. Key recurring themes
 3. Any standout opinions or representative quotes
 
-Keep response concise and focused on actionable insights.
+Return your response in JSON format:
+{
+  "summary": "Your analysis here",
+  "quotes": ["quote1", "quote2", "quote3"]
+}
+
+Include 2-3 most representative quotes from the comments.
 `;
 
     try {
@@ -177,10 +185,23 @@ Keep response concise and focused on actionable insights.
         max_tokens: 300
       });
       
-      return response.choices[0]?.message?.content || `Unable to analyze sentiment. Found ${comments.length} comments discussing ${query}.`;
+      const content = response.choices[0]?.message?.content;
+      if (!content) {
+        return { summary: `Unable to analyze sentiment. Found ${comments.length} comments discussing ${query}.`, quotes: [] };
+      }
+      
+      try {
+        const parsed = JSON.parse(content);
+        return {
+          summary: parsed.summary || content,
+          quotes: parsed.quotes || []
+        };
+      } catch {
+        return { summary: content, quotes: [] };
+      }
     } catch (error) {
       console.error('Error analyzing sentiment:', error);
-      return `Unable to analyze sentiment. Found ${comments.length} comments discussing ${query}.`;
+      return { summary: `Unable to analyze sentiment. Found ${comments.length} comments discussing ${query}.`, quotes: [] };
     }
   }
 
@@ -211,14 +232,16 @@ Keep response concise and focused on actionable insights.
       const comments = await this.fetchComments(post.permalink, 20);
       console.log(`Fetched ${comments.length} comments for post: ${post.title.substring(0, 30)}...`);
       
-      const summary = await this.analyzeSentiment(comments, searchQuery, post.title);
+      const analysis = await this.analyzeSentiment(comments, searchQuery, post.title);
 
       analyses.push({
         title: post.title,
         subreddit: post.subreddit,
         comments: post.num_comments,
-        summary,
-        url: post.url
+        summary: analysis.summary,
+        url: post.url,
+        permalink: post.permalink,
+        quotes: analysis.quotes
       });
 
       // Add small delay to avoid rate limiting
