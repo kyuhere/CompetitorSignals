@@ -78,6 +78,7 @@ interface CompetitorReportProps {
         }>;
         hasG2Reviews: boolean;
         hasHNSentiment: boolean;
+        locked?: boolean;
       };
     };
     createdAt: string;
@@ -643,47 +644,49 @@ export default function CompetitorReport({ report }: CompetitorReportProps) {
                     const enhancedData = report.metadata.enhanced.reviewData.find((data: any) => data.competitor === competitor.competitor);
                     const g2Data = enhancedData?.g2;
                     const hnData = enhancedData?.hackerNews;
+                    const isLocked = report.metadata?.enhanced?.locked;
 
                     return (
-                      <div className="space-y-6">
-                        {/* G2 Reviews Section */}
-                        {g2Data && (
-                          <div className="bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-950 dark:to-purple-950 p-6 rounded-lg">
-                            <h4 className="font-medium text-foreground mb-4 flex items-center">
-                              <BarChart3 className="w-4 h-4 text-blue-600 mr-2" />
-                              G2 Reviews & Ratings
-                            </h4>
+                      <div className="relative">
+                        <div className={`space-y-6 ${isLocked ? 'blur-sm pointer-events-none select-none' : ''}`}>
+                          {/* G2 Reviews Section */}
+                          {g2Data && (
+                            <div className="bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-950 dark:to-purple-950 p-6 rounded-lg">
+                              <h4 className="font-medium text-foreground mb-4 flex items-center">
+                                <BarChart3 className="w-4 h-4 text-blue-600 mr-2" />
+                                G2 Reviews & Ratings
+                              </h4>
 
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                              <div className="bg-white/50 dark:bg-black/30 p-4 rounded-lg text-center">
-                                <div className="text-2xl font-bold text-foreground">{g2Data.averageRating?.toFixed(1) || 'N/A'}</div>
-                                <div className="text-sm text-muted-foreground">Average Rating</div>
-                                <div className="flex justify-center mt-2">
-                                  {Array.from({length: 5}, (_, i) => (
-                                    <div
-                                      key={i}
-                                      className={`w-3 h-3 rounded-full mx-0.5 ${
-                                        i < Math.floor(g2Data.averageRating || 0) ? 'bg-yellow-400' : 'bg-gray-300'
-                                      }`}
-                                    />
-                                  ))}
+                              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                                <div className="bg-white/50 dark:bg-black/30 p-4 rounded-lg text-center">
+                                  <div className="text-2xl font-bold text-foreground">{g2Data.averageRating?.toFixed(1) || 'N/A'}</div>
+                                  <div className="text-sm text-muted-foreground">Average Rating</div>
+                                  <div className="flex justify-center mt-2">
+                                    {Array.from({length: 5}, (_, i) => (
+                                      <div
+                                        key={i}
+                                        className={`w-3 h-3 rounded-full mx-0.5 ${
+                                          i < Math.floor(g2Data.averageRating || 0) ? 'bg-yellow-400' : 'bg-gray-300'
+                                        }`}
+                                      />
+                                    ))}
+                                  </div>
                                 </div>
-                              </div>
 
-                              <div className="bg-white/50 dark:bg-black/30 p-4 rounded-lg text-center">
-                                <div className="text-2xl font-bold text-foreground">{g2Data.totalReviews || 0}</div>
-                                <div className="text-sm text-muted-foreground">Total Reviews</div>
-                              </div>
-
-                              <div className="bg-white/50 dark:bg-black/30 p-4 rounded-lg text-center">
-                                <div className={`text-2xl font-bold ${
-                                  g2Data.sentiment === 'positive' ? 'text-green-600' : 
-                                  g2Data.sentiment === 'negative' ? 'text-red-600' : 'text-yellow-600'
-                                }`}>
-                                  {g2Data.sentiment === 'positive' ? '😊' : g2Data.sentiment === 'negative' ? '😞' : '😐'}
+                                <div className="bg-white/50 dark:bg-black/30 p-4 rounded-lg text-center">
+                                  <div className="text-2xl font-bold text-foreground">{g2Data.totalReviews || 0}</div>
+                                  <div className="text-sm text-muted-foreground">Total Reviews</div>
                                 </div>
-                                <div className="text-sm text-muted-foreground">Overall Sentiment</div>
-                                <div className="text-xs text-muted-foreground mt-1">{g2Data.sentimentScore}/100</div>
+
+                                <div className="bg-white/50 dark:bg-black/30 p-4 rounded-lg text-center">
+                                  <div className={`text-2xl font-bold ${
+                                    g2Data.sentiment === 'positive' ? 'text-green-600' : 
+                                    g2Data.sentiment === 'negative' ? 'text-red-600' : 'text-yellow-600'
+                                  }`}>
+                                    {g2Data.sentiment === 'positive' ? '😊' : g2Data.sentiment === 'negative' ? '😞' : '😐'}
+                                  </div>
+                                  <div className="text-sm text-muted-foreground">Overall Sentiment</div>
+                                  <div className="text-xs text-muted-foreground mt-1">{g2Data.sentimentScore}/100</div>
                               </div>
                             </div>
 
@@ -791,6 +794,17 @@ export default function CompetitorReport({ report }: CompetitorReportProps) {
                             <p className="text-sm text-muted-foreground">
                               Premium review and social sentiment analysis is available for logged-in users.
                             </p>
+                          </div>
+                        )}
+                        </div>
+
+                        {isLocked && (
+                          <div className="absolute inset-0 flex items-center justify-center">
+                            <div className="bg-background/90 backdrop-blur-md border border-border rounded-xl p-6 text-center max-w-md shadow-xl">
+                              <h4 className="text-lg font-bold text-foreground mb-2">Premium Feature</h4>
+                              <p className="text-sm text-muted-foreground mb-4">Upgrade to unlock Reviews & Social Sentiment for this analysis.</p>
+                              <Button className="btn-primary px-6">Upgrade</Button>
+                            </div>
                           </div>
                         )}
                       </div>

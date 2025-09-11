@@ -234,53 +234,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
         })}\n\n`);
       }
 
-      // Use enhanced aggregator for premium users only, traditional for free users
+      // Always use enhanced aggregator for all plans (ensures review data exists for overlay gating)
       let signals, enhancedData;
-      if (isLoggedIn && plan === 'premium') {
-        console.log(`[Routes] Premium user detected, using enhanced aggregation for: ${competitorList.join(', ')}`);
-        // Premium users get enhanced analysis with G2 reviews and HN sentiment
-        const enhancedResults = await enhancedSignalAggregator.aggregateEnhancedSignals(
-          competitorList,
-          urlList,
-          sources,
-          (partialResults) => {
-            const streamRes = streamingSessions.get(streamSessionId);
-            if (streamRes) {
-              streamRes.write(`data: ${JSON.stringify({
-                type: "partial_results",
-                data: partialResults.traditional || partialResults,
-                progress: 50
-              })}\n\n`);
-            }
+      console.log(`[Routes] Using enhanced aggregator for: ${competitorList.join(', ')} (plan=${plan}, loggedIn=${isLoggedIn})`);
+      const enhancedResults = await enhancedSignalAggregator.aggregateEnhancedSignals(
+        competitorList,
+        urlList,
+        sources,
+        (partialResults) => {
+          const streamRes = streamingSessions.get(streamSessionId);
+          if (streamRes) {
+            streamRes.write(`data: ${JSON.stringify({
+              type: "partial_results",
+              data: (partialResults as any).traditional || partialResults,
+              progress: 50
+            })}\n\n`);
           }
-        );
-        signals = enhancedResults.traditional;
-        enhancedData = enhancedResults.enhanced;
-        console.log(`[Routes] Enhanced results received:`, {
-          traditionalSignals: signals?.length || 0,
-          enhancedDataCount: enhancedData?.length || 0,
-          enhancedCompetitors: enhancedData?.map((d: any) => d.competitor) || []
-        });
-      } else {
-        console.log(`[Routes] Free user/guest detected, using traditional aggregation for: ${competitorList.join(', ')}`);
-        // Free users and guests get traditional signal aggregation
-        signals = await signalAggregator.aggregateSignals(
-          competitorList,
-          urlList,
-          sources,
-          (partialResults) => {
-            const streamRes = streamingSessions.get(streamSessionId);
-            if (streamRes) {
-              streamRes.write(`data: ${JSON.stringify({
-                type: "partial_results",
-                data: partialResults,
-                progress: 50
-              })}\n\n`);
-            }
-          }
-        );
-        enhancedData = [];
-      }
+        },
+        { mode: (isLoggedIn && plan === 'premium') ? 'premium' : 'free', computeSentiment: true }
+      );
+      signals = enhancedResults.traditional;
+      enhancedData = enhancedResults.enhanced;
+      console.log(`[Routes] Aggregation complete:`, {
+        traditionalSignals: signals?.length || 0,
+        enhancedDataCount: enhancedData?.length || 0,
+        enhancedCompetitors: enhancedData?.map((d: any) => d.competitor) || []
+      });
 
 
 
@@ -297,7 +276,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let summary;
       try {
         if (isLoggedIn && plan === 'premium' && enhancedData && enhancedData.length > 0) {
-          // Premium users: keep the same summary structure as free path but use premium model
+          // Premium users get enhanced analysis including review and sentiment data
           const fastPreview = await generateFastPreview(signals, competitorList);
 
           // Send preview to stream
@@ -309,8 +288,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
             })}\n\n`);
           }
 
-          // Generate summary with premium model for deeper analysis but consistent schema
-          summary = await summarizeCompetitorSignals(signals, competitorList, true);
+          // Generate enhanced summary with review and sentiment data
+          summary = await enhancedSignalAggregator.generateEnhancedAnalysis(
+            signals,
+            enhancedData,
+            competitorList
+          );
 
         } else {
           // Free users and guests get traditional analysis
@@ -325,7 +308,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             })}\n\n`);
           }
 
-          // Generate traditional summary (fast model)
+          // Generate traditional summary
           summary = await summarizeCompetitorSignals(signals, competitorList, false);
         }
 
@@ -364,11 +347,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           signalCount: signals.reduce((acc: number, s: any) => acc + s.items.length, 0),
           sources: Object.keys(sources).filter(key => sources[key as keyof typeof sources]),
           generatedAt: new Date().toISOString(),
-          enhanced: enhancedData && enhancedData.length > 0 ? {
+          enhanced: {
             reviewData: enhancedData,
             hasG2Reviews,
             hasHNSentiment,
-          } : null,
+            locked: plan !== 'premium'
+          },
         },
       };
 

@@ -48,10 +48,13 @@ export class EnhancedSignalAggregator {
     competitors: string[],
     urls: string[] = [],
     sources: any = { news: true, funding: true, social: true, products: false },
-    onPartialResults?: (results: any) => void
+    onPartialResults?: (results: any) => void,
+    options?: { mode?: 'free' | 'premium'; computeSentiment?: boolean }
   ): Promise<any> {
     try {
-      console.log(`[EnhancedAggregator] Starting aggregation for competitors: ${competitors.join(', ')}`);
+      const mode = options?.mode ?? 'premium';
+      const computeSentiment = options?.computeSentiment ?? true;
+      console.log(`[EnhancedAggregator] Starting aggregation for competitors: ${competitors.join(', ')} (mode=${mode}, computeSentiment=${computeSentiment})`);
       
       // Get traditional signals first
       const traditionalSignals = await signalAggregator.aggregateSignals(
@@ -68,17 +71,17 @@ export class EnhancedSignalAggregator {
         competitors.map(async (competitor) => {
           console.log(`[EnhancedAggregator] Processing enhanced data for: ${competitor}`);
           const [g2Data, hnData] = await Promise.allSettled([
-            this.getG2ReviewData(competitor),
-            this.getHackerNewsSentiment(competitor)
+            this.getG2ReviewData(competitor, computeSentiment),
+            this.getHackerNewsSentiment(competitor, computeSentiment)
           ]);
 
           if (g2Data.status === 'rejected') {
             console.error(`[EnhancedAggregator] G2 data failed for ${competitor}:`, g2Data.reason);
           } else {
             console.log(`[EnhancedAggregator] G2 data for ${competitor}:`, {
-              hasData: !!g2Data.value,
-              totalReviews: g2Data.value?.totalReviews,
-              sentiment: g2Data.value?.sentiment
+              hasData: !!(g2Data as any).value,
+              totalReviews: (g2Data as any).value?.totalReviews,
+              sentiment: (g2Data as any).value?.sentiment
             });
           }
 
@@ -86,9 +89,9 @@ export class EnhancedSignalAggregator {
             console.error(`[EnhancedAggregator] HN data failed for ${competitor}:`, hnData.reason);
           } else {
             console.log(`[EnhancedAggregator] HN data for ${competitor}:`, {
-              hasData: !!hnData.value,
-              totalMentions: hnData.value?.totalMentions,
-              sentiment: hnData.value?.sentiment
+              hasData: !!(hnData as any).value,
+              totalMentions: (hnData as any).value?.totalMentions,
+              sentiment: (hnData as any).value?.sentiment
             });
           }
 
@@ -109,11 +112,11 @@ export class EnhancedSignalAggregator {
       enhancedData.forEach((data, index) => {
         if (data) {
           console.log(`[EnhancedAggregator] Enhanced data ${index + 1}:`, {
-            competitor: data.competitor,
-            hasG2: !!data.g2,
-            hasHN: !!data.hackerNews,
-            g2Reviews: data.g2?.totalReviews || 0,
-            hnMentions: data.hackerNews?.totalMentions || 0
+            competitor: (data as any).competitor,
+            hasG2: !!(data as any).g2,
+            hasHN: !!(data as any).hackerNews,
+            g2Reviews: (data as any).g2?.totalReviews || 0,
+            hnMentions: (data as any).hackerNews?.totalMentions || 0
           });
         }
       });
@@ -130,16 +133,18 @@ export class EnhancedSignalAggregator {
     }
   }
 
-  private async getG2ReviewData(competitor: string): Promise<ReviewSentimentData> {
+  private async getG2ReviewData(competitor: string, computeSentiment: boolean = true): Promise<ReviewSentimentData> {
     try {
       const g2Summary = await g2Service.getProductSummary(competitor);
       
       // Use OpenAI to analyze G2 reviews for sentiment
-      const sentimentAnalysis = await this.analyzeReviewSentiment(
-        competitor,
-        g2Summary.topReviewQuotes,
-        'g2'
-      );
+      const sentimentAnalysis = computeSentiment
+        ? await this.analyzeReviewSentiment(
+            competitor,
+            g2Summary.topReviewQuotes,
+            'g2'
+          )
+        : 'G2 review data collected. Upgrade to premium for AI-powered sentiment analysis.';
 
       return {
         platform: 'g2',
@@ -159,16 +164,18 @@ export class EnhancedSignalAggregator {
     }
   }
 
-  private async getHackerNewsSentiment(competitor: string): Promise<ReviewSentimentData> {
+  private async getHackerNewsSentiment(competitor: string, computeSentiment: boolean = true): Promise<ReviewSentimentData> {
     try {
       const hnSentiment = await hackerNewsService.getCompetitorSentiment(competitor);
       
       // Use OpenAI to analyze HN sentiment
-      const sentimentAnalysis = await this.analyzeReviewSentiment(
-        competitor,
-        hnSentiment.topComments.map(c => c.text),
-        'hackernews'
-      );
+      const sentimentAnalysis = computeSentiment
+        ? await this.analyzeReviewSentiment(
+            competitor,
+            hnSentiment.topComments.map(c => c.text),
+            'hackernews'
+          )
+        : 'HN sentiment data collected. Upgrade to premium for AI-powered sentiment analysis.';
 
       return {
         platform: 'hackernews',
