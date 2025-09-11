@@ -156,6 +156,9 @@ export default function Landing() {
                 Analyze Competitor
               </Button>
             </form>
+            <p className="text-xs text-gray-600 mt-2 text-left">
+              For reviews, include the company's domain (e.g., <span className="font-medium">openai.com</span>). Names still work for other insights.
+            </p>
             {searchMutation.isPending && (
               <div className="mt-6 space-y-3">
                 <div className="flex items-center justify-between text-sm text-gray-600">

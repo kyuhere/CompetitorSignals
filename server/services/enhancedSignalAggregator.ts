@@ -72,7 +72,7 @@ export class EnhancedSignalAggregator {
           console.log(`[EnhancedAggregator] Processing enhanced data for: ${competitor}`);
           const domain = options?.domainsByCompetitor?.[competitor] || options?.domainsByCompetitor?.[competitor.toLowerCase()];
           const [tpData, hnData] = await Promise.allSettled([
-            this.getTrustpilotReviewData(competitor, domain, computeSentiment),
+            (options?.mode === 'premium') ? this.getTrustpilotReviewData(competitor, domain, computeSentiment) : Promise.resolve(null),
             this.getHackerNewsSentiment(competitor, computeSentiment)
           ]);
 
