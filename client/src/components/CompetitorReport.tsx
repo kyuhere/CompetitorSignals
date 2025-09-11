@@ -264,6 +264,9 @@ export default function CompetitorReport({ report }: CompetitorReportProps) {
     }
   };
 
+  // Helper to strip any trailing inline source tags like "[Source: bing.com/news]"
+  const stripSourceTags = (s: string) => (s || '').replace(/\s*\[source:[^\]]*\]/gi, '').trim();
+
   const renderSection = (title: string, icon: React.ReactNode, content: any, emptyMessage = "No reliable data found") => {
     const isNoDataString = (val: unknown) => typeof val === 'string' && val.trim().toLowerCase() === 'no reliable data found';
 
@@ -295,7 +298,7 @@ export default function CompetitorReport({ report }: CompetitorReportProps) {
             {filtered.map((item: string, itemIndex: number) => (
               <li key={itemIndex} className="flex items-start">
                 <div className="w-1.5 h-1.5 bg-primary rounded-full mt-2 mr-3 flex-shrink-0"></div>
-                <span className="text-foreground">{item}</span>
+                <span className="text-foreground">{stripSourceTags(item)}</span>
               </li>
             ))}
           </ul>
@@ -309,7 +312,7 @@ export default function CompetitorReport({ report }: CompetitorReportProps) {
           {icon}
           {title}
         </h4>
-        <div className="text-sm text-foreground">{content}</div>
+        <div className="text-sm text-foreground">{typeof content === 'string' ? stripSourceTags(content) : content}</div>
       </div>
     );
   };
@@ -938,7 +941,7 @@ export default function CompetitorReport({ report }: CompetitorReportProps) {
               {analysis.strategic_insights.map((insight: string, index: number) => (
                 <li key={index} className="flex items-start" data-testid={`strategic-insight-${index}`}>
                   <CheckCircle className="w-5 h-5 text-green-600 mt-0.5 mr-3 flex-shrink-0" />
-                  <span className="text-foreground">{insight}</span>
+                  <span className="text-foreground">{stripSourceTags(insight)}</span>
                 </li>
               ))}
             </ul>

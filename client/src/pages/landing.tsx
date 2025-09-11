@@ -351,7 +351,7 @@ export default function Landing() {
                     <h3 className="text-2xl font-bold text-foreground">Premium</h3>
                     <Badge>Coming Soon</Badge>
                   </div>
-                  <p className="text-3xl font-bold text-primary mb-4">$29<span className="text-sm font-normal text-muted-foreground">/month</span></p>
+                  <p className="text-3xl font-bold text-primary mb-4">$9.99<span className="text-sm font-normal text-muted-foreground">/month</span></p>
                   
                   <ul className="text-left space-y-3 mb-6">
                     <li className="flex items-center">
