@@ -639,6 +639,7 @@ export default function CompetitorReport({ report }: CompetitorReportProps) {
                           </div>
                         </div>
                       </div>
+                    )}
                   </div>
                 </TabsContent>
 
