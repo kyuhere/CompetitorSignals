@@ -489,7 +489,7 @@ export default function CompetitorReport({ report }: CompetitorReportProps) {
                             <p className="text-sm text-muted-foreground">{competitor.company_overview?.market_positioning || "No reliable data found"}</p>
                           </div>
                         </div>
-                        {competitor.company_overview?.key_products_services && (
+                        {competitor.company_overview?.key_products_services && Array.isArray(competitor.company_overview.key_products_services) && (
                           <div>
                             <p className="text-sm font-medium text-foreground mb-3">Key Products & Services</p>
                             <ul className="space-y-2">
@@ -510,7 +510,7 @@ export default function CompetitorReport({ report }: CompetitorReportProps) {
                           Products & Services
                         </h4>
                         <div className="space-y-4">
-                          {competitor.products_services?.main_offerings && (
+                          {competitor.products_services?.main_offerings && Array.isArray(competitor.products_services.main_offerings) && (
                             <div className="bg-muted/50 p-4 rounded-lg">
                               <p className="text-sm font-medium text-foreground mb-2">Main Offerings</p>
                               <ul className="space-y-2">
@@ -523,7 +523,7 @@ export default function CompetitorReport({ report }: CompetitorReportProps) {
                               </ul>
                             </div>
                           )}
-                          {competitor.products_services?.unique_selling_points && (
+                          {competitor.products_services?.unique_selling_points && Array.isArray(competitor.products_services.unique_selling_points) && (
                             <div className="bg-muted/50 p-4 rounded-lg">
                               <p className="text-sm font-medium text-foreground mb-2">Unique Selling Points</p>
                               <ul className="space-y-2">
@@ -572,7 +572,7 @@ export default function CompetitorReport({ report }: CompetitorReportProps) {
                         <ThumbsUp className="w-4 h-4 text-green-600 mr-2" />
                         Key Strengths
                       </h4>
-                      {competitor.strengths_weaknesses?.strengths ? (
+                      {competitor.strengths_weaknesses?.strengths && Array.isArray(competitor.strengths_weaknesses.strengths) ? (
                         <ul className="space-y-3">
                           {competitor.strengths_weaknesses.strengths.slice(0, 5).map((item: string, idx: number) => (
                             <li key={idx} className="text-sm text-foreground flex items-start">
@@ -590,7 +590,7 @@ export default function CompetitorReport({ report }: CompetitorReportProps) {
                         <ThumbsDown className="w-4 h-4 text-red-600 mr-2" />
                         Areas for Improvement
                       </h4>
-                      {competitor.strengths_weaknesses?.weaknesses ? (
+                      {competitor.strengths_weaknesses?.weaknesses && Array.isArray(competitor.strengths_weaknesses.weaknesses) ? (
                         <ul className="space-y-3">
                           {competitor.strengths_weaknesses.weaknesses.slice(0, 5).map((item: string, idx: number) => (
                             <li key={idx} className="text-sm text-foreground flex items-start">
@@ -612,7 +612,7 @@ export default function CompetitorReport({ report }: CompetitorReportProps) {
                         <Zap className="w-4 h-4 text-blue-600 mr-2" />
                         Market Opportunities
                       </h4>
-                      {competitor.swot_analysis?.opportunities ? (
+                      {competitor.swot_analysis?.opportunities && Array.isArray(competitor.swot_analysis.opportunities) ? (
                         <ul className="space-y-3">
                           {competitor.swot_analysis.opportunities.slice(0, 4).map((item: string, idx: number) => (
                             <li key={idx} className="text-sm text-foreground flex items-start">
@@ -630,7 +630,7 @@ export default function CompetitorReport({ report }: CompetitorReportProps) {
                         <AlertTriangle className="w-4 h-4 text-orange-600 mr-2" />
                         Market Threats
                       </h4>
-                      {competitor.swot_analysis?.threats ? (
+                      {competitor.swot_analysis?.threats && Array.isArray(competitor.swot_analysis.threats) ? (
                         <ul className="space-y-3">
                           {competitor.swot_analysis.threats.slice(0, 4).map((item: string, idx: number) => (
                             <li key={idx} className="text-sm text-foreground flex items-start">
@@ -655,7 +655,7 @@ export default function CompetitorReport({ report }: CompetitorReportProps) {
                         <div>
                           <div>
                             <div className="text-sm font-medium text-foreground mb-2">Pain Points:</div>
-                            {competitor.customer_insights?.pain_points ? (
+                            {competitor.customer_insights?.pain_points && Array.isArray(competitor.customer_insights.pain_points) ? (
                               <ul className="space-y-1">
                                 {competitor.customer_insights.pain_points.map((item: string, idx: number) => (
                                   <li key={idx} className="text-sm text-foreground flex items-start">
