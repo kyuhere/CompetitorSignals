@@ -154,10 +154,12 @@ export default function TrackedCompetitors() {
             Tracked Competitors
           </CardTitle>
           <Badge 
-            className="bg-primary text-primary-foreground font-bold px-3 py-1" 
+            className="bg-primary text-primary-foreground font-bold px-3 py-1 rounded-full inline-flex items-center gap-1 font-mono text-xs sm:text-sm" 
             data-testid="text-competitor-count"
           >
-            {trackedData?.count || 0} / {trackedData?.limit || 3}
+            <span>{trackedData?.count ?? 0}</span>
+            <span className="mx-1">/</span>
+            <span>{trackedData?.limit ?? 3}</span>
           </Badge>
         </div>
         <p className="text-sm text-muted-foreground font-medium">

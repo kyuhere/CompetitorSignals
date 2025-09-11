@@ -157,7 +157,7 @@ export default function CompetitorInputForm({ onAnalyze, isLoading, usage }: Com
                 />
                 <Label htmlFor="products" className="text-sm text-muted-foreground">
                   Product Launches
-                  <Badge variant="outline" className="ml-1 text-xs">Premium</Badge>
+                  <Badge variant="outline" className="ml-1 text-xs">Coming Soon</Badge>
                 </Label>
               </div>
             </div>
