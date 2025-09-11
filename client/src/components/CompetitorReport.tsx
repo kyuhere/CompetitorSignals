@@ -265,7 +265,13 @@ export default function CompetitorReport({ report }: CompetitorReportProps) {
   };
 
   const renderSection = (title: string, icon: React.ReactNode, content: any, emptyMessage = "No reliable data found") => {
-    if (!content || (Array.isArray(content) && content.length === 0) || content === "No reliable data found") {
+    const isNoDataString = (val: unknown) => typeof val === 'string' && val.trim().toLowerCase() === 'no reliable data found';
+
+    if (
+      content == null ||
+      (typeof content === 'string' && isNoDataString(content)) ||
+      (Array.isArray(content) && content.filter((i) => !isNoDataString(i)).length === 0)
+    ) {
       return (
         <div>
           <h4 className="font-medium text-foreground mb-3 flex items-center">
@@ -277,24 +283,33 @@ export default function CompetitorReport({ report }: CompetitorReportProps) {
       );
     }
 
-    return (
-      <div>
-        <h4 className="font-medium text-foreground mb-3 flex items-center">
-          {icon}
-          {title}
-        </h4>
-        {Array.isArray(content) ? (
+    if (Array.isArray(content)) {
+      const filtered = content.filter((i) => !isNoDataString(i));
+      return (
+        <div>
+          <h4 className="font-medium text-foreground mb-3 flex items-center">
+            {icon}
+            {title}
+          </h4>
           <ul className="space-y-2 text-sm">
-            {content.map((item: string, itemIndex: number) => (
+            {filtered.map((item: string, itemIndex: number) => (
               <li key={itemIndex} className="flex items-start">
                 <div className="w-1.5 h-1.5 bg-primary rounded-full mt-2 mr-3 flex-shrink-0"></div>
                 <span className="text-foreground">{item}</span>
               </li>
             ))}
           </ul>
-        ) : (
-          <div className="text-sm text-foreground">{content}</div>
-        )}
+        </div>
+      );
+    }
+
+    return (
+      <div>
+        <h4 className="font-medium text-foreground mb-3 flex items-center">
+          {icon}
+          {title}
+        </h4>
+        <div className="text-sm text-foreground">{content}</div>
       </div>
     );
   };

@@ -13,6 +13,24 @@ import { sendCompetitorReport } from "./email";
 // Store active streaming sessions
 const streamingSessions = new Map<string, any>();
 
+// In-memory cache for repeated analyses (15 min TTL)
+type CachedPayload = {
+  signals: any[];
+  enhancedData: any[];
+  summary: any; // stringified JSON or object
+  hasG2Reviews: boolean;
+  hasHNSentiment: boolean;
+};
+const ANALYSIS_TTL_MS = 15 * 60 * 1000;
+const analysisCache = new Map<string, { payload: CachedPayload; expires: number }>();
+const normalizeList = (arr: string[]) => arr.map(s => s.trim().toLowerCase()).filter(Boolean).sort();
+const makeCacheKey = (competitors: string[], urls: string[], sources: any, mode: 'premium'|'free') => {
+  const src = [sources?.news && 'news', sources?.funding && 'funding', sources?.social && 'social', sources?.products && 'products']
+    .filter(Boolean)
+    .join(',');
+  return `competitors:${normalizeList(competitors).join('|')}|urls:${normalizeList(urls).join('|')}|src:${src}|mode:${mode}`;
+};
+
 const competitorAnalysisSchema = z.object({
   competitors: z.string().min(1, "At least one competitor is required"),
   urls: z.string().optional(),
@@ -221,6 +239,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Aggregate signals with streaming support
       const urlList = urls ? urls.split('\n').map(url => url.trim()).filter(url => url.length > 0) : [];
 
+      // Plan-aware caching (bypass with ?nocache=1)
+      const analysisMode: 'premium' | 'free' = (isLoggedIn && plan === 'premium') ? 'premium' : 'free';
+      const cacheKey = makeCacheKey(competitorList, urlList, sources, analysisMode);
+      const bypassCache = String(req.query?.nocache || '') === '1';
+      const cached = !bypassCache ? analysisCache.get(cacheKey) : undefined;
+      let fromCache = false;
+
       // Generate a unique session ID for streaming
       const streamSessionId = `${sessionId}_${Date.now()}`;
 
@@ -235,31 +260,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Always use enhanced aggregator for all plans (ensures review data exists for overlay gating)
-      let signals, enhancedData;
-      console.log(`[Routes] Using enhanced aggregator for: ${competitorList.join(', ')} (plan=${plan}, loggedIn=${isLoggedIn})`);
-      const enhancedResults = await enhancedSignalAggregator.aggregateEnhancedSignals(
-        competitorList,
-        urlList,
-        sources,
-        (partialResults) => {
-          const streamRes = streamingSessions.get(streamSessionId);
-          if (streamRes) {
-            streamRes.write(`data: ${JSON.stringify({
-              type: "partial_results",
-              data: (partialResults as any).traditional || partialResults,
-              progress: 50
-            })}\n\n`);
-          }
-        },
-        { mode: (isLoggedIn && plan === 'premium') ? 'premium' : 'free', computeSentiment: true }
-      );
-      signals = enhancedResults.traditional;
-      enhancedData = enhancedResults.enhanced;
-      console.log(`[Routes] Aggregation complete:`, {
-        traditionalSignals: signals?.length || 0,
-        enhancedDataCount: enhancedData?.length || 0,
-        enhancedCompetitors: enhancedData?.map((d: any) => d.competitor) || []
-      });
+      let signals: any[] = [];
+      let enhancedData: any[] = [];
+      let summary: any = undefined;
+      let hasG2Reviews: boolean = false;
+      let hasHNSentiment: boolean = false;
+
+      if (cached && cached.expires > Date.now()) {
+        ({ signals, enhancedData, summary, hasG2Reviews, hasHNSentiment } = cached.payload);
+        fromCache = true;
+        console.log(`[Routes] Cache hit for analyze key=${cacheKey}`);
+      } else {
+        console.log(`[Routes] Using enhanced aggregator for: ${competitorList.join(', ')} (plan=${plan}, loggedIn=${isLoggedIn}, mode=${analysisMode})`);
+        const enhancedResults = await enhancedSignalAggregator.aggregateEnhancedSignals(
+          competitorList,
+          urlList,
+          sources,
+          (partialResults) => {
+            const streamRes = streamingSessions.get(streamSessionId);
+            if (streamRes) {
+              streamRes.write(`data: ${JSON.stringify({
+                type: "partial_results",
+                data: (partialResults as any).traditional || partialResults,
+                progress: 50
+              })}\n\n`);
+            }
+          },
+          { mode: analysisMode, computeSentiment: analysisMode === 'premium' }
+        );
+        signals = enhancedResults.traditional || [];
+        enhancedData = enhancedResults.enhanced || [];
+        console.log(`[Routes] Aggregation complete:`, {
+          traditionalSignals: signals?.length || 0,
+          enhancedDataCount: enhancedData?.length || 0,
+          enhancedCompetitors: enhancedData?.map((d: any) => d.competitor) || []
+        });
+      }
 
 
 
@@ -272,10 +308,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         })}\n\n`);
       }
 
-      // Generate analysis with enhanced data for premium users
-      let summary;
+      // Generate analysis with enhanced data (skip if from cache)
       try {
-        if (isLoggedIn && plan === 'premium' && enhancedData && enhancedData.length > 0) {
+        if (!summary && analysisMode === 'premium' && enhancedData && enhancedData.length > 0) {
           // Premium users get enhanced analysis including review and sentiment data
           const fastPreview = await generateFastPreview(signals, competitorList);
 
@@ -291,7 +326,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Generate structured summary (same schema as free) using premium model depth
           summary = await summarizeCompetitorSignals(signals, competitorList, true);
 
-        } else {
+        } else if (!summary) {
           // Free users and guests get traditional analysis
           const fastPreview = await generateFastPreview(signals, competitorList);
 
@@ -323,8 +358,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Create report with enhanced data
-      const hasG2Reviews = enhancedData && enhancedData.some((d: any) => d.g2 && d.g2.totalReviews > 0);
-      const hasHNSentiment = enhancedData && enhancedData.some((d: any) => d.hackerNews && d.hackerNews.totalMentions > 0);
+      hasG2Reviews = typeof hasG2Reviews === 'boolean' ? hasG2Reviews : !!(enhancedData && enhancedData.some((d: any) => d.g2 && d.g2.totalReviews > 0));
+      hasHNSentiment = typeof hasHNSentiment === 'boolean' ? hasHNSentiment : !!(enhancedData && enhancedData.some((d: any) => d.hackerNews && d.hackerNews.totalMentions > 0));
 
       console.log(`[Routes] Creating report metadata:`, {
         enhancedDataLength: enhancedData?.length || 0,
@@ -402,6 +437,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
           id: `temp_${Date.now()}`,
           createdAt: new Date(),
         };
+      }
+
+      // Update cache on miss
+      if (!fromCache && signals && enhancedData && summary) {
+        analysisCache.set(cacheKey, {
+          payload: { signals, enhancedData, summary, hasG2Reviews: !!hasG2Reviews, hasHNSentiment: !!hasHNSentiment },
+          expires: Date.now() + ANALYSIS_TTL_MS,
+        });
       }
 
       // Clean up streaming session
