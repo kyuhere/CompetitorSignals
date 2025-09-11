@@ -232,6 +232,13 @@ export class DatabaseStorage implements IStorage {
       ));
     return result[0]?.count || 0;
   }
+
+  async clearAllTrackedCompetitors(userId: string): Promise<void> {
+    await db
+      .update(trackedCompetitors)
+      .set({ isActive: false })
+      .where(eq(trackedCompetitors.userId, userId));
+  }
 }
 
 export const storage = new DatabaseStorage();
