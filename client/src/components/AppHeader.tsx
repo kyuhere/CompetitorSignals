@@ -11,6 +11,7 @@ interface AppHeaderProps {
     isLoggedIn: boolean;
     isTrackingBased?: boolean; // Added for tracking-based logic
     resetTime?: string; // Added for reset time display
+    plan?: 'free' | 'premium';
   };
 }
 
@@ -36,8 +37,15 @@ export default function AppHeader({ usage }: AppHeaderProps) {
                 {/* User Status Indicator */}
                 <div className="flex items-center space-x-3 text-sm bg-soft-green px-4 py-2 rounded-xl border-2 border-primary/20" data-testid="user-status">
                   <User className="w-4 h-4 text-gray-700" />
-                  <span className="font-medium text-gray-800" data-testid="text-user-email">{user.email || 'User'}</span>
-                  <Badge className="bg-primary text-primary-foreground font-bold" data-testid="badge-user-tier">Free</Badge>
+                  <span className="font-medium text-gray-800" data-testid="text-user-email">{(user as any)?.email || 'User'}</span>
+                  {(() => {
+                    const plan = (usage?.plan || (user as any)?.plan || 'free') as 'free' | 'premium';
+                    return (
+                      <Badge className="bg-primary text-primary-foreground font-bold" data-testid="badge-user-tier">
+                        {plan === 'premium' ? 'Premium' : 'Free'}
+                      </Badge>
+                    );
+                  })()}
                 </div>
 
                 {/* Query Limit Indicator */}
