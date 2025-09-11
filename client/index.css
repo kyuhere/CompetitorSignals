@@ -9,7 +9,7 @@
   --card: hsl(0, 0%, 100%); /* White cards */
   --card-foreground: hsl(0, 0%, 9%);
   --popover: hsl(0, 0%, 100%);
-  --popover-foreground: hsl(0, 92%, 66%);
+  --popover-foreground: hsl(0, 0%, 9%);
   
   /* Yellow primary color system - WCAG AA compliant */
   --primary: hsl(45, 100%, 51%); /* #FFD600 - Lemon yellow */

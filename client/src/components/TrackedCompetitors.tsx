@@ -161,7 +161,7 @@ export default function TrackedCompetitors() {
           </Badge>
         </div>
         <p className="text-sm text-muted-foreground font-medium">
-          Manage your {trackedData?.limit ?? 3} tracked competitors. Each analysis adds competitors to this list, and we'll monitor them automatically.
+          Manage your 3 tracked competitors. Each analysis adds competitors to this list, and we'll monitor them automatically.
         </p>
       </CardHeader>
       
@@ -307,7 +307,7 @@ export default function TrackedCompetitors() {
                 Competitor Locked
               </DialogTitle>
               <DialogDescription className="text-base">
-                You can track up to {trackedData?.limit ?? 3} competitors with your plan, and newly added competitors are locked until the end of the month. Remove one to add another or upgrade for higher limits.
+                You can only track 3 competitors and they're locked until the end of the month. Remove one to add another or upgrade to premium for unlimited tracking.
               </DialogDescription>
             </DialogHeader>
             

@@ -13,6 +13,11 @@ interface EnhancedSignalItem {
   metadata?: any;
 }
 
+interface EnhancedCompetitorSignals {
+  source: string;
+  competitor: string;
+  items: EnhancedSignalItem[];
+}
 
 interface ReviewSentimentData {
   platform: 'g2' | 'hackernews';

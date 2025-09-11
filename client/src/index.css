@@ -10,7 +10,7 @@
   --foreground: hsl(0 0% 0%);                      /* Pure black */
   --card: hsl(0 0% 100%);                          /* White cards */
   --card-foreground: hsl(0 0% 0%);                 /* Black text on cards */
-  --popover: hsl(0deg 0% 100%);
+  --popover: hsl(0 0% 100%);
   --popover-foreground: hsl(0 0% 0%);
   
   /* Glass Lemon Primary - Lemon Yellow #FFE606 */
@@ -35,11 +35,11 @@
   --muted-foreground: hsl(0 0% 45%);               /* Medium gray #737373 */
   
   /* Accent (Black) */
-  --accent: hsl(55.94deg 100% 50.78%);                          /* Black accents */
+  --accent: hsl(0 0% 0%);                          /* Black accents */
   --accent-foreground: hsl(0 0% 100%);             /* White on black */
   
   /* Status Colors */
-  --destructive: hsl(0deg 0% 0%);                   /* #ef4444 */
+  --destructive: hsl(0 84% 60%);                   /* #ef4444 */
   --destructive-foreground: hsl(0 0% 98%);
   --success-green: hsl(142 76% 36%);               /* #16a34a */
   --warning-gold: hsl(45 93% 50%);                 /* #FFD700 */

@@ -74,17 +74,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   };
 
-  // Determine effective plan with fallbacks and dev override for a known premium email
-  const getEffectivePlan = (user: any, req: any): string => {
-    const claimedPlan = (req?.user?.claims?.plan as string) || undefined;
-    let plan = (user?.plan as string) || claimedPlan || 'free';
-    // Temporary override for known premium account during debugging
-    if (user?.email && user.email.toLowerCase() === 'kamsi@hotmail.co.uk') {
-      plan = 'premium';
-    }
-    return plan;
-  };
-
   // Get user usage stats
   app.get('/api/usage', async (req: any, res) => {
     try {
@@ -98,7 +87,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (isLoggedIn) {
         // Get user's plan from database
         const user = await storage.getUser(userId);
-        plan = getEffectivePlan(user, req);
+        plan = user?.plan || 'free';
         const planLimits = getPlanLimits(plan);
         limit = planLimits.tracked;
         current = await storage.getTrackedCompetitorCount(userId);
@@ -174,7 +163,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       if (isLoggedIn) {
         const user = await storage.getUser(userId);
-        plan = getEffectivePlan(user, req);
+        plan = user?.plan || 'free';
         const planLimits = getPlanLimits(plan);
         limit = planLimits.tracked;
 
@@ -259,7 +248,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log(`[Routes] Enhanced results received:`, {
           traditionalSignals: signals?.length || 0,
           enhancedDataCount: enhancedData?.length || 0,
-          enhancedCompetitors: enhancedData?.map((d: any) => d.competitor) || []
+          enhancedCompetitors: enhancedData?.map(d => d.competitor) || []
         });
       } else {
         console.log(`[Routes] Free user/guest detected, using traditional aggregation for: ${competitorList.join(', ')}`);
@@ -490,15 +479,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const trackedCompetitors = await storage.getUserTrackedCompetitors(userId);
       const count = await storage.getTrackedCompetitorCount(userId);
 
-      // Determine plan-based limit
-      const user = await storage.getUser(userId);
-      const plan = getEffectivePlan(user, req);
-      const planLimits = getPlanLimits(plan);
-
       res.json({
         competitors: trackedCompetitors,
         count,
-        limit: planLimits.tracked
+        limit: 3
       });
     } catch (error) {
       console.error("Error fetching tracked competitors:", error);
@@ -530,29 +514,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       );
 
       if (competitorExists) {
-        // Idempotent success: return the existing competitor with 200
-        const existing = existingCompetitors.find(
-          c => c.competitorName.toLowerCase() === validation.data.competitorName.toLowerCase()
-        );
-        return res.status(200).json({
-          ...existing,
-          alreadyTracked: true
+        return res.status(400).json({
+          message: "This competitor is already being tracked"
         });
       }
 
-      // Determine plan-based limit
-      const user = await storage.getUser(userId);
-      const plan = (user?.plan as string) || (req.user?.claims?.plan as string) || 'free';
-      const planLimits = getPlanLimits(plan);
-
-      // Check limit (plan-based)
+      // Check limit (3 competitors max)
       const currentCount = await storage.getTrackedCompetitorCount(userId);
-      if (currentCount >= planLimits.tracked) {
+      if (currentCount >= 3) {
         return res.status(400).json({
-          message: `You can track up to ${planLimits.tracked} competitors with your current plan (${plan}). Remove one to add another.`,
-          limit: planLimits.tracked,
-          current: currentCount,
-          plan
+          message: "You can track up to 3 competitors. Remove one to add another."
         });
       }
 
