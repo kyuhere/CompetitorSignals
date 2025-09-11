@@ -288,12 +288,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             })}\n\n`);
           }
 
-          // Generate enhanced summary with review and sentiment data
-          summary = await enhancedSignalAggregator.generateEnhancedAnalysis(
-            signals,
-            enhancedData,
-            competitorList
-          );
+          // Generate structured summary (same schema as free) using premium model depth
+          summary = await summarizeCompetitorSignals(signals, competitorList, true);
 
         } else {
           // Free users and guests get traditional analysis

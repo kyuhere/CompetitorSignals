@@ -641,7 +641,7 @@ export default function CompetitorReport({ report }: CompetitorReportProps) {
                 <TabsContent value="reviews" className="space-y-6 mt-6">
                   {/* Reviews & Sentiment Analysis */}
                   {report.metadata?.enhanced?.reviewData?.find((data: any) => data.competitor === competitor.competitor) ? (() => {
-                    const enhancedData = report.metadata.enhanced.reviewData.find((data: any) => data.competitor === competitor.competitor);
+                    const enhancedData = report.metadata?.enhanced?.reviewData?.find((data: any) => data.competitor === competitor.competitor);
                     const g2Data = enhancedData?.g2;
                     const hnData = enhancedData?.hackerNews;
                     const isLocked = report.metadata?.enhanced?.locked;
