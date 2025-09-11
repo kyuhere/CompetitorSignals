@@ -31,7 +31,7 @@ export interface HNSentimentData {
 export class HackerNewsService {
   private readonly baseUrl = 'https://hn.algolia.com/api/v1';
 
-  async getCompetitorMentions(competitorName: string, dateRange: 'pastWeek' | 'pastMonth' = 'pastWeek'): Promise<HNSentimentData> {
+  async getCompetitorMentions(competitorName: string, dateRange: 'pastWeek' | 'pastMonth' = 'pastMonth'): Promise<HNSentimentData> {
     try {
       // Search for comments mentioning the competitor
       const commentsResponse = await axios.get(`${this.baseUrl}/search_by_date`, {
@@ -39,7 +39,7 @@ export class HackerNewsService {
           query: competitorName,
           tags: 'comment',
           numericFilters: this.getDateFilter(dateRange),
-          hitsPerPage: 50
+          hitsPerPage: 150
         },
         timeout: 10000
       });
@@ -61,7 +61,7 @@ export class HackerNewsService {
       return {
         query: competitorName,
         total_comments: comments.length,
-        comments: comments.slice(0, 20), // Limit to top 20 for processing
+        comments: comments.slice(0, 50), // keep more for better selection later
         sentiment_summary: this.calculateBasicSentiment(comments),
         top_discussions: stories.slice(0, 5)
       };
@@ -125,40 +125,55 @@ export class HackerNewsService {
   }
 
   private cleanCommentText(text: string): string {
-    // Remove HTML tags and normalize whitespace
+    // Remove HTML tags, decode HTML entities (including numeric), and normalize whitespace
+    const withoutTags = (text || '').replace(/<[^>]*>/g, ' ');
+    const decoded = this.decodeHTMLEntities(withoutTags);
+    return decoded.replace(/\s+/g, ' ').trim();
+  }
+
+  private decodeHTMLEntities(text: string): string {
+    if (!text) return '';
     return text
-      .replace(/<[^>]*>/g, '')
+      // Named entities
       .replace(/&quot;/g, '"')
       .replace(/&#x27;/g, "'")
+      .replace(/&apos;/g, "'")
       .replace(/&amp;/g, '&')
       .replace(/&lt;/g, '<')
       .replace(/&gt;/g, '>')
-      .replace(/\s+/g, ' ')
-      .trim();
+      // Numeric decimal entities
+      .replace(/&#(\d+);/g, (_, dec) => {
+        const n = parseInt(dec, 10);
+        return isFinite(n) ? String.fromCharCode(n) : _;
+      })
+      // Numeric hex entities
+      .replace(/&#x([0-9a-fA-F]+);/g, (_, hex) => {
+        const n = parseInt(hex, 16);
+        return isFinite(n) ? String.fromCharCode(n) : _;
+      });
   }
 
   private isRelevantComment(text: string, competitorName: string): boolean {
     const lowerText = text.toLowerCase();
     const lowerCompetitor = competitorName.toLowerCase();
     
-    // Check if competitor name appears with some context (not just a passing mention)
+    // Ensure explicit brand mention
     const mentionIndex = lowerText.indexOf(lowerCompetitor);
     if (mentionIndex === -1) return false;
-    
-    // Get surrounding context (50 characters before and after)
-    const start = Math.max(0, mentionIndex - 50);
-    const end = Math.min(text.length, mentionIndex + competitorName.length + 50);
-    const context = lowerText.substring(start, end);
-    
-    // Look for opinion words or discussion indicators
+
+    // Expand opinion signal vocabulary
     const opinionWords = [
-      'love', 'hate', 'like', 'dislike', 'good', 'bad', 'great', 'terrible',
-      'awesome', 'awful', 'amazing', 'disappointing', 'recommend', 'avoid',
-      'better', 'worse', 'prefer', 'alternative', 'compared', 'versus', 'vs',
-      'experience', 'tried', 'used', 'switched', 'migrated'
+      'love','hate','like','dislike','good','bad','great','terrible','awesome','awful','amazing','disappointing',
+      'recommend','avoid','better','worse','prefer','alternative','versus','vs','experience','tried','used','switched','migrated',
+      'doing great','doing good','consistently','value','improve','worsen','decline','not as good','don\'t like','not a fan',
+      'happy','unhappy','satisfied','dissatisfied','complain','complaint','praise','criticize','criticise','love it','hate it'
     ];
-    
-    return opinionWords.some(word => context.includes(word));
+
+    // Check presence of any opinion signal anywhere in the comment
+    const hasOpinion = opinionWords.some(w => lowerText.includes(w));
+    if (!hasOpinion) return false;
+
+    return true;
   }
 
   private calculateBasicSentiment(comments: HNComment[]): {
@@ -230,7 +245,7 @@ export class HackerNewsService {
     topDiscussions: Array<{title: string; url: string; comments: number}>;
   }> {
     console.log(`[HackerNews] Getting competitor sentiment for: ${competitorName}`);
-    const data = await this.getCompetitorMentions(competitorName);
+    const data = await this.getCompetitorMentions(competitorName, 'pastMonth');
     console.log(`[HackerNews] Mentions found for ${competitorName}:`, {
       totalComments: data.total_comments,
       sentiment: data.sentiment_summary.overall,
@@ -246,17 +261,45 @@ export class HackerNewsService {
         neutral: data.sentiment_summary.neutral,
         negative: data.sentiment_summary.negative
       },
-      topComments: data.comments.slice(0, 3).map(comment => ({
-        text: comment.text.substring(0, 200) + (comment.text.length > 200 ? '...' : ''),
-        author: comment.author,
-        url: comment.comment_url
-      })),
+      topComments: data.comments
+        .map(comment => ({
+          text: this.extractOpinionSnippet(comment.text, competitorName),
+          author: comment.author,
+          url: comment.comment_url
+        }))
+        .filter(c => !!c.text)
+        .slice(0, 5),
       topDiscussions: data.top_discussions.map(discussion => ({
         title: discussion.title,
         url: discussion.url,
         comments: discussion.comment_count
       }))
     };
+  }
+
+  private extractOpinionSnippet(text: string, competitorName: string): string {
+    if (!text) return '';
+    const sentences = text
+      .split(/(?<=[.!?])\s+/)
+      .map(s => s.trim())
+      .filter(Boolean);
+
+    const lowerComp = (competitorName || '').toLowerCase();
+    const opinionSignals = [
+      'doing great','consistently','value','amazing','awesome','love','hate','don\'t like','not a fan','decline','improve','worse','better','disappointing','praise','criticize','criticise'
+    ];
+
+    // Prefer sentence containing competitor AND an opinion signal
+    const withCompAndOpinion = sentences.find(s => s.toLowerCase().includes(lowerComp) && opinionSignals.some(w => s.toLowerCase().includes(w)));
+    if (withCompAndOpinion) return withCompAndOpinion;
+
+    // Otherwise any sentence that mentions the competitor
+    const withComp = sentences.find(s => s.toLowerCase().includes(lowerComp));
+    if (withComp) return withComp.length > 240 ? withComp.slice(0, 237) + '…' : withComp;
+
+    // Fallback: first sentence truncated
+    const first = sentences[0] || text;
+    return first.length > 240 ? first.slice(0, 237) + '…' : first;
   }
 }
 
