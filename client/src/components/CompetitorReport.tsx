@@ -11,7 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 
 interface CompetitorReportProps {
   report: {
@@ -122,41 +122,63 @@ export default function CompetitorReport({ report }: CompetitorReportProps) {
       });
     }
   };
-  let analysis;
-  try {
-    // Handle both string and object formats
-    if (typeof report.summary === 'string') {
-      // Try to parse as JSON first
-      try {
-        analysis = JSON.parse(report.summary);
-      } catch {
-        // If parsing fails, treat as plain text and create structure
-        analysis = {
-          executive_summary: report.summary,
-          competitor_insights: [],
-          market_signals: [],
-          recommendations: []
-        };
-      }
-    } else if (typeof report.summary === 'object' && report.summary !== null) {
-      analysis = report.summary;
-    } else {
-      throw new Error('Invalid summary format');
-    }
 
-    // Ensure required fields exist
-    if (!analysis.executive_summary) {
-      analysis.executive_summary = "Competitive intelligence analysis completed. Key insights and market signals have been identified.";
+  // Parse report summary
+  const analysis = useMemo(() => {
+    try {
+      // Handle both string and object formats
+      if (typeof report.summary === 'string') {
+        // Try to parse as JSON first
+        try {
+          const parsed = JSON.parse(report.summary);
+          return {
+            executive_summary: parsed.executive_summary || "Competitive intelligence analysis completed. Key insights and market signals have been identified.",
+            competitors: parsed.competitors || [],
+            competitor_insights: parsed.competitor_insights || [],
+            market_signals: parsed.market_signals || [],
+            recommendations: parsed.recommendations || [],
+            strategic_insights: parsed.strategic_insights || [],
+            methodology: parsed.methodology || null
+          };
+        } catch {
+          // If parsing fails, treat as plain text and create structure
+          return {
+            executive_summary: report.summary,
+            competitors: [],
+            competitor_insights: [],
+            market_signals: [],
+            recommendations: [],
+            strategic_insights: [],
+            methodology: null
+          };
+        }
+      } else if (typeof report.summary === 'object' && report.summary !== null) {
+        const summaryObj = report.summary as any;
+        return {
+          executive_summary: summaryObj.executive_summary || "Competitive intelligence analysis completed. Key insights and market signals have been identified.",
+          competitors: summaryObj.competitors || [],
+          competitor_insights: summaryObj.competitor_insights || [],
+          market_signals: summaryObj.market_signals || [],
+          recommendations: summaryObj.recommendations || [],
+          strategic_insights: summaryObj.strategic_insights || [],
+          methodology: summaryObj.methodology || null
+        };
+      } else {
+        throw new Error('Invalid summary format');
+      }
+    } catch (error) {
+      console.error("Error parsing report summary:", error);
+      return {
+        executive_summary: "Competitive intelligence analysis completed. Key insights and market signals have been identified.",
+        competitors: [],
+        competitor_insights: [],
+        market_signals: [],
+        recommendations: [],
+        strategic_insights: [],
+        methodology: null
+      };
     }
-  } catch (error) {
-    console.error("Error parsing report summary:", error);
-    analysis = {
-      executive_summary: "Competitive intelligence analysis completed. Key insights and market signals have been identified.",
-      competitor_insights: [],
-      market_signals: [],
-      recommendations: []
-    };
-  }
+  }, [report.summary]);
 
   const handleExport = async () => {
     try {
@@ -589,30 +611,28 @@ export default function CompetitorReport({ report }: CompetitorReportProps) {
                   {/* Customer Insights */}
                   <div>
                     {renderSection("Customer Insights", <Users className="w-4 h-4 text-indigo-600 mr-2" />,
-                      <>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <div className="text-sm text-foreground"><strong>Sentiment:</strong> {competitor.customer_insights?.sentiment || "No reliable data found"}</div>
+                        </div>
+                        <div>
                           <div>
-                            <p className="text-sm text-foreground"><strong>Sentiment:</strong> {competitor.customer_insights?.sentiment || "No reliable data found"}</p>
-                          </div>
-                          <div>
-                            <div>
-                              <strong className="text-sm">Pain Points:</strong>
-                              {competitor.customer_insights?.pain_points ? (
-                                <ul className="mt-2 space-y-1">
-                                  {competitor.customer_insights.pain_points.map((item: string, idx: number) => (
-                                    <li key={idx} className="text-sm text-foreground flex items-start">
-                                      <div className="w-1.5 h-1.5 bg-indigo-600 rounded-full mt-2 mr-3 flex-shrink-0"></div>
-                                      {item}
-                                    </li>
-                                  ))}
-                                </ul>
-                              ) : (
-                                <p className="text-sm text-muted-foreground italic mt-2">No reliable data found</p>
-                              )}
-                            </div>
+                            <div className="text-sm font-medium text-foreground mb-2">Pain Points:</div>
+                            {competitor.customer_insights?.pain_points ? (
+                              <ul className="space-y-1">
+                                {competitor.customer_insights.pain_points.map((item: string, idx: number) => (
+                                  <li key={idx} className="text-sm text-foreground flex items-start">
+                                    <div className="w-1.5 h-1.5 bg-indigo-600 rounded-full mt-2 mr-3 flex-shrink-0"></div>
+                                    {item}
+                                  </li>
+                                ))}
+                              </ul>
+                            ) : (
+                              <div className="text-sm text-muted-foreground italic">No reliable data found</div>
+                            )}
                           </div>
                         </div>
-                      </>
+                      </div>
                     )}
                   </div>
                 </TabsContent>
@@ -623,7 +643,7 @@ export default function CompetitorReport({ report }: CompetitorReportProps) {
                     const enhancedData = report.metadata.enhanced.reviewData.find((data: any) => data.competitor === competitor.competitor);
                     const g2Data = enhancedData?.g2;
                     const hnData = enhancedData?.hackerNews;
-                    
+
                     return (
                       <div className="space-y-6">
                         {/* G2 Reviews Section */}
@@ -633,7 +653,7 @@ export default function CompetitorReport({ report }: CompetitorReportProps) {
                               <BarChart3 className="w-4 h-4 text-blue-600 mr-2" />
                               G2 Reviews & Ratings
                             </h4>
-                            
+
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                               <div className="bg-white/50 dark:bg-black/30 p-4 rounded-lg text-center">
                                 <div className="text-2xl font-bold text-foreground">{g2Data.averageRating?.toFixed(1) || 'N/A'}</div>
@@ -649,12 +669,12 @@ export default function CompetitorReport({ report }: CompetitorReportProps) {
                                   ))}
                                 </div>
                               </div>
-                              
+
                               <div className="bg-white/50 dark:bg-black/30 p-4 rounded-lg text-center">
                                 <div className="text-2xl font-bold text-foreground">{g2Data.totalReviews || 0}</div>
                                 <div className="text-sm text-muted-foreground">Total Reviews</div>
                               </div>
-                              
+
                               <div className="bg-white/50 dark:bg-black/30 p-4 rounded-lg text-center">
                                 <div className={`text-2xl font-bold ${
                                   g2Data.sentiment === 'positive' ? 'text-green-600' : 
@@ -666,7 +686,7 @@ export default function CompetitorReport({ report }: CompetitorReportProps) {
                                 <div className="text-xs text-muted-foreground mt-1">{g2Data.sentimentScore}/100</div>
                               </div>
                             </div>
-                            
+
                             {g2Data.topQuotes?.length > 0 && (
                               <div>
                                 <h5 className="font-medium text-foreground mb-3">Top Review Quotes</h5>
@@ -690,13 +710,13 @@ export default function CompetitorReport({ report }: CompetitorReportProps) {
                                 </div>
                               </div>
                             )}
-                            
+
                             <div className="mt-4 p-3 bg-white/50 dark:bg-black/30 rounded">
                               <div className="text-sm text-foreground">{g2Data.summary}</div>
                             </div>
                           </div>
                         )}
-                        
+
                         {/* Hacker News Sentiment Section */}
                         {hnData && (
                           <div className="bg-gradient-to-r from-orange-50 to-red-50 dark:from-orange-950 dark:to-red-950 p-6 rounded-lg">
@@ -704,13 +724,13 @@ export default function CompetitorReport({ report }: CompetitorReportProps) {
                               <MessageCircle className="w-4 h-4 text-orange-600 mr-2" />
                               Hacker News Social Sentiment
                             </h4>
-                            
+
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                               <div className="bg-white/50 dark:bg-black/30 p-4 rounded-lg text-center">
                                 <div className="text-2xl font-bold text-foreground">{hnData.totalMentions || 0}</div>
                                 <div className="text-sm text-muted-foreground">Mentions Found</div>
                               </div>
-                              
+
                               <div className="bg-white/50 dark:bg-black/30 p-4 rounded-lg text-center">
                                 <div className={`text-2xl font-bold ${
                                   hnData.sentiment === 'positive' ? 'text-green-600' : 
@@ -723,13 +743,13 @@ export default function CompetitorReport({ report }: CompetitorReportProps) {
                                 <div className="text-sm text-muted-foreground">Sentiment Trend</div>
                                 <div className="text-xs text-muted-foreground mt-1">{hnData.sentimentScore}/100</div>
                               </div>
-                              
+
                               <div className="bg-white/50 dark:bg-black/30 p-4 rounded-lg text-center">
                                 <div className="text-lg font-bold text-foreground">HN</div>
                                 <div className="text-sm text-muted-foreground">Data Source</div>
                               </div>
                             </div>
-                            
+
                             {hnData.topQuotes?.length > 0 && (
                               <div>
                                 <h5 className="font-medium text-foreground mb-3">Top Discussion Quotes</h5>
@@ -756,13 +776,13 @@ export default function CompetitorReport({ report }: CompetitorReportProps) {
                                 </div>
                               </div>
                             )}
-                            
+
                             <div className="mt-4 p-3 bg-white/50 dark:bg-black/30 rounded">
                               <div className="text-sm text-foreground">{hnData.summary}</div>
                             </div>
                           </div>
                         )}
-                        
+
                         {/* No Enhanced Data Available */}
                         {!g2Data && !hnData && (
                           <div className="bg-muted/50 p-6 rounded-lg text-center">
@@ -792,19 +812,21 @@ export default function CompetitorReport({ report }: CompetitorReportProps) {
                     <div>
                       {renderSection("Target Market", <Target className="w-4 h-4 text-cyan-600 mr-2" />,
                         <>
-                          <p className="text-sm text-foreground mb-2"><strong>Primary Segments:</strong> {competitor.target_market?.primary_segments || "No reliable data found"}</p>
-                          <p className="text-sm text-foreground"><strong>Competitive Position:</strong> {competitor.target_market?.competitive_position || "No reliable data found"}</p>
+                          <div className="space-y-2">
+                            <div className="text-sm text-foreground"><strong>Primary Segments:</strong> {competitor.target_market?.primary_segments || "No reliable data found"}</div>
+                            <div className="text-sm text-foreground"><strong>Competitive Position:</strong> {competitor.target_market?.competitive_position || "No reliable data found"}</div>
+                          </div>
                         </>
                       )}
                     </div>
 
                     <div>
                       {renderSection("Market Presence", <Globe className="w-4 h-4 text-emerald-600 mr-2" />,
-                        <>
-                          <p className="text-sm text-foreground mb-2"><strong>Market Share:</strong> {competitor.market_presence?.market_share || "No reliable data found"}</p>
-                          <p className="text-sm text-foreground mb-2"><strong>Geographic Reach:</strong> {competitor.market_presence?.geographic_reach || "No reliable data found"}</p>
-                          <p className="text-sm text-foreground"><strong>Target Audience:</strong> {competitor.market_presence?.target_audience || "No reliable data found"}</p>
-                        </>
+                        <div className="space-y-2">
+                          <div className="text-sm text-foreground"><strong>Market Share:</strong> {competitor.market_presence?.market_share || "No reliable data found"}</div>
+                          <div className="text-sm text-foreground"><strong>Geographic Reach:</strong> {competitor.market_presence?.geographic_reach || "No reliable data found"}</div>
+                          <div className="text-sm text-foreground"><strong>Target Audience:</strong> {competitor.market_presence?.target_audience || "No reliable data found"}</div>
+                        </div>
                       )}
                     </div>
                   </div>
@@ -830,8 +852,10 @@ export default function CompetitorReport({ report }: CompetitorReportProps) {
                     <div>
                       {renderSection("Tech Assessment", <Code className="w-4 h-4 text-slate-600 mr-2" />,
                         <>
-                          <p className="text-sm text-foreground mb-2"><strong>Tech Stack:</strong> {competitor.tech_assessment?.tech_stack || "No reliable data found"}</p>
-                          <p className="text-sm text-foreground"><strong>Innovation Level:</strong> {competitor.tech_assessment?.innovation_level || "No reliable data found"}</p>
+                          <div className="space-y-2">
+                            <div className="text-sm text-foreground"><strong>Tech Stack:</strong> {competitor.tech_assessment?.tech_stack || "No reliable data found"}</div>
+                            <div className="text-sm text-foreground"><strong>Innovation Level:</strong> {competitor.tech_assessment?.innovation_level || "No reliable data found"}</div>
+                          </div>
                         </>
                       )}
                     </div>
@@ -839,8 +863,10 @@ export default function CompetitorReport({ report }: CompetitorReportProps) {
                     <div>
                       {renderSection("Tech & Innovation", <Zap className="w-4 h-4 text-yellow-600 mr-2" />,
                         <>
-                          <p className="text-sm text-foreground mb-2"><strong>Patents & R&D:</strong> {competitor.tech_innovation?.patents_rd || "No reliable data found"}</p>
-                          <p className="text-sm text-foreground"><strong>Key Innovations:</strong> {competitor.tech_innovation?.differentiating_innovations || "No reliable data found"}</p>
+                          <div className="space-y-2">
+                            <div className="text-sm text-foreground"><strong>Patents & R&D:</strong> {competitor.tech_innovation?.patents_rd || "No reliable data found"}</div>
+                            <div className="text-sm text-foreground"><strong>Key Innovations:</strong> {competitor.tech_innovation?.differentiating_innovations || "No reliable data found"}</div>
+                          </div>
                         </>
                       )}
                     </div>
