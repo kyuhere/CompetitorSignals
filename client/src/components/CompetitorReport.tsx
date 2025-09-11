@@ -3,8 +3,6 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Download, Share, Mail, BarChart3, DollarSign, MessageCircle, Lightbulb, CheckCircle, TrendingUp, TrendingDown, Minus, Building2, Target, Code, Globe, Package, Users, ThumbsUp, ThumbsDown, AlertTriangle, Zap, ExternalLink } from "lucide-react";
-import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -89,6 +87,8 @@ export default function CompetitorReport({ report }: CompetitorReportProps) {
   const { toast } = useToast();
   const [emailDialogOpen, setEmailDialogOpen] = useState(false);
   const [emailAddress, setEmailAddress] = useState("");
+  // Track active tab and render heavy sections on demand
+  const [activeTab, setActiveTab] = useState<"overview" | "analysis" | "reviews" | "market" | "tech">("overview");
 
   // Email mutation
   const emailMutation = useMutation({
@@ -183,6 +183,11 @@ export default function CompetitorReport({ report }: CompetitorReportProps) {
 
   const handleExport = async () => {
     try {
+      // Dynamically import heavy libraries only when exporting
+      const [{ default: jsPDF }, { default: html2canvas }] = await Promise.all([
+        import("jspdf"),
+        import("html2canvas")
+      ]);
       // Find the report content element
       const reportElement = document.querySelector('[data-testid="card-competitor-report"]') as HTMLElement;
       if (!reportElement) {
@@ -425,7 +430,7 @@ export default function CompetitorReport({ report }: CompetitorReportProps) {
                 </div>
               </div>
 
-              <Tabs defaultValue="overview" className="w-full">
+              <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="w-full">
                 <TabsList className="grid w-full grid-cols-5">
                   <TabsTrigger value="overview">Overview</TabsTrigger>
                   <TabsTrigger value="analysis">Analysis</TabsTrigger>
@@ -634,37 +639,38 @@ export default function CompetitorReport({ report }: CompetitorReportProps) {
                           </div>
                         </div>
                       </div>
-                    )}
                   </div>
                 </TabsContent>
 
                 <TabsContent value="reviews" className="space-y-6 mt-6">
-                  {/* Reviews & Sentiment Analysis */}
-                  {(() => {
-                    const normalize = (s: string) => (s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-                    const reviewDataList = report.metadata?.enhanced?.reviewData || [];
-                    const targetName = competitor.competitor;
-                    const enhancedData = reviewDataList.find((d: any) => normalize(d.competitor) === normalize(targetName))
-                      || reviewDataList.find((d: any) => {
-                        const a = normalize(d.competitor);
-                        const b = normalize(targetName);
-                        return a.includes(b) || b.includes(a);
-                      });
-                    if (!enhancedData) {
-                      return (
-                        <div className="bg-muted/50 p-6 rounded-lg text-center">
-                          <MessageCircle className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
-                          <h4 className="font-medium text-foreground mb-2">Enhanced Reviews & Sentiment</h4>
-                          <p className="text-sm text-muted-foreground">
-                            Premium review and social sentiment analysis is available for logged-in users.
-                          </p>
-                        </div>
-                      );
-                    }
-                    const g2Data = enhancedData?.g2;
-                    const hnData = enhancedData?.hackerNews;
-                    const rawLocked = (report as any)?.metadata?.enhanced?.locked as unknown;
-                    const isLocked = rawLocked === true || rawLocked === 'true';
+                  {activeTab !== 'reviews' ? null : (
+                    <>
+                    {/* Reviews & Sentiment Analysis */}
+                    {(() => {
+                      const normalize = (s: string) => (s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+                      const reviewDataList = report.metadata?.enhanced?.reviewData || [];
+                      const targetName = competitor.competitor;
+                      const enhancedData = reviewDataList.find((d: any) => normalize(d.competitor) === normalize(targetName))
+                        || reviewDataList.find((d: any) => {
+                          const a = normalize(d.competitor);
+                          const b = normalize(targetName);
+                          return a.includes(b) || b.includes(a);
+                        });
+                      if (!enhancedData) {
+                        return (
+                          <div className="bg-muted/50 p-6 rounded-lg text-center">
+                            <MessageCircle className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
+                            <h4 className="font-medium text-foreground mb-2">Enhanced Reviews & Sentiment</h4>
+                            <p className="text-sm text-muted-foreground">
+                              Premium review and social sentiment analysis is available for logged-in users.
+                            </p>
+                          </div>
+                        );
+                      }
+                      const g2Data = enhancedData?.g2;
+                      const hnData = enhancedData?.hackerNews;
+                      const rawLocked = (report as any)?.metadata?.enhanced?.locked as unknown;
+                      const isLocked = rawLocked === true || rawLocked === 'true';
 
                     return (
                       <div className="relative">
@@ -829,7 +835,9 @@ export default function CompetitorReport({ report }: CompetitorReportProps) {
                         )}
                       </div>
                     );
-                  })()}
+                    })()}
+                    </>
+                  )}
                 </TabsContent>
 
                 <TabsContent value="market" className="space-y-6 mt-6">
