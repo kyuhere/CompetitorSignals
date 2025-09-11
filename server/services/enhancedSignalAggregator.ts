@@ -56,56 +56,69 @@ export class EnhancedSignalAggregator {
       const computeSentiment = options?.computeSentiment ?? true;
       console.log(`[EnhancedAggregator] Starting aggregation for competitors: ${competitors.join(', ')} (mode=${mode}, computeSentiment=${computeSentiment})`);
 
-      // Get traditional signals first
-      const traditionalSignals = await signalAggregator.aggregateSignals(
-        competitors, 
-        urls, 
-        sources, 
+      // Start traditional signals in parallel with enhanced collection
+      const traditionalPromise = signalAggregator.aggregateSignals(
+        competitors,
+        urls,
+        sources,
         onPartialResults
       );
+
+      // Enhanced signals with reviews and social sentiment (run per-competitor in parallel)
+      console.log(`[EnhancedAggregator] Starting enhanced data collection for ${competitors.length} competitors`);
+      const enhancedPerCompetitor = competitors.map(async (competitor) => {
+        console.log(`[EnhancedAggregator] Processing enhanced data for: ${competitor}`);
+        const domain = options?.domainsByCompetitor?.[competitor] || options?.domainsByCompetitor?.[competitor.toLowerCase()];
+        const [tpData, hnData] = await Promise.allSettled([
+          (options?.mode === 'premium') ? this.getTrustpilotReviewData(competitor, domain, computeSentiment) : Promise.resolve(null),
+          this.getHackerNewsSentiment(competitor, computeSentiment)
+        ]);
+
+        if (tpData.status === 'rejected') {
+          console.error(`[EnhancedAggregator] Trustpilot data failed for ${competitor}:`, tpData.reason);
+        } else {
+          console.log(`[EnhancedAggregator] Trustpilot data for ${competitor}:`, {
+            hasData: !!(tpData as any).value,
+            totalReviews: (tpData as any).value?.totalReviews,
+            sentiment: (tpData as any).value?.sentiment
+          });
+        }
+
+        if (hnData.status === 'rejected') {
+          console.error(`[EnhancedAggregator] HN data failed for ${competitor}:`, hnData.reason);
+        } else {
+          console.log(`[EnhancedAggregator] HN data for ${competitor}:`, {
+            hasData: !!(hnData as any).value,
+            totalMentions: (hnData as any).value?.totalMentions,
+            sentiment: (hnData as any).value?.sentiment
+          });
+        }
+
+        const partial = {
+          competitor,
+          trustpilot: tpData.status === 'fulfilled' ? tpData.value : null,
+          hackerNews: hnData.status === 'fulfilled' ? hnData.value : null
+        };
+
+        // Emit per-competitor enhanced partials if a callback is provided
+        try {
+          onPartialResults?.({ enhancedPartial: partial });
+        } catch (e) {
+          // non-fatal
+        }
+
+        return partial;
+      });
+
+      // Await both traditional and enhanced concurrently
+      const [traditionalSignals, enhancedSettled] = await Promise.all([
+        traditionalPromise,
+        Promise.allSettled(enhancedPerCompetitor)
+      ]);
       console.log(`[EnhancedAggregator] Traditional signals collected: ${traditionalSignals?.length || 0} sources`);
 
-      // Enhanced signals with reviews and social sentiment
-      console.log(`[EnhancedAggregator] Starting enhanced data collection for ${competitors.length} competitors`);
-      const enhancedSignals = await Promise.allSettled(
-        competitors.map(async (competitor) => {
-          console.log(`[EnhancedAggregator] Processing enhanced data for: ${competitor}`);
-          const domain = options?.domainsByCompetitor?.[competitor] || options?.domainsByCompetitor?.[competitor.toLowerCase()];
-          const [tpData, hnData] = await Promise.allSettled([
-            (options?.mode === 'premium') ? this.getTrustpilotReviewData(competitor, domain, computeSentiment) : Promise.resolve(null),
-            this.getHackerNewsSentiment(competitor, computeSentiment)
-          ]);
-
-          if (tpData.status === 'rejected') {
-            console.error(`[EnhancedAggregator] Trustpilot data failed for ${competitor}:`, tpData.reason);
-          } else {
-            console.log(`[EnhancedAggregator] Trustpilot data for ${competitor}:`, {
-              hasData: !!(tpData as any).value,
-              totalReviews: (tpData as any).value?.totalReviews,
-              sentiment: (tpData as any).value?.sentiment
-            });
-          }
-
-          if (hnData.status === 'rejected') {
-            console.error(`[EnhancedAggregator] HN data failed for ${competitor}:`, hnData.reason);
-          } else {
-            console.log(`[EnhancedAggregator] HN data for ${competitor}:`, {
-              hasData: !!(hnData as any).value,
-              totalMentions: (hnData as any).value?.totalMentions,
-              sentiment: (hnData as any).value?.sentiment
-            });
-          }
-
-          return {
-            competitor,
-            trustpilot: tpData.status === 'fulfilled' ? tpData.value : null,
-            hackerNews: hnData.status === 'fulfilled' ? hnData.value : null
-          };
-        })
-      );
-
       // Combine and analyze all data
-      const enhancedData = enhancedSignals.map(result => 
+      const enhancedData = enhancedSettled.map(result => 
         result.status === 'fulfilled' ? result.value : null
       ).filter(Boolean);
 
