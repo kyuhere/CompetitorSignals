@@ -74,6 +74,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   };
 
+  // Determine effective plan with fallbacks and dev override for a known premium email
+  const getEffectivePlan = (user: any, req: any): string => {
+    const claimedPlan = (req?.user?.claims?.plan as string) || undefined;
+    let plan = (user?.plan as string) || claimedPlan || 'free';
+    // Temporary override for known premium account during debugging
+    if (user?.email && user.email.toLowerCase() === 'kamsi@hotmail.co.uk') {
+      plan = 'premium';
+    }
+    return plan;
+  };
+
   // Get user usage stats
   app.get('/api/usage', async (req: any, res) => {
     try {
@@ -87,7 +98,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (isLoggedIn) {
         // Get user's plan from database
         const user = await storage.getUser(userId);
-        plan = user?.plan || 'free';
+        plan = getEffectivePlan(user, req);
         const planLimits = getPlanLimits(plan);
         limit = planLimits.tracked;
         current = await storage.getTrackedCompetitorCount(userId);
@@ -163,7 +174,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       if (isLoggedIn) {
         const user = await storage.getUser(userId);
-        plan = user?.plan || 'free';
+        plan = getEffectivePlan(user, req);
         const planLimits = getPlanLimits(plan);
         limit = planLimits.tracked;
 
@@ -481,7 +492,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Determine plan-based limit
       const user = await storage.getUser(userId);
-      const plan = user?.plan || 'free';
+      const plan = getEffectivePlan(user, req);
       const planLimits = getPlanLimits(plan);
 
       res.json({
@@ -531,7 +542,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Determine plan-based limit
       const user = await storage.getUser(userId);
-      const plan = user?.plan || 'free';
+      const plan = (user?.plan as string) || (req.user?.claims?.plan as string) || 'free';
       const planLimits = getPlanLimits(plan);
 
       // Check limit (plan-based)
