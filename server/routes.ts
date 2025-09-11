@@ -8,6 +8,7 @@ import { signalAggregator } from "./services/signalAggregator";
 import { enhancedSignalAggregator } from "./services/enhancedSignalAggregator";
 
 import { summarizeCompetitorSignals, generateFastPreview } from "./services/openai";
+import { trustpilotService } from "./services/trustpilot";
 import { sendCompetitorReport } from "./email";
 
 // Store active streaming sessions
@@ -47,6 +48,21 @@ const competitorAnalysisSchema = z.object({
 export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
   await setupAuth(app);
+
+  // Debug endpoint to inspect Trustpilot parsing
+  app.get('/api/debug/trustpilot', async (req: any, res: any) => {
+    try {
+      const domain = String(req.query.domain || '').trim();
+      if (!domain) {
+        return res.status(400).json({ message: 'Provide ?domain=example.com' });
+      }
+      const parsed = await trustpilotService.getCompanyReviewsByDomain(domain);
+      return res.json({ domain, parsed });
+    } catch (err: any) {
+      console.error('[Debug] trustpilot error:', err?.message || err);
+      return res.status(500).json({ message: 'Debug failed', error: err?.message || String(err) });
+    }
+  });
 
   // Auth routes
   app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {

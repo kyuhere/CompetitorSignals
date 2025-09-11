@@ -53,9 +53,25 @@ export const trustpilotService = {
         timeout: 15000,
       });
 
-      const data = res.data;
+      let payload: any = res.data;
+      // Some providers may return stringified JSON
+      if (typeof payload === 'string') {
+        try { payload = JSON.parse(payload); } catch { /* ignore */ }
+      }
+      // Or wrap the JSON under a `body` field as a string
+      if (payload && typeof payload.body === 'string') {
+        try { payload = JSON.parse(payload.body); } catch { /* ignore */ }
+      }
+      const data = payload?.data ?? payload; // some providers wrap in { status, parameters, data }
+      const company = data?.company ?? data; // company-details provider nests values under data.company
       // Attempt to normalize common shapes for company-details
-      const avgRaw = data?.rating?.average
+      const avgRaw = company?.rating?.average
+        ?? company?.averageRating
+        ?? company?.trustScore
+        ?? company?.trust_score
+        ?? company?.rating
+        ?? company?.ratingValue
+        ?? data?.rating?.average
         ?? data?.averageRating
         ?? data?.trustScore
         ?? data?.trust_score
@@ -63,7 +79,12 @@ export const trustpilotService = {
         ?? data?.ratingValue;
       const averageRating = avgRaw != null ? Number(avgRaw) : undefined;
 
-      const totalRaw = data?.rating?.count
+      const totalRaw = company?.rating?.count
+        ?? company?.reviewsCount
+        ?? company?.numberOfReviews
+        ?? company?.totalReviews
+        ?? company?.review_count
+        ?? data?.rating?.count
         ?? data?.reviewsCount
         ?? data?.numberOfReviews
         ?? data?.totalReviews
@@ -81,9 +102,10 @@ export const trustpilotService = {
         author: r.author || r.user || r.username,
       }));
 
-      const sourceUrl = data?.companyProfileUrl || (domain ? `https://www.trustpilot.com/review/${domain}` : undefined);
+      const sourceUrl = data?.companyProfileUrl || (company?.domain ? `https://www.trustpilot.com/review/${company.domain}` : (domain ? `https://www.trustpilot.com/review/${domain}` : undefined));
       console.log('[Trustpilot] Fetched (company-details)', {
         domain,
+        parsedDomain: company?.domain || domain,
         averageRating,
         totalReviews,
         reviewCount: reviews.length,
