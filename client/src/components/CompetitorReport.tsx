@@ -640,11 +640,31 @@ export default function CompetitorReport({ report }: CompetitorReportProps) {
 
                 <TabsContent value="reviews" className="space-y-6 mt-6">
                   {/* Reviews & Sentiment Analysis */}
-                  {report.metadata?.enhanced?.reviewData?.find((data: any) => data.competitor === competitor.competitor) ? (() => {
-                    const enhancedData = report.metadata?.enhanced?.reviewData?.find((data: any) => data.competitor === competitor.competitor);
+                  {(() => {
+                    const normalize = (s: string) => (s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+                    const reviewDataList = report.metadata?.enhanced?.reviewData || [];
+                    const targetName = competitor.competitor;
+                    const enhancedData = reviewDataList.find((d: any) => normalize(d.competitor) === normalize(targetName))
+                      || reviewDataList.find((d: any) => {
+                        const a = normalize(d.competitor);
+                        const b = normalize(targetName);
+                        return a.includes(b) || b.includes(a);
+                      });
+                    if (!enhancedData) {
+                      return (
+                        <div className="bg-muted/50 p-6 rounded-lg text-center">
+                          <MessageCircle className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
+                          <h4 className="font-medium text-foreground mb-2">Enhanced Reviews & Sentiment</h4>
+                          <p className="text-sm text-muted-foreground">
+                            Premium review and social sentiment analysis is available for logged-in users.
+                          </p>
+                        </div>
+                      );
+                    }
                     const g2Data = enhancedData?.g2;
                     const hnData = enhancedData?.hackerNews;
-                    const isLocked = report.metadata?.enhanced?.locked;
+                    const rawLocked = (report as any)?.metadata?.enhanced?.locked as unknown;
+                    const isLocked = rawLocked === true || rawLocked === 'true';
 
                     return (
                       <div className="relative">
@@ -809,15 +829,7 @@ export default function CompetitorReport({ report }: CompetitorReportProps) {
                         )}
                       </div>
                     );
-                  })() : (
-                    <div className="bg-muted/50 p-6 rounded-lg text-center">
-                      <MessageCircle className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
-                      <h4 className="font-medium text-foreground mb-2">Enhanced Reviews & Sentiment</h4>
-                      <p className="text-sm text-muted-foreground">
-                        Premium review and social sentiment analysis is available for logged-in users.
-                      </p>
-                    </div>
-                  )}
+                  })()}
                 </TabsContent>
 
                 <TabsContent value="market" className="space-y-6 mt-6">
