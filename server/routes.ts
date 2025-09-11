@@ -297,7 +297,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let summary;
       try {
         if (isLoggedIn && plan === 'premium' && enhancedData && enhancedData.length > 0) {
-          // Premium users get enhanced analysis including review and sentiment data
+          // Premium users: keep the same summary structure as free path but use premium model
           const fastPreview = await generateFastPreview(signals, competitorList);
 
           // Send preview to stream
@@ -309,12 +309,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             })}\n\n`);
           }
 
-          // Generate enhanced summary with review and sentiment data
-          summary = await enhancedSignalAggregator.generateEnhancedAnalysis(
-            signals,
-            enhancedData,
-            competitorList
-          );
+          // Generate summary with premium model for deeper analysis but consistent schema
+          summary = await summarizeCompetitorSignals(signals, competitorList, true);
 
         } else {
           // Free users and guests get traditional analysis
@@ -329,7 +325,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             })}\n\n`);
           }
 
-          // Generate traditional summary
+          // Generate traditional summary (fast model)
           summary = await summarizeCompetitorSignals(signals, competitorList, false);
         }
 
