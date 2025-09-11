@@ -32,6 +32,7 @@ export const users = pgTable("users", {
   firstName: varchar("first_name"),
   lastName: varchar("last_name"),
   profileImageUrl: varchar("profile_image_url"),
+  plan: varchar("plan", { length: 20 }).default("free").notNull(), // 'free' or 'premium'
   dailyQueryCount: integer("daily_query_count").default(0),
   lastQueryDate: timestamp("last_query_date"),
   createdAt: timestamp("created_at").defaultNow(),

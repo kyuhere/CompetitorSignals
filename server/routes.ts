@@ -5,7 +5,8 @@ import { setupAuth, isAuthenticated } from "./replitAuth";
 import { insertCompetitorReportSchema, insertTrackedCompetitorSchema } from "@shared/schema";
 import { z } from "zod";
 import { signalAggregator } from "./services/signalAggregator";
-import { redditSentimentService } from "./services/redditSentiment";
+import { enhancedSignalAggregator } from "./services/enhancedSignalAggregator";
+
 import { summarizeCompetitorSignals, generateFastPreview } from "./services/openai";
 import { sendCompetitorReport } from "./email";
 
@@ -62,25 +63,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Helper function to get competitor limits by plan
+  const getPlanLimits = (plan: string) => {
+    switch (plan) {
+      case 'premium':
+        return { tracked: 10, analysis: 10 };
+      case 'free':
+      default:
+        return { tracked: 3, analysis: 3 };
+    }
+  };
+
   // Get user usage stats
   app.get('/api/usage', async (req: any, res) => {
     try {
       const userId = req.user?.claims?.sub;
       const isLoggedIn = !!userId;
       
-      const limit = 3; // Maximum 3 tracked competitors
+      let plan = 'free';
+      let limit = 3; // Guest limit
       let current = 0;
       
       if (isLoggedIn) {
+        // Get user's plan from database
+        const user = await storage.getUser(userId);
+        plan = user?.plan || 'free';
+        const planLimits = getPlanLimits(plan);
+        limit = planLimits.tracked;
         current = await storage.getTrackedCompetitorCount(userId);
       }
       
       const remaining = Math.max(0, limit - current);
       
       res.json({
-        current: Number(current), // Ensure it's a number
+        current: Number(current),
         limit: Number(limit),
         remaining: Number(remaining),
+        plan,
         isLoggedIn,
         isTrackingBased: true,
         resetTime: new Date(), // Not applicable for tracking-based limits
@@ -138,10 +157,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .map(name => name.trim())
         .filter(name => name.length > 0);
       
-      // Check tracked competitor limits for logged-in users
-      const limit = 3; // Maximum 3 tracked competitors
+      // Get user plan and limits
+      let plan = 'free';
+      let limit = 3; // Default guest limit
       
       if (isLoggedIn) {
+        const user = await storage.getUser(userId);
+        plan = user?.plan || 'free';
+        const planLimits = getPlanLimits(plan);
+        limit = planLimits.tracked;
+        
         const currentTrackedCount = await storage.getTrackedCompetitorCount(userId);
         const trackedCompetitors = await storage.getUserTrackedCompetitors(userId);
         const trackedNames = trackedCompetitors.map(c => c.competitorName.toLowerCase());
@@ -198,42 +223,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
         })}\n\n`);
       }
       
-      // Aggregate signals in parallel with partial results callback
-      const signals = await signalAggregator.aggregateSignals(
-        competitorList, 
-        urlList, 
-        sources,
-        (partialResults) => {
-          const streamRes = streamingSessions.get(streamSessionId);
-          if (streamRes) {
-            streamRes.write(`data: ${JSON.stringify({
-              type: "partial_results",
-              data: partialResults,
-              progress: 50
-            })}\n\n`);
+      // Use enhanced aggregator for premium users only, traditional for free users
+      let signals, enhancedData;
+      if (isLoggedIn && plan === 'premium') {
+        console.log(`[Routes] Premium user detected, using enhanced aggregation for: ${competitorList.join(', ')}`);
+        // Premium users get enhanced analysis with G2 reviews and HN sentiment
+        const enhancedResults = await enhancedSignalAggregator.aggregateEnhancedSignals(
+          competitorList, 
+          urlList, 
+          sources,
+          (partialResults) => {
+            const streamRes = streamingSessions.get(streamSessionId);
+            if (streamRes) {
+              streamRes.write(`data: ${JSON.stringify({
+                type: "partial_results",
+                data: partialResults.traditional || partialResults,
+                progress: 50
+              })}\n\n`);
+            }
           }
-        }
-      );
-      
-      // Get Reddit sentiment analysis for the first competitor
-      let redditSentiment = null;
-      if (competitorList.length > 0) {
-        if (streamRes) {
-          streamRes.write(`data: ${JSON.stringify({
-            type: "progress",
-            message: "Analyzing Reddit sentiment...",
-            progress: 60
-          })}\n\n`);
-        }
-        
-        try {
-          redditSentiment = await redditSentimentService.getRedditSentiment(competitorList[0]);
-          console.log(`Reddit sentiment analysis completed for ${competitorList[0]}`);
-        } catch (error) {
-          console.error('Reddit sentiment analysis failed:', error);
-          // Continue without Reddit data if it fails
-        }
+        );
+        signals = enhancedResults.traditional;
+        enhancedData = enhancedResults.enhanced;
+        console.log(`[Routes] Enhanced results received:`, {
+          traditionalSignals: signals?.length || 0,
+          enhancedDataCount: enhancedData?.length || 0,
+          enhancedCompetitors: enhancedData?.map(d => d.competitor) || []
+        });
+      } else {
+        console.log(`[Routes] Free user/guest detected, using traditional aggregation for: ${competitorList.join(', ')}`);
+        // Free users and guests get traditional signal aggregation
+        signals = await signalAggregator.aggregateSignals(
+          competitorList, 
+          urlList, 
+          sources,
+          (partialResults) => {
+            const streamRes = streamingSessions.get(streamSessionId);
+            if (streamRes) {
+              streamRes.write(`data: ${JSON.stringify({
+                type: "partial_results",
+                data: partialResults,
+                progress: 50
+              })}\n\n`);
+            }
+          }
+        );
+        enhancedData = [];
       }
+      
+      
       
       // Send signals collected update
       if (streamRes) {
@@ -244,22 +282,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
         })}\n\n`);
       }
       
-      // Generate fast preview first
+      // Generate analysis with enhanced data for premium users
       let summary;
       try {
-        const fastPreview = await generateFastPreview(signals, competitorList);
-        
-        // Send preview to stream
-        if (streamRes) {
-          streamRes.write(`data: ${JSON.stringify({
-            type: "preview",
-            data: fastPreview,
-            progress: 85
-          })}\n\n`);
+        if (isLoggedIn && plan === 'premium' && enhancedData && enhancedData.length > 0) {
+          // Premium users get enhanced analysis including review sentiment
+          const fastPreview = await generateFastPreview(signals, competitorList);
+          
+          // Send preview to stream
+          if (streamRes) {
+            streamRes.write(`data: ${JSON.stringify({
+              type: "preview",
+              data: fastPreview,
+              progress: 85
+            })}\n\n`);
+          }
+          
+          // Generate enhanced summary with review and sentiment data
+          summary = await enhancedSignalAggregator.generateEnhancedAnalysis(
+            signals, 
+            enhancedData, 
+            competitorList
+          );
+          
+        } else {
+          // Free users and guests get traditional analysis
+          const fastPreview = await generateFastPreview(signals, competitorList);
+          
+          // Send preview to stream
+          if (streamRes) {
+            streamRes.write(`data: ${JSON.stringify({
+              type: "preview",
+              data: fastPreview,
+              progress: 85
+            })}\n\n`);
+          }
+          
+          // Generate traditional summary
+          summary = await summarizeCompetitorSignals(signals, competitorList, false);
         }
-        
-        // Then generate full summary
-        summary = await summarizeCompetitorSignals(signals, competitorList, false);
         
         // Send completion
         if (streamRes) {
@@ -275,7 +336,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         summary = await summarizeCompetitorSignals(signals, competitorList, false);
       }
       
-      // Create report
+      // Create report with enhanced data
+      const hasG2Reviews = enhancedData && enhancedData.some((d: any) => d.g2 && d.g2.totalReviews > 0);
+      const hasHNSentiment = enhancedData && enhancedData.some((d: any) => d.hackerNews && d.hackerNews.totalMentions > 0);
+      
+      console.log(`[Routes] Creating report metadata:`, {
+        enhancedDataLength: enhancedData?.length || 0,
+        hasG2Reviews,
+        hasHNSentiment,
+        enhancedDataSample: enhancedData?.slice(0, 2)
+      });
+
       const reportData = {
         userId: userId || `guest_${sessionId}`,
         title: `${competitorList.slice(0, 2).join(', ')}${competitorList.length > 2 ? ` +${competitorList.length - 2} more` : ''} Analysis`,
@@ -286,8 +357,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           signalCount: signals.reduce((acc: number, s: any) => acc + s.items.length, 0),
           sources: Object.keys(sources).filter(key => sources[key as keyof typeof sources]),
           generatedAt: new Date().toISOString(),
-          hasRedditAnalysis: !!redditSentiment,
-          redditSentiment: redditSentiment,
+          enhanced: enhancedData && enhancedData.length > 0 ? {
+            reviewData: enhancedData,
+            hasG2Reviews,
+            hasHNSentiment,
+          } : null,
         },
       };
       
@@ -326,8 +400,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               to: userEmail,
               reportTitle: report.title,
               reportContent: report.summary,
-              competitors: report.competitors as string[],
-              redditSentiment: (report.metadata as any)?.redditSentiment
+              competitors: report.competitors as string[]
             });
             console.log(`Report email sent automatically to ${userEmail}`);
           } catch (error) {
