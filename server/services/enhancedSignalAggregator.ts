@@ -147,13 +147,25 @@ export class EnhancedSignalAggregator {
         .filter(Boolean)
         .slice(0, 5) as string[];
 
-      const sentimentAnalysis = computeSentiment
-        ? await this.analyzeReviewSentiment(
-            competitor,
-            topTexts,
-            'trustpilot'
-          )
-        : 'Trustpilot review data collected. Upgrade to premium for AI-powered sentiment analysis.';
+      let sentimentAnalysis: string;
+      if (computeSentiment && topTexts.length > 0) {
+        sentimentAnalysis = await this.analyzeReviewSentiment(
+          competitor,
+          topTexts,
+          'trustpilot'
+        );
+      } else {
+        // Provide a data-based fallback summary when no quotes are available
+        if (tp.averageRating != null && tp.totalReviews != null) {
+          const overall = tp.averageRating >= 4 ? 'generally positive' : tp.averageRating >= 2.5 ? 'mixed/neutral' : 'generally negative';
+          sentimentAnalysis = `Trustpilot shows an average rating of ${tp.averageRating.toFixed(1)} from ${tp.totalReviews} reviews — ${overall} perception.`;
+        } else if (tp.averageRating != null) {
+          const overall = tp.averageRating >= 4 ? 'positive' : tp.averageRating >= 2.5 ? 'neutral' : 'negative';
+          sentimentAnalysis = `Trustpilot average rating is ${tp.averageRating.toFixed(1)} (${overall}).`;
+        } else {
+          sentimentAnalysis = 'Trustpilot data collected.';
+        }
+      }
 
       // Derive a coarse sentiment from average rating if available
       const coarseSentiment = tp.averageRating != null

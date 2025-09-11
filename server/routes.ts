@@ -40,7 +40,8 @@ const competitorAnalysisSchema = z.object({
     funding: z.boolean().default(true),
     social: z.boolean().default(true),
     products: z.boolean().default(false),
-  }).default({}),
+  }).default({ news: true, funding: true, social: true, products: false }),
+  nocache: z.boolean().optional(),
 });
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -275,8 +276,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const analysisMode: 'premium' | 'free' = (isLoggedIn && plan === 'premium') ? 'premium' : 'free';
       const domainListForCache = Array.from(uniqueByCanonical.values()).map(p => p.domain || '');
       const cacheKey = makeCacheKey(competitorList, urlList, sources, analysisMode, domainListForCache);
-      const bypassCache = String(req.query?.nocache || '') === '1';
-      const cached = !bypassCache ? analysisCache.get(cacheKey) : undefined;
+      const bypassCache = String(req.query?.nocache || '') === '1' || !!validation.data.nocache;
+      const preferFreshEnhanced = (analysisMode === 'premium') && domainListForCache.some(Boolean);
+      let cached = !bypassCache ? analysisCache.get(cacheKey) : undefined;
+      if (cached && preferFreshEnhanced) {
+        console.log('[Routes] Bypassing cache for premium analysis with domains to fetch fresh enhanced data');
+        cached = undefined;
+      }
       let fromCache = false;
 
       // Generate a unique session ID for streaming

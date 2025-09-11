@@ -46,7 +46,8 @@ export default function Landing() {
       try {
         const result = await apiRequest('POST', '/api/analyze', {
           competitors: competitor,
-          sources: { news: true, funding: true, social: true, products: false }
+          sources: { news: true, funding: true, social: true, products: false },
+          nocache: true
         });
         
         clearInterval(progressInterval);

@@ -55,17 +55,21 @@ export const trustpilotService = {
 
       const data = res.data;
       // Attempt to normalize common shapes for company-details
-      const averageRating = data?.rating?.average
-        || data?.averageRating
-        || data?.trustScore
-        || data?.rating
-        || data?.ratingValue
-        || undefined;
-      const totalReviews = data?.rating?.count
-        || data?.reviewsCount
-        || data?.numberOfReviews
-        || data?.totalReviews
-        || (Array.isArray(data?.reviews) ? data.reviews.length : undefined);
+      const avgRaw = data?.rating?.average
+        ?? data?.averageRating
+        ?? data?.trustScore
+        ?? data?.trust_score
+        ?? data?.rating
+        ?? data?.ratingValue;
+      const averageRating = avgRaw != null ? Number(avgRaw) : undefined;
+
+      const totalRaw = data?.rating?.count
+        ?? data?.reviewsCount
+        ?? data?.numberOfReviews
+        ?? data?.totalReviews
+        ?? data?.review_count
+        ?? (Array.isArray(data?.reviews) ? data.reviews.length : undefined);
+      const totalReviews = totalRaw != null ? Number(totalRaw) : undefined;
       const reviewsArray: any[] = Array.isArray(data?.reviews) ? data.reviews : [];
 
       const reviews: TrustpilotReview[] = reviewsArray.map((r: any) => ({

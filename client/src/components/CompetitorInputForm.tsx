@@ -37,6 +37,7 @@ export default function CompetitorInputForm({ onAnalyze, isLoading, usage }: Com
     social: true,
     products: false,
   });
+  const [fresh, setFresh] = useState<boolean>(true);
   const [trackingLimitDialogOpen, setTrackingLimitDialogOpen] = useState(false);
   const { toast } = useToast();
 
@@ -61,7 +62,8 @@ export default function CompetitorInputForm({ onAnalyze, isLoading, usage }: Com
       competitors: competitors.trim(),
       sources,
       autoTrack: true,
-      competitorList
+      competitorList,
+      nocache: fresh
     });
   };
 
@@ -187,6 +189,15 @@ export default function CompetitorInputForm({ onAnalyze, isLoading, usage }: Com
                   <Badge variant="outline" className="ml-1 text-xs">Coming Soon</Badge>
                 </Label>
               </div>
+            </div>
+            {/* Fresh data toggle */}
+            <div className="flex items-center space-x-2 pt-1">
+              <Checkbox
+                id="fresh"
+                checked={fresh}
+                onCheckedChange={(checked) => setFresh(!!checked)}
+              />
+              <Label htmlFor="fresh" className="text-sm text-foreground">Fetch fresh data (skip cache)</Label>
             </div>
           </div>
 
