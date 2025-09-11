@@ -30,20 +30,20 @@ export const trustpilotService = {
   async getCompanyReviewsByDomain(domain: string): Promise<{ averageRating?: number; totalReviews?: number; reviews: TrustpilotReview[]; sourceUrl?: string; } | null> {
     if (!domain) return null;
 
-    const apiKey = process.env.RAPIDAPI_KEY;
+    const apiKey = process.env.TRUSTPILOT_RAPIDAPI_KEY || process.env.RAPIDAPI_TRUSTPILOT_KEY || process.env.RAPIDAPI_KEY;
     if (!apiKey) {
-      console.warn('[Trustpilot] Missing TRUSTPILOT_RAPIDAPI_KEY');
+      console.warn('[Trustpilot] Missing RapidAPI key (set TRUSTPILOT_RAPIDAPI_KEY)');
       return null;
     }
 
     const host = 'trustpilot-company-and-reviews-data.p.rapidapi.com';
-    const url = `https://${host}/company-reviews`;
+    // Use company-details endpoint as requested
+    const url = `https://${host}/company-details`;
 
     try {
       const res = await axios.get(url, {
         params: {
           company_domain: domain,
-          date_posted: 'any',
           locale: 'en-US',
         },
         headers: {
@@ -54,10 +54,19 @@ export const trustpilotService = {
       });
 
       const data = res.data;
-      // Attempt to normalize common shapes; RapidAPI providers may vary
-      const averageRating = data?.rating?.average || data?.averageRating || data?.trustScore || undefined;
-      const totalReviews = data?.rating?.count || data?.totalReviews || data?.reviewsCount || (Array.isArray(data?.reviews) ? data.reviews.length : undefined);
-      const reviewsArray: any[] = Array.isArray(data?.reviews) ? data.reviews : (Array.isArray(data) ? data : []);
+      // Attempt to normalize common shapes for company-details
+      const averageRating = data?.rating?.average
+        || data?.averageRating
+        || data?.trustScore
+        || data?.rating
+        || data?.ratingValue
+        || undefined;
+      const totalReviews = data?.rating?.count
+        || data?.reviewsCount
+        || data?.numberOfReviews
+        || data?.totalReviews
+        || (Array.isArray(data?.reviews) ? data.reviews.length : undefined);
+      const reviewsArray: any[] = Array.isArray(data?.reviews) ? data.reviews : [];
 
       const reviews: TrustpilotReview[] = reviewsArray.map((r: any) => ({
         reviewTitle: r.title || r.reviewTitle,
@@ -69,7 +78,7 @@ export const trustpilotService = {
       }));
 
       const sourceUrl = data?.companyProfileUrl || (domain ? `https://www.trustpilot.com/review/${domain}` : undefined);
-      console.log('[Trustpilot] Fetched', {
+      console.log('[Trustpilot] Fetched (company-details)', {
         domain,
         averageRating,
         totalReviews,
