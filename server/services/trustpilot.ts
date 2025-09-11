@@ -62,14 +62,20 @@ export const trustpilotService = {
       const reviews: TrustpilotReview[] = reviewsArray.map((r: any) => ({
         reviewTitle: r.title || r.reviewTitle,
         reviewText: r.text || r.reviewText || r.content,
-        reviewUrl: r.url || r.reviewUrl,
+        reviewUrl: r.url || r.reviewUrl || r.link,
         rating: r.rating || r.stars || r.score,
-        date: r.date || r.publishedAt,
-        author: r.author || r.user,
+        date: r.date || r.publishedAt || r.time,
+        author: r.author || r.user || r.username,
       }));
 
       const sourceUrl = data?.companyProfileUrl || (domain ? `https://www.trustpilot.com/review/${domain}` : undefined);
-
+      console.log('[Trustpilot] Fetched', {
+        domain,
+        averageRating,
+        totalReviews,
+        reviewCount: reviews.length,
+        sourceUrl,
+      });
       return { averageRating, totalReviews, reviews, sourceUrl };
     } catch (err: any) {
       console.error('[Trustpilot] Error fetching reviews:', err?.response?.data || err?.message || err);

@@ -273,7 +273,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Plan-aware caching (bypass with ?nocache=1)
       const analysisMode: 'premium' | 'free' = (isLoggedIn && plan === 'premium') ? 'premium' : 'free';
-      const cacheKey = makeCacheKey(competitorList, urlList, sources, analysisMode);
+      const domainListForCache = Array.from(uniqueByCanonical.values()).map(p => p.domain || '');
+      const cacheKey = makeCacheKey(competitorList, urlList, sources, analysisMode, domainListForCache);
       const bypassCache = String(req.query?.nocache || '') === '1';
       const cached = !bypassCache ? analysisCache.get(cacheKey) : undefined;
       let fromCache = false;
@@ -427,26 +428,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Save report for logged-in users
         report = await storage.createReport(reportData);
 
-        // Add competitors to tracking automatically
-        for (const competitorName of competitorList) {
-          try {
-            // Check if this competitor is already being tracked
-            const existingCompetitors = await storage.getUserTrackedCompetitors(userId);
-            const isAlreadyTracked = existingCompetitors.some(
-              c => c.competitorName.toLowerCase() === competitorName.toLowerCase()
-            );
+        // Add competitors to tracking automatically (canonical dedupe; skip if at limit)
+        try {
+          const existingCompetitors = await storage.getUserTrackedCompetitors(userId);
+          const existingCanon = new Set(existingCompetitors.map(c => toCanonical(c.competitorName)));
+          let currentCount = await storage.getTrackedCompetitorCount(userId);
 
-            if (!isAlreadyTracked) {
+          for (const competitorName of competitorList) {
+            const canon = toCanonical(competitorName);
+            if (!canon) continue;
+
+            if (existingCanon.has(canon)) {
+              continue; // already tracked canonically
+            }
+
+            if (currentCount >= limit) {
+              console.log(`[Analyze] Skip auto-track due to limit: ${competitorName} (limit=${limit})`);
+              continue;
+            }
+
+            try {
               await storage.addTrackedCompetitor({
                 userId,
                 competitorName,
                 isActive: true,
               });
+              existingCanon.add(canon);
+              currentCount += 1;
+            } catch (error) {
+              console.error(`Failed to add ${competitorName} to tracking:`, error);
             }
-          } catch (error) {
-            console.error(`Failed to add ${competitorName} to tracking:`, error);
-            // Continue with other competitors even if one fails
           }
+        } catch (err) {
+          console.error('Auto-track step failed:', err);
         }
 
         // Automatically send email to user after report is created

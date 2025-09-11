@@ -51,9 +51,20 @@ export default function Home() {
       }, 1000);
       
       try {
-        // Auto-track competitors if requested
+        // Auto-track competitors if requested (dedupe by canonical identity)
         if (data.autoTrack && data.competitorList) {
+          const toCanonical = (s: string) => {
+            const lower = (s || '').trim().toLowerCase();
+            const noProto = lower.replace(/^https?:\/\//, '').replace(/^www\./, '');
+            const firstToken = noProto.split('/')[0];
+            const baseLabel = firstToken.includes('.') ? firstToken.split('.')[0] : firstToken;
+            return baseLabel.replace(/[^a-z0-9]/g, '');
+          };
+          const seen = new Set<string>();
           for (const competitorName of data.competitorList) {
+            const canon = toCanonical(competitorName);
+            if (!canon || seen.has(canon)) continue;
+            seen.add(canon);
             try {
               await apiRequest("POST", "/api/competitors/tracked", {
                 competitorName,
@@ -123,7 +134,7 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-background">
-      <AppHeader usage={usage} />
+      <AppHeader usage={usage as any} />
       
       {/* Hero Section - Glass Lemon Style */}
       <div className="relative py-16 mb-8">

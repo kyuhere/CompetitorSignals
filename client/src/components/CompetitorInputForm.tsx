@@ -65,10 +65,25 @@ export default function CompetitorInputForm({ onAnalyze, isLoading, usage }: Com
     });
   };
 
-  const competitorCount = competitors
-    .split('\n')
-    .map(name => name.trim())
-    .filter(name => name.length > 0).length;
+  const competitorCount = (() => {
+    const toCanonical = (s: string) => {
+      const lower = (s || '').trim().toLowerCase();
+      const noProto = lower.replace(/^https?:\/\//, '').replace(/^www\./, '');
+      const firstToken = noProto.split('/')[0];
+      const baseLabel = firstToken.includes('.') ? firstToken.split('.')[0] : firstToken;
+      return baseLabel.replace(/[^a-z0-9]/g, '');
+    };
+    const seen = new Set<string>();
+    competitors
+      .split('\n')
+      .map(name => name.trim())
+      .filter(name => name.length > 0)
+      .forEach(name => {
+        const canon = toCanonical(name);
+        if (canon) seen.add(canon);
+      });
+    return seen.size;
+  })();
 
   const isOverLimit = usage && competitorCount > usage.limit;
   // Allow submission if user has competitors to analyze, regardless of remaining tracking slots
