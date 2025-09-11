@@ -24,11 +24,12 @@ type CachedPayload = {
 const ANALYSIS_TTL_MS = 15 * 60 * 1000;
 const analysisCache = new Map<string, { payload: CachedPayload; expires: number }>();
 const normalizeList = (arr: string[]) => arr.map(s => s.trim().toLowerCase()).filter(Boolean).sort();
-const makeCacheKey = (competitors: string[], urls: string[], sources: any, mode: 'premium'|'free') => {
+const makeCacheKey = (competitors: string[], urls: string[], sources: any, mode: 'premium'|'free', domains: string[] = []) => {
   const src = [sources?.news && 'news', sources?.funding && 'funding', sources?.social && 'social', sources?.products && 'products']
     .filter(Boolean)
     .join(',');
-  return `competitors:${normalizeList(competitors).join('|')}|urls:${normalizeList(urls).join('|')}|src:${src}|mode:${mode}`;
+  const dom = domains.map(d => (d || '').trim().toLowerCase()).join('|');
+  return `competitors:${normalizeList(competitors).join('|')}|domains:${dom}|urls:${normalizeList(urls).join('|')}|src:${src}|mode:${mode}`;
 };
 
 const competitorAnalysisSchema = z.object({
@@ -207,7 +208,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return { name: line, domain: null as string | null };
       });
 
-      const competitorList = pairs.map(p => p.name);
+      // Dedupe by canonical identity to avoid treating variants as separate
+      const toCanonical = (s: string) => {
+        const lower = (s || '').trim().toLowerCase();
+        const noProto = lower.replace(/^https?:\/\//, '').replace(/^www\./, '');
+        const firstToken = noProto.split('/')[0];
+        const baseLabel = firstToken.includes('.') ? firstToken.split('.')[0] : firstToken;
+        return baseLabel.replace(/[^a-z0-9]/g, '');
+      };
+      const uniqueByCanonical = new Map<string, { name: string; domain: string | null }>();
+      for (const p of pairs) {
+        const canon = toCanonical(p.domain || p.name);
+        if (!canon) continue;
+        if (!uniqueByCanonical.has(canon)) {
+          uniqueByCanonical.set(canon, p);
+        }
+      }
+      const deduped = Array.from(uniqueByCanonical.values());
+
+      const competitorList = deduped.map(p => p.name);
       const domainsByCompetitor: Record<string, string | null> = pairs.reduce((acc, p) => {
         acc[p.name] = p.domain;
         acc[p.name.toLowerCase()] = p.domain;
@@ -226,33 +245,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         const currentTrackedCount = await storage.getTrackedCompetitorCount(userId);
         const trackedCompetitors = await storage.getUserTrackedCompetitors(userId);
-        const trackedNames = trackedCompetitors.map(c => c.competitorName.toLowerCase());
+        const trackedCanon = new Set(trackedCompetitors.map(c => toCanonical(c.competitorName)));
 
-        // Check which competitors are new vs already tracked
-        const newCompetitors = competitorList.filter(name =>
-          !trackedNames.includes(name.toLowerCase())
-        );
-        const existingCompetitors = competitorList.filter(name =>
-          trackedNames.includes(name.toLowerCase())
-        );
+        // For logging purposes only, determine new vs existing by canonical identity
+        const newCompetitors = competitorList.filter(name => !trackedCanon.has(toCanonical(name)));
+        const existingCompetitors = competitorList.filter(name => trackedCanon.has(toCanonical(name)));
 
-        // Only block if user tries to add NEW competitors beyond the limit
-        if (newCompetitors.length > 0) {
-          // Check if adding new competitors would exceed the limit
-          if (currentTrackedCount + newCompetitors.length > limit) {
-            return res.status(400).json({
-              message: `Adding ${newCompetitors.length} new competitors would exceed your limit of ${limit}. You currently track ${currentTrackedCount} competitors. You can still analyze your existing tracked competitors.`,
-              limit,
-              current: currentTrackedCount,
-              requested: newCompetitors.length,
-              newCompetitors,
-              existingCompetitors,
-              isTrackingLimit: true,
-            });
-          }
+        // Do NOT block analysis due to tracking limits. We only log potential overage.
+        if (newCompetitors.length > 0 && currentTrackedCount + newCompetitors.length > limit) {
+          console.log(`[Analyze] Tracking limit would be exceeded if auto-tracking new competitors:`, { limit, currentTrackedCount, newCompetitors });
         }
 
-        // Analysis is allowed for existing tracked competitors even at limit
+        // Analysis proceeds regardless; client may separately attempt auto-track per competitor
       } else {
         // Guests can still do unlimited analyses for testing
         if (competitorList.length > 5) {
@@ -573,16 +577,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Check if competitor already exists (only active ones)
+      // Check if competitor already exists (canonical match, treats name and domain variants the same)
       const existingCompetitors = await storage.getUserTrackedCompetitors(userId);
-      const competitorExists = existingCompetitors.some(
-        c => c.competitorName.toLowerCase() === validation.data.competitorName.toLowerCase()
-      );
+      const toCanonical = (s: string) => {
+        const lower = (s || '').trim().toLowerCase();
+        // If it looks like a URL or domain, extract base label before first dot
+        const noProto = lower.replace(/^https?:\/\//, '').replace(/^www\./, '');
+        const firstToken = noProto.split('/')[0];
+        const baseLabel = firstToken.includes('.') ? firstToken.split('.')[0] : firstToken;
+        return baseLabel.replace(/[^a-z0-9]/g, '');
+      };
+      const requestedCanonical = toCanonical(validation.data.competitorName);
+      const existingCanonicalSet = new Set(existingCompetitors.map(c => toCanonical(c.competitorName)));
+      const competitorExists = existingCanonicalSet.has(requestedCanonical);
 
       if (competitorExists) {
         // Idempotent success: return the existing competitor with 200
         const existing = existingCompetitors.find(
-          c => c.competitorName.toLowerCase() === validation.data.competitorName.toLowerCase()
+          c => toCanonical(c.competitorName) === requestedCanonical
         );
         return res.status(200).json({
           ...existing,
