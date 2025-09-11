@@ -1,6 +1,6 @@
 import { signalAggregator } from './signalAggregator';
-import { g2Service } from './g2';
 import { hackerNewsService } from './hackerNews';
+import { trustpilotService } from './trustpilot';
 import OpenAI from 'openai';
 
 interface EnhancedSignalItem {
@@ -20,7 +20,7 @@ interface EnhancedCompetitorSignals {
 }
 
 interface ReviewSentimentData {
-  platform: 'g2' | 'hackernews';
+  platform: 'trustpilot' | 'hackernews' | 'g2';
   averageRating?: number;
   totalReviews?: number;
   totalMentions?: number;
@@ -49,7 +49,7 @@ export class EnhancedSignalAggregator {
     urls: string[] = [],
     sources: any = { news: true, funding: true, social: true, products: false },
     onPartialResults?: (results: any) => void,
-    options?: { mode?: 'free' | 'premium'; computeSentiment?: boolean }
+    options?: { mode?: 'free' | 'premium'; computeSentiment?: boolean; domainsByCompetitor?: Record<string, string | null | undefined> }
   ): Promise<any> {
     try {
       const mode = options?.mode ?? 'premium';
@@ -70,18 +70,19 @@ export class EnhancedSignalAggregator {
       const enhancedSignals = await Promise.allSettled(
         competitors.map(async (competitor) => {
           console.log(`[EnhancedAggregator] Processing enhanced data for: ${competitor}`);
-          const [g2Data, hnData] = await Promise.allSettled([
-            this.getG2ReviewData(competitor, computeSentiment),
+          const domain = options?.domainsByCompetitor?.[competitor] || options?.domainsByCompetitor?.[competitor.toLowerCase()];
+          const [tpData, hnData] = await Promise.allSettled([
+            this.getTrustpilotReviewData(competitor, domain, computeSentiment),
             this.getHackerNewsSentiment(competitor, computeSentiment)
           ]);
 
-          if (g2Data.status === 'rejected') {
-            console.error(`[EnhancedAggregator] G2 data failed for ${competitor}:`, g2Data.reason);
+          if (tpData.status === 'rejected') {
+            console.error(`[EnhancedAggregator] Trustpilot data failed for ${competitor}:`, tpData.reason);
           } else {
-            console.log(`[EnhancedAggregator] G2 data for ${competitor}:`, {
-              hasData: !!(g2Data as any).value,
-              totalReviews: (g2Data as any).value?.totalReviews,
-              sentiment: (g2Data as any).value?.sentiment
+            console.log(`[EnhancedAggregator] Trustpilot data for ${competitor}:`, {
+              hasData: !!(tpData as any).value,
+              totalReviews: (tpData as any).value?.totalReviews,
+              sentiment: (tpData as any).value?.sentiment
             });
           }
 
@@ -97,7 +98,7 @@ export class EnhancedSignalAggregator {
 
           return {
             competitor,
-            g2: g2Data.status === 'fulfilled' ? g2Data.value : null,
+            trustpilot: tpData.status === 'fulfilled' ? tpData.value : null,
             hackerNews: hnData.status === 'fulfilled' ? hnData.value : null
           };
         })
@@ -113,9 +114,9 @@ export class EnhancedSignalAggregator {
         if (data) {
           console.log(`[EnhancedAggregator] Enhanced data ${index + 1}:`, {
             competitor: (data as any).competitor,
-            hasG2: !!(data as any).g2,
+            hasTrustpilot: !!(data as any).trustpilot,
             hasHN: !!(data as any).hackerNews,
-            g2Reviews: (data as any).g2?.totalReviews || 0,
+            trustpilotReviews: (data as any).trustpilot?.totalReviews || 0,
             hnMentions: (data as any).hackerNews?.totalMentions || 0
           });
         }
@@ -133,34 +134,48 @@ export class EnhancedSignalAggregator {
     }
   }
 
-  private async getG2ReviewData(competitor: string, computeSentiment: boolean = true): Promise<ReviewSentimentData> {
+  private async getTrustpilotReviewData(competitor: string, domain?: string | null, computeSentiment: boolean = true): Promise<ReviewSentimentData | null> {
     try {
-      const g2Summary = await g2Service.getProductSummary(competitor);
-      
-      // Use OpenAI to analyze G2 reviews for sentiment
+      if (!domain) {
+        return null;
+      }
+      const tp = await trustpilotService.getCompanyReviewsByDomain(domain);
+      if (!tp) return null;
+
+      const topTexts = (tp.reviews || [])
+        .map(r => r.reviewText || r.reviewTitle)
+        .filter(Boolean)
+        .slice(0, 5) as string[];
+
       const sentimentAnalysis = computeSentiment
         ? await this.analyzeReviewSentiment(
             competitor,
-            g2Summary.topReviewQuotes,
-            'g2'
+            topTexts,
+            'trustpilot'
           )
-        : 'G2 review data collected. Upgrade to premium for AI-powered sentiment analysis.';
+        : 'Trustpilot review data collected. Upgrade to premium for AI-powered sentiment analysis.';
+
+      // Derive a coarse sentiment from average rating if available
+      const coarseSentiment = tp.averageRating != null
+        ? (tp.averageRating >= 4 ? 'positive' : tp.averageRating >= 2.5 ? 'neutral' : 'negative')
+        : 'neutral';
 
       return {
-        platform: 'g2',
-        averageRating: g2Summary.averageRating,
-        totalReviews: g2Summary.totalReviews,
-        sentiment: g2Summary.sentiment,
-        sentimentScore: this.sentimentToScore(g2Summary.sentiment, g2Summary.averageRating),
-        topQuotes: g2Summary.topReviewQuotes.map(quote => ({
-          text: quote,
-          url: g2Summary.g2Url
+        platform: 'trustpilot',
+        averageRating: tp.averageRating,
+        totalReviews: tp.totalReviews,
+        sentiment: coarseSentiment as 'positive' | 'neutral' | 'negative',
+        sentimentScore: this.sentimentToScore(coarseSentiment, tp.averageRating),
+        topQuotes: (tp.reviews || []).slice(0, 3).map(r => ({
+          text: r.reviewText || r.reviewTitle || '',
+          url: r.reviewUrl || tp.sourceUrl,
+          rating: r.rating,
         })),
-        summary: sentimentAnalysis
+        summary: sentimentAnalysis,
       };
     } catch (error) {
-      console.error(`Error getting G2 data for ${competitor}:`, error);
-      return this.getEmptyReviewData('g2');
+      console.error(`Error getting Trustpilot data for ${competitor}:`, error);
+      return null;
     }
   }
 
@@ -198,7 +213,7 @@ export class EnhancedSignalAggregator {
   private async analyzeReviewSentiment(
     competitor: string, 
     quotes: string[], 
-    platform: 'g2' | 'hackernews'
+    platform: 'trustpilot' | 'hackernews' | 'g2'
   ): Promise<string> {
     if (!this.openai || quotes.length === 0) {
       return `No ${platform} data available for sentiment analysis.`;

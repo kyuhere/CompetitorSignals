@@ -96,13 +96,27 @@ export default function CompetitorInputForm({ onAnalyze, isLoading, usage }: Com
                 setCompetitors(e.target.value);
               }}
               rows={3}
-              placeholder={`Enter competitor names, one per line\ne.g., OpenAI\nAnthropic\nGoogle AI`}
+              placeholder={`Enter competitors (one per line). You can use name, domain, or both.\nExamples:\nOpenAI\nopenai.com\nOpenAI, openai.com`}
               className="resize-none"
               autoCapitalize="off"
               autoCorrect="off"
               spellCheck={false}
               data-testid="textarea-competitors"
             />
+            {/* Domain hint for reviews */}
+            {(() => {
+              const domainRegex = /(?:^|[\s,])([a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\.[a-z]{2,}))+(?=$|[\s,])/i;
+              const lines = competitors.split('\n').map(l => l.trim()).filter(Boolean);
+              const linesMissingDomain = lines.filter(l => !domainRegex.test(l));
+              if (lines.length > 0 && linesMissingDomain.length > 0) {
+                return (
+                  <p className="text-xs text-muted-foreground mt-2">
+                    For reviews, include the company's domain (e.g., <span className="font-medium">openai.com</span>). You can enter it as “Name, domain.com”.
+                  </p>
+                );
+              }
+              return null;
+            })()}
             {isOverLimit && (
               <p className="text-xs text-destructive mt-1">
                 Too many competitors. Limit: {usage?.limit}

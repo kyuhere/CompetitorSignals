@@ -61,6 +61,19 @@ interface CompetitorReportProps {
             }>;
             summary: string;
           };
+          trustpilot?: {
+            platform: 'trustpilot';
+            averageRating?: number;
+            totalReviews?: number;
+            sentiment: 'positive' | 'neutral' | 'negative';
+            sentimentScore: number;
+            topQuotes: Array<{
+              text: string;
+              url?: string;
+              rating?: number;
+            }>;
+            summary: string;
+          };
           hackerNews?: {
             platform: 'hackernews';
             totalMentions?: number;
@@ -686,7 +699,7 @@ export default function CompetitorReport({ report }: CompetitorReportProps) {
                           </div>
                         );
                       }
-                      const g2Data = enhancedData?.g2;
+                      const reviewsData = enhancedData?.trustpilot || enhancedData?.g2;
                       const hnData = enhancedData?.hackerNews;
                       const rawLocked = (report as any)?.metadata?.enhanced?.locked as unknown;
                       const isLocked = rawLocked === true || rawLocked === 'true';
@@ -694,24 +707,25 @@ export default function CompetitorReport({ report }: CompetitorReportProps) {
                     return (
                       <div className="relative">
                         <div className={`space-y-6 ${isLocked ? 'blur-sm pointer-events-none select-none' : ''}`}>
-                          {/* G2 Reviews Section */}
-                          {g2Data && (
+                          {/* Reviews Section (Trustpilot or legacy G2) */}
+                          {reviewsData && (
                             <div className="bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-950 dark:to-purple-950 p-6 rounded-lg">
                               <h4 className="font-medium text-foreground mb-4 flex items-center">
                                 <BarChart3 className="w-4 h-4 text-blue-600 mr-2" />
-                                G2 Reviews & Ratings
+                                Reviews
                               </h4>
+                              <p className="text-xs text-muted-foreground mb-4">Reviews are sourced from Trustpilot when a company domain is provided.</p>
 
                               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                                 <div className="bg-white/50 dark:bg-black/30 p-4 rounded-lg text-center">
-                                  <div className="text-2xl font-bold text-foreground">{g2Data.averageRating?.toFixed(1) || 'N/A'}</div>
+                                  <div className="text-2xl font-bold text-foreground">{reviewsData.averageRating?.toFixed(1) || 'N/A'}</div>
                                   <div className="text-sm text-muted-foreground">Average Rating</div>
                                   <div className="flex justify-center mt-2">
                                     {Array.from({length: 5}, (_, i) => (
                                       <div
                                         key={i}
                                         className={`w-3 h-3 rounded-full mx-0.5 ${
-                                          i < Math.floor(g2Data.averageRating || 0) ? 'bg-yellow-400' : 'bg-gray-300'
+                                          i < Math.floor(reviewsData.averageRating || 0) ? 'bg-yellow-400' : 'bg-gray-300'
                                         }`}
                                       />
                                     ))}
@@ -719,27 +733,27 @@ export default function CompetitorReport({ report }: CompetitorReportProps) {
                                 </div>
 
                                 <div className="bg-white/50 dark:bg-black/30 p-4 rounded-lg text-center">
-                                  <div className="text-2xl font-bold text-foreground">{g2Data.totalReviews || 0}</div>
+                                  <div className="text-2xl font-bold text-foreground">{reviewsData.totalReviews || 0}</div>
                                   <div className="text-sm text-muted-foreground">Total Reviews</div>
                                 </div>
 
                                 <div className="bg-white/50 dark:bg-black/30 p-4 rounded-lg text-center">
                                   <div className={`text-2xl font-bold ${
-                                    g2Data.sentiment === 'positive' ? 'text-green-600' : 
-                                    g2Data.sentiment === 'negative' ? 'text-red-600' : 'text-yellow-600'
+                                    reviewsData.sentiment === 'positive' ? 'text-green-600' : 
+                                    reviewsData.sentiment === 'negative' ? 'text-red-600' : 'text-yellow-600'
                                   }`}>
-                                    {g2Data.sentiment === 'positive' ? '😊' : g2Data.sentiment === 'negative' ? '😞' : '😐'}
+                                    {reviewsData.sentiment === 'positive' ? '😊' : reviewsData.sentiment === 'negative' ? '😞' : '😐'}
                                   </div>
                                   <div className="text-sm text-muted-foreground">Overall Sentiment</div>
-                                  <div className="text-xs text-muted-foreground mt-1">{g2Data.sentimentScore}/100</div>
+                                  <div className="text-xs text-muted-foreground mt-1">{reviewsData.sentimentScore}/100</div>
                               </div>
                             </div>
 
-                            {g2Data.topQuotes?.length > 0 && (
+                            {reviewsData.topQuotes?.length > 0 && (
                               <div>
                                 <h5 className="font-medium text-foreground mb-3">Top Review Quotes</h5>
                                 <div className="space-y-3">
-                                  {g2Data.topQuotes.slice(0, 3).map((quote: any, idx: number) => (
+                                  {reviewsData.topQuotes.slice(0, 3).map((quote: any, idx: number) => (
                                     <div key={idx} className="bg-white/50 dark:bg-black/30 p-3 rounded border-l-4 border-blue-500">
                                       <p className="text-sm text-foreground italic">"{quote.text}"</p>
                                       {quote.url && (
@@ -748,9 +762,9 @@ export default function CompetitorReport({ report }: CompetitorReportProps) {
                                           target="_blank"
                                           rel="noopener noreferrer"
                                           className="text-xs text-blue-600 hover:underline mt-1 inline-flex items-center"
-                                          data-testid={`link-g2-review-${idx}`}
+                                          data-testid={`link-review-${idx}`}
                                         >
-                                          View on G2 <ExternalLink className="w-3 h-3 ml-1" />
+                                          {reviewsData.platform === 'g2' ? 'View on G2' : 'View on Trustpilot'} <ExternalLink className="w-3 h-3 ml-1" />
                                         </a>
                                       )}
                                     </div>
@@ -760,7 +774,7 @@ export default function CompetitorReport({ report }: CompetitorReportProps) {
                             )}
 
                             <div className="mt-4 p-3 bg-white/50 dark:bg-black/30 rounded">
-                              <div className="text-sm text-foreground">{g2Data.summary}</div>
+                              <div className="text-sm text-foreground">{reviewsData.summary}</div>
                             </div>
                           </div>
                         )}
@@ -832,13 +846,12 @@ export default function CompetitorReport({ report }: CompetitorReportProps) {
                         )}
 
                         {/* No Enhanced Data Available */}
-                        {!g2Data && !hnData && (
+                        {!reviewsData && !hnData && (
                           <div className="bg-muted/50 p-6 rounded-lg text-center">
                             <MessageCircle className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
                             <h4 className="font-medium text-foreground mb-2">Enhanced Reviews & Sentiment</h4>
-                            <p className="text-sm text-muted-foreground">
-                              Premium review and social sentiment analysis is available for logged-in users.
-                            </p>
+                            <p className="text-xs text-muted-foreground mb-2">For reviews, include the company's domain (e.g., openai.com). Other insights work with names.</p>
+                            <p className="text-sm text-muted-foreground">Upgrade to premium for deeper review analysis and sentiment insights</p>
                           </div>
                         )}
                         </div>

@@ -180,11 +180,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const { competitors, urls, sources } = validation.data;
 
-      // Parse competitors
-      const competitorList = competitors
+      // Parse competitors with optional domains (formats supported per line):
+      // "Name, domain.com" | "domain.com" | "Name"
+      const rawLines = competitors
         .split('\n')
-        .map(name => name.trim())
-        .filter(name => name.length > 0);
+        .map(line => line.trim())
+        .filter(line => line.length > 0);
+
+      const domainRegex = /(?:^|[\s,])([a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\.[a-z]{2,}))+(?=$|[\s,])/i;
+      const toTitleCase = (s: string) => s.replace(/(^|\s|[-_])(\w)/g, (_, p1, p2) => (p1 || '') + p2.toUpperCase());
+      const nameFromDomain = (domain: string) => {
+        const host = domain.replace(/^https?:\/\//i, '').replace(/^www\./i, '');
+        const base = host.split('/')[0].split('.')[0].replace(/[-_]/g, ' ');
+        return toTitleCase(base);
+      };
+
+      const pairs = rawLines.map(line => {
+        const m = line.match(domainRegex);
+        const domain = m && m[1] ? m[1].toLowerCase() : null;
+        if (domain && m && m[1]) {
+          const before = line.split(m[1])[0].replace(/[,\s]+$/, '').trim();
+          const hasName = before.length > 0;
+          const name = hasName ? before : nameFromDomain(domain);
+          return { name, domain };
+        }
+        return { name: line, domain: null as string | null };
+      });
+
+      const competitorList = pairs.map(p => p.name);
+      const domainsByCompetitor: Record<string, string | null> = pairs.reduce((acc, p) => {
+        acc[p.name] = p.domain;
+        acc[p.name.toLowerCase()] = p.domain;
+        return acc;
+      }, {} as Record<string, string | null>);
 
       // Get user plan and limits
       let plan = 'free';
@@ -286,7 +314,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               })}\n\n`);
             }
           },
-          { mode: analysisMode, computeSentiment: analysisMode === 'premium' }
+          { mode: analysisMode, computeSentiment: analysisMode === 'premium', domainsByCompetitor }
         );
         signals = enhancedResults.traditional || [];
         enhancedData = enhancedResults.enhanced || [];
@@ -358,7 +386,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Create report with enhanced data
-      hasG2Reviews = typeof hasG2Reviews === 'boolean' ? hasG2Reviews : !!(enhancedData && enhancedData.some((d: any) => d.g2 && d.g2.totalReviews > 0));
+      // Backward-compat flag: compute from Trustpilot (or legacy G2) so frontend gating remains consistent
+      hasG2Reviews = typeof hasG2Reviews === 'boolean' ? hasG2Reviews : !!(enhancedData && enhancedData.some((d: any) =>
+        (d.trustpilot && d.trustpilot.totalReviews > 0) || (d.g2 && d.g2.totalReviews > 0)
+      ));
       hasHNSentiment = typeof hasHNSentiment === 'boolean' ? hasHNSentiment : !!(enhancedData && enhancedData.some((d: any) => d.hackerNews && d.hackerNews.totalMentions > 0));
 
       console.log(`[Routes] Creating report metadata:`, {
