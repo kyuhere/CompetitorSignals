@@ -817,7 +817,7 @@ export default function CompetitorReport({ report }: CompetitorReportProps) {
                               <div>
                                 <h5 className="font-medium text-foreground mb-3">Top Discussion Quotes</h5>
                                 <div className="space-y-3">
-                                  {hnData.topQuotes.slice(0, 5).map((quote: any, idx: number) => (
+                                  {hnData.topQuotes.slice(0, 3).map((quote: any, idx: number) => (
                                     <div key={idx} className="bg-white/50 dark:bg-black/30 p-3 rounded border-l-4 border-orange-500">
                                       <p className="text-sm text-foreground italic">"{quote.text}"</p>
                                       <div className="flex items-center justify-between mt-2">

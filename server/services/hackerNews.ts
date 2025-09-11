@@ -268,7 +268,7 @@ export class HackerNewsService {
           url: comment.comment_url
         }))
         .filter(c => !!c.text)
-        .slice(0, 5),
+        .slice(0, 3),
       topDiscussions: data.top_discussions.map(discussion => ({
         title: discussion.title,
         url: discussion.url,
