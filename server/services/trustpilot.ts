@@ -30,7 +30,7 @@ export const trustpilotService = {
   async getCompanyReviewsByDomain(domain: string): Promise<{ averageRating?: number; totalReviews?: number; reviews: TrustpilotReview[]; sourceUrl?: string; } | null> {
     if (!domain) return null;
 
-    const apiKey = process.env.TRUSTPILOT_RAPIDAPI_KEY || process.env.RAPIDAPI_TRUSTPILOT_KEY || process.env.RAPIDAPI_KEY;
+    const apiKey = process.env.RAPIDAPI_KEY;
     if (!apiKey) {
       console.warn('[Trustpilot] Missing TRUSTPILOT_RAPIDAPI_KEY');
       return null;

@@ -55,7 +55,7 @@ export class EnhancedSignalAggregator {
       const mode = options?.mode ?? 'premium';
       const computeSentiment = options?.computeSentiment ?? true;
       console.log(`[EnhancedAggregator] Starting aggregation for competitors: ${competitors.join(', ')} (mode=${mode}, computeSentiment=${computeSentiment})`);
-      
+
       // Get traditional signals first
       const traditionalSignals = await signalAggregator.aggregateSignals(
         competitors, 
@@ -182,7 +182,7 @@ export class EnhancedSignalAggregator {
   private async getHackerNewsSentiment(competitor: string, computeSentiment: boolean = true): Promise<ReviewSentimentData> {
     try {
       const hnSentiment = await hackerNewsService.getCompetitorSentiment(competitor);
-      
+
       // Use OpenAI to analyze HN sentiment
       const sentimentAnalysis = computeSentiment
         ? await this.analyzeReviewSentiment(
@@ -251,7 +251,7 @@ Keep it factual and business-focused.`;
       // For G2 ratings (1-5 scale)
       return Math.round((rating / 5) * 100);
     }
-    
+
     // For text sentiment
     switch (sentiment) {
       case 'positive': return 75;
@@ -329,7 +329,7 @@ Provide analysis in this exact JSON format:
         } else if (cleanContent.startsWith('```')) {
           cleanContent = cleanContent.replace(/^```\s*/, '').replace(/\s*```$/, '');
         }
-        
+
         return JSON.parse(cleanContent);
       } catch (parseError) {
         console.error('JSON parse error:', parseError);
