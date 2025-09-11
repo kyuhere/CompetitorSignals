@@ -54,7 +54,7 @@ export default function AppHeader({ usage }: AppHeaderProps) {
                 )}
 
                 <Button
-                  className="btn-secondary rounded-xl"
+                  className="bg-primary text-primary-foreground rounded-xl hover:bg-primary"
                   size="sm"
                   onClick={() => window.location.href = '/api/logout'}
                   data-testid="button-logout"
