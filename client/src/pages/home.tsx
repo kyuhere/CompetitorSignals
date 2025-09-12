@@ -187,7 +187,7 @@ export default function Home() {
             <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
               {/* Left Column: Tracked Competitors */}
               <div className="xl:col-span-1 space-y-6">
-                <TrackedCompetitors />
+                <TrackedCompetitors onShowReport={setCurrentReport} />
               </div>
 
               {/* Right Column: Report Display */}

@@ -44,7 +44,11 @@ const avatarColors = [
   'bg-primary'  // Lemon yellow
 ];
 
-export default function TrackedCompetitors() {
+interface TrackedCompetitorsProps {
+  onShowReport?: (report: any) => void;
+}
+
+export default function TrackedCompetitors({ onShowReport }: TrackedCompetitorsProps) {
   const [, setLocation] = useLocation();
   const [newCompetitorName, setNewCompetitorName] = useState("");
   const [isAdding, setIsAdding] = useState(false);
@@ -130,14 +134,22 @@ export default function TrackedCompetitors() {
       const res = await apiRequest('POST', '/api/competitors/tracked/quick-summary', {});
       return res.json();
     },
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
       console.log("Quick summary API response:", data);
-      // Persisted as a normal report; navigate to standard report view
+      // Persisted as a normal report; show inline if parent provided callback
       if (data?.id) {
-        setLocation(`/report/${data.id}`);
-        return;
+        try {
+          const res = await apiRequest('GET', `/api/reports/${data.id}`);
+          const fullReport = await res.json();
+          if (onShowReport) {
+            onShowReport(fullReport);
+            return; // show inline on Home page
+          }
+        } catch (e) {
+          console.warn('Failed to fetch created quick summary report; falling back to modal', e);
+        }
       }
-      // Fallback: keep modal if no id returned
+      // Fallback: keep modal if no id returned or no parent handler
       setQuickSummaryData(data);
       setShowQuickSummary(true);
       toast({

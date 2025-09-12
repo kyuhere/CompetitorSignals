@@ -501,6 +501,24 @@ export default function CompetitorReport({ report }: CompetitorReportProps) {
                 </div>
               </div>
             )}
+
+            {/* Key Strategic Insights */}
+            {(quickSummary as any)?.strategicInsights && (quickSummary as any).strategicInsights.length > 0 && (
+              <div className="mt-2 p-4 bg-muted rounded-lg">
+                <h3 className="text-lg font-semibold text-foreground mb-3 flex items-center">
+                  <Lightbulb className="w-5 h-5 text-amber-500 mr-2" />
+                  Key Strategic Insights
+                </h3>
+                <ul className="space-y-2">
+                  {(quickSummary as any).strategicInsights.map((ins: string, idx: number) => (
+                    <li key={idx} className="flex items-start">
+                      <CheckCircle className="w-4 h-4 text-green-600 mt-0.5 mr-2 flex-shrink-0" />
+                      <span className="text-sm text-foreground">{stripSourceTags(ins)}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </div>
         ) : (
         /* Comprehensive Competitor Analysis (default full report) */

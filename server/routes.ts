@@ -971,6 +971,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
           };
         }
         
+        // Ensure every tracked competitor has a snippet entry
+        const existingNames = new Set<string>((compactPayload.competitorSnippets || []).map((s: any) => (s.competitor || '').toString().toLowerCase()));
+        for (const name of competitorList) {
+          if (!existingNames.has((name || '').toString().toLowerCase())) {
+            compactPayload.competitorSnippets = compactPayload.competitorSnippets || [];
+            compactPayload.competitorSnippets.push({
+              competitor: name,
+              bullets: ["No major updates detected in the last 2 weeks", "Monitoring for new signals"]
+            });
+          }
+        }
+
+        // Add or normalize strategic insights
+        if (!compactPayload.strategicInsights) {
+          const insights = (existingSummary.strategic_insights || existingSummary.top_signals || []).slice(0, 5);
+          if (Array.isArray(insights) && insights.length > 0) {
+            compactPayload.strategicInsights = insights;
+          }
+        }
+
         // Persist as a new quick-summary report (do not overwrite the original)
         const persisted = await storage.createReport({
           userId,
@@ -1019,10 +1039,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
           executiveSummary: parsedPreview.executive_summary || "Competitive intelligence summary generated.",
           competitorSnippets: (parsedPreview.competitor_insights || []).map((insight: any) => ({
             competitor: insight.competitor,
-            bullets: [insight.key_update || "Activity level: " + (insight.activity_level || "unknown")]
+            bullets: [
+              insight.key_update || "Activity level: " + (insight.activity_level || "unknown")
+            ]
           })),
-          topSignals: parsedPreview.top_signals || ["Analysis complete"]
+          topSignals: parsedPreview.top_signals || ["Analysis complete"],
+          strategicInsights: parsedPreview.strategic_insights || []
         };
+
+        // Enrich bullets with recent signal titles per competitor (up to 2 more)
+        try {
+          const itemsByCompetitor = new Map<string, string[]>();
+          for (const group of signals) {
+            const comp = (group.competitor || '').toString();
+            if (!comp) continue;
+            const titles = (group.items || []).map((it: any) => it.title).filter(Boolean);
+            if (!itemsByCompetitor.has(comp)) itemsByCompetitor.set(comp, []);
+            itemsByCompetitor.set(comp, [...(itemsByCompetitor.get(comp) || []), ...titles]);
+          }
+          for (const snippet of compactPayload.competitorSnippets) {
+            const titles = itemsByCompetitor.get(snippet.competitor) || [];
+            const extras = titles.slice(0, 2);
+            snippet.bullets = [...(snippet.bullets || []), ...extras].slice(0, 3);
+          }
+        } catch {}
+
+        // Ensure every tracked competitor has a snippet entry
+        const present = new Set<string>((compactPayload.competitorSnippets || []).map((s: any) => (s.competitor || '').toString().toLowerCase()));
+        for (const name of competitorList) {
+          if (!present.has((name || '').toString().toLowerCase())) {
+            (compactPayload.competitorSnippets = compactPayload.competitorSnippets || []).push({
+              competitor: name,
+              bullets: ["No major updates detected in the last 2 weeks", "Monitoring for new signals"]
+            });
+          }
+        }
+
+        // If strategic insights empty, derive from top signals
+        if (!compactPayload.strategicInsights || compactPayload.strategicInsights.length === 0) {
+          compactPayload.strategicInsights = (compactPayload.topSignals || []).slice(0, 5);
+        }
 
         // Persist as new report
         const reportData = {
