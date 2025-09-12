@@ -87,9 +87,12 @@ export function setupLocalAuth(app: Express) {
   app.post('/api/auth/register', async (req, res) => {
     try {
       const { email, password, firstName, lastName } = registerSchema.parse(req.body);
+      
+      // Normalize email to lowercase for consistent handling
+      const normalizedEmail = email.toLowerCase().trim();
 
       // Validate email format
-      if (!validateEmail(email)) {
+      if (!validateEmail(normalizedEmail)) {
         return res.status(400).json({ message: 'Invalid email format' });
       }
 
@@ -103,7 +106,7 @@ export function setupLocalAuth(app: Express) {
       }
 
       // Check if user already exists (use generic error to prevent account enumeration)
-      const existingUser = await storage.getUserByEmail(email);
+      const existingUser = await storage.getUserByEmail(normalizedEmail);
       if (existingUser) {
         return res.status(400).json({ message: 'Registration failed. Please try a different email or sign in if you already have an account.' });
       }
@@ -113,7 +116,7 @@ export function setupLocalAuth(app: Express) {
 
       // Create user
       const user = await storage.createUserWithPassword({
-        email,
+        email: normalizedEmail,
         passwordHash,
         firstName,
         lastName,
@@ -161,9 +164,12 @@ export function setupLocalAuth(app: Express) {
   app.post('/api/auth/local/login', rateLimitLogin, async (req, res) => {
     try {
       const { email, password } = loginSchema.parse(req.body);
+      
+      // Normalize email to lowercase for consistent handling
+      const normalizedEmail = email.toLowerCase().trim();
 
       // Find user by email
-      const user = await storage.getUserByEmail(email);
+      const user = await storage.getUserByEmail(normalizedEmail);
       
       // Generic error to prevent account enumeration
       if (!user || !user.passwordHash || !(await comparePassword(password, user.passwordHash))) {
