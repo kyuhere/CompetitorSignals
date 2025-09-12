@@ -8,6 +8,7 @@ import NotFound from "@/pages/not-found";
 import Landing from "@/pages/landing";
 import Home from "@/pages/home";
 import ReportPage from "@/pages/report";
+import PremiumPage from "@/pages/premium";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -19,6 +20,8 @@ function Router() {
       ) : (
         <>
           <Route path="/" component={Home} />
+          <Route path="/dashboard" component={Home} />
+          <Route path="/premium" component={PremiumPage} />
           <Route path="/report/:id" component={ReportPage} />
         </>
       )}

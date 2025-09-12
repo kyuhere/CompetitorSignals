@@ -10,10 +10,12 @@ import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import CompetitorReport from "@/components/CompetitorReport";
+import AuthModal from "@/components/AuthModal";
 
 export default function Landing() {
   const [searchQuery, setSearchQuery] = useState("");
   const [showSignupDialog, setShowSignupDialog] = useState(false);
+  const [showAuthModal, setShowAuthModal] = useState(false);
   const [searchResult, setSearchResult] = useState<any>(null);
   const [loadingProgress, setLoadingProgress] = useState(0);
   const { toast } = useToast();
@@ -112,7 +114,7 @@ export default function Landing() {
             </div>
             
             <Button 
-              onClick={() => window.location.href = '/api/login'}
+              onClick={() => setShowAuthModal(true)}
               data-testid="button-login"
               className="btn-primary"
             >
@@ -181,7 +183,7 @@ export default function Landing() {
             <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
               <Button 
                 size="lg" 
-                onClick={() => window.location.href = '/api/login'}
+                onClick={() => setShowAuthModal(true)}
                 data-testid="button-get-started"
                 className="btn-glass-primary text-lg px-8 py-4 h-auto rounded-full"
               >
@@ -246,7 +248,7 @@ export default function Landing() {
                     Sign up to get 3 competitor reports every two weeks, plus export and email features.
                   </p>
                   <Button
-                    onClick={() => window.location.href = '/api/login'}
+                    onClick={() => setShowAuthModal(true)}
                     className="btn-primary text-lg px-8 py-4 h-auto"
                     data-testid="button-biweekly-signup"
                   >
@@ -339,7 +341,7 @@ export default function Landing() {
                   
                   <Button 
                     className="w-full" 
-                    onClick={() => window.location.href = '/api/login'}
+                    onClick={() => setShowAuthModal(true)}
                     data-testid="button-start-free"
                   >
                     Start Free
@@ -411,7 +413,10 @@ export default function Landing() {
             
             <div className="flex gap-3">
               <Button 
-                onClick={() => window.location.href = '/api/login'}
+                onClick={() => {
+                  setShowSignupDialog(false);
+                  setShowAuthModal(true);
+                }}
                 className="flex-1"
                 data-testid="button-signup-dialog"
               >
@@ -429,6 +434,9 @@ export default function Landing() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Auth Modal */}
+      <AuthModal open={showAuthModal} onOpenChange={setShowAuthModal} />
     </div>
   );
 }

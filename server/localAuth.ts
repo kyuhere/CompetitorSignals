@@ -164,18 +164,9 @@ export function setupLocalAuth(app: Express) {
 
       // Find user by email
       const user = await storage.getUserByEmail(email);
-      if (!user) {
-        return res.status(401).json({ message: 'Invalid email or password' });
-      }
-
-      // Check if user has a password hash (might be Replit Auth only)
-      if (!user.passwordHash) {
-        return res.status(401).json({ message: 'Please login with Replit Auth or register for a local account' });
-      }
-
-      // Verify password
-      const isValidPassword = await comparePassword(password, user.passwordHash);
-      if (!isValidPassword) {
+      
+      // Generic error to prevent account enumeration
+      if (!user || !user.passwordHash || !(await comparePassword(password, user.passwordHash))) {
         return res.status(401).json({ message: 'Invalid email or password' });
       }
 

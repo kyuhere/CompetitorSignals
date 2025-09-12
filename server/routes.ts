@@ -118,14 +118,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   };
 
-  // Determine effective plan with fallbacks and dev override for a known premium email
+  // Determine effective plan with fallbacks
   const getEffectivePlan = (user: any, req: any): string => {
     const claimedPlan = (req?.user?.claims?.plan as string) || undefined;
     let plan = (user?.plan as string) || claimedPlan || 'free';
-    // Temporary override for known premium account during debugging
-    if (user?.email && user.email.toLowerCase() === 'kamsi@hotmail.co.uk') {
-      plan = 'premium';
-    }
     return plan;
   };
 
