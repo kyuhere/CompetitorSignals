@@ -337,61 +337,61 @@ export default function TrackedCompetitors() {
         )}
 
         {/* Lock Dialog - Only shown for free users */}
-        <Dialog open={lockDialogOpen} onOpenChange={setLockDialogOpen}>
-          <DialogContent className="sm:max-w-md">
-            <DialogHeader>
-              <DialogTitle className="flex items-center text-xl">
-                <Lock className="w-6 h-6 mr-2 text-orange-500" />
-                Competitor Locked (Free Plan)
-              </DialogTitle>
-              <DialogDescription className="text-base">
-                With the free plan, newly added competitors are locked until the end of the month to prevent abuse. Upgrade to premium for instant removal and higher limits.
-              </DialogDescription>
-            </DialogHeader>
-
-            <div className="space-y-4">
-              <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-medium text-orange-800">Unlock at end of month:</span>
-                  <span className="text-lg font-bold text-orange-600">
-                    {lockInfo?.daysRemaining} days
-                  </span>
+        <AlertDialog open={lockDialogOpen} onOpenChange={setLockDialogOpen}>
+          <AlertDialogContent className="sm:max-w-md card-rounded border-2 border-primary/20 bg-background">
+            <AlertDialogHeader className="text-center pb-6">
+              <div className="w-20 h-20 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg">
+                <Lock className="w-10 h-10 text-orange-500" />
+              </div>
+              <AlertDialogTitle className="text-3xl font-bold text-foreground mb-4">
+                Competitor Locked
+              </AlertDialogTitle>
+              <AlertDialogDescription className="text-base text-muted-foreground leading-relaxed space-y-4">
+                <div className="bg-orange-50 border-2 border-orange-200 rounded-xl p-4">
+                  <p className="text-orange-800 font-semibold">
+                    Free plan competitors are locked until month-end to prevent abuse
+                  </p>
+                  <div className="flex items-center justify-between mt-3">
+                    <span className="text-sm font-medium text-orange-700">Unlock in:</span>
+                    <span className="text-2xl font-bold text-orange-600">
+                      {lockInfo?.daysRemaining} days
+                    </span>
+                  </div>
+                  <p className="text-sm text-orange-700 mt-2">
+                    Available on {lockInfo?.unlockDate ? new Date(lockInfo.unlockDate).toLocaleDateString('en-US', { 
+                      month: 'long', 
+                      day: 'numeric',
+                      year: 'numeric'
+                    }) : 'N/A'}
+                  </p>
                 </div>
-                <p className="text-xs text-orange-700">
-                  Available on {lockInfo?.unlockDate ? new Date(lockInfo.unlockDate).toLocaleDateString('en-US', { 
-                    month: 'long', 
-                    day: 'numeric',
-                    year: 'numeric'
-                  }) : 'N/A'}
-                </p>
-              </div>
-
-              <div className="flex flex-col space-y-3">
-                <Button
-                  className="w-full bg-gradient-to-r from-yellow-400 to-orange-500 hover:from-yellow-500 hover:to-orange-600 text-white font-bold py-3"
-                  onClick={() => {
-                    toast({
-                      title: "Premium Coming Soon!",
-                      description: "Upgrade to premium for instant competitor removal and unlimited tracking",
-                    });
-                    setLockDialogOpen(false);
-                  }}
-                >
-                  <Crown className="w-5 h-5 mr-2" />
-                  Upgrade to Premium
-                </Button>
-
-                <Button
-                  variant="outline"
-                  onClick={() => setLockDialogOpen(false)}
-                  className="w-full"
-                >
-                  Got it
-                </Button>
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
+                <div className="bg-primary/10 border-2 border-primary/20 rounded-xl p-4">
+                  <p className="text-foreground font-semibold text-center">
+                    ✨ Upgrade to Premium for instant competitor removal
+                  </p>
+                </div>
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter className="flex flex-col gap-3 pt-4">
+              <AlertDialogAction 
+                onClick={() => {
+                  toast({
+                    title: "Premium Coming Soon!",
+                    description: "Upgrade to premium for instant competitor removal and unlimited tracking",
+                  });
+                  setLockDialogOpen(false);
+                }}
+                className="w-full bg-gradient-to-r from-yellow-400 to-orange-500 hover:from-yellow-500 hover:to-orange-600 text-white font-bold py-4 rounded-full hover:scale-105 transition-all duration-200 shadow-lg text-lg"
+              >
+                <Crown className="w-5 h-5 mr-2" />
+                🍋 Upgrade to Premium
+              </AlertDialogAction>
+              <AlertDialogCancel className="w-full rounded-full px-6 py-3 border-2 border-border transition-colors hover:bg-muted text-base font-medium">
+                Got it
+              </AlertDialogCancel>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
 
         {/* Updated AlertDialog for removal limit */}
         <AlertDialog open={showRemovalDialog} onOpenChange={setShowRemovalDialog}>
