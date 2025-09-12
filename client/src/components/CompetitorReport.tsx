@@ -1019,6 +1019,7 @@ export default function CompetitorReport({ report }: CompetitorReportProps) {
             </div>
           ))}
         </div>
+        )}
 
         {/* Key Strategic Insights */}
         {analysis.strategic_insights && (
