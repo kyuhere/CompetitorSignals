@@ -216,8 +216,8 @@ export default function CompetitorReport({ report }: CompetitorReportProps) {
   }, [report.summary]);
 
   const isQuickSummary = useMemo(() => {
-    return (report as any)?.metadata?.type === 'quick_summary' || !!(quickSummary && (quickSummary.executiveSummary || (quickSummary.competitorSnippets?.length || quickSummary.topSignals?.length)));
-  }, [report, quickSummary]);
+    return (report as any)?.metadata?.type === 'quick_summary';
+  }, [report]);
 
   const handleExport = async () => {
     try {
