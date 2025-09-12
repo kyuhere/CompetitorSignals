@@ -128,6 +128,7 @@ export default function TrackedCompetitors() {
       return apiRequest('POST', '/api/competitors/tracked/quick-summary', {});
     },
     onSuccess: (data) => {
+      console.log("Quick summary API response:", data);
       setQuickSummaryData(data);
       setShowQuickSummary(true);
       toast({
@@ -473,18 +474,18 @@ export default function TrackedCompetitors() {
               </DialogDescription>
             </DialogHeader>
             
-            {quickSummaryData && (
+            {quickSummaryData && quickSummaryData.summary && (
               <div className="space-y-6">
                 {/* Executive Summary */}
                 <div className="bg-primary/5 rounded-lg p-4 border border-primary/20">
                   <h3 className="font-bold text-lg mb-2 text-foreground">Executive Summary</h3>
                   <p className="text-foreground leading-relaxed">
-                    {quickSummaryData.summary.executiveSummary}
+                    {quickSummaryData.summary.executiveSummary || "No executive summary available"}
                   </p>
                 </div>
 
                 {/* Competitor Insights */}
-                {quickSummaryData.summary.competitorSnippets && quickSummaryData.summary.competitorSnippets.length > 0 && (
+                {quickSummaryData.summary?.competitorSnippets && quickSummaryData.summary.competitorSnippets.length > 0 && (
                   <div>
                     <h3 className="font-bold text-lg mb-3 text-foreground">By Competitor</h3>
                     <div className="grid gap-3">
@@ -506,7 +507,7 @@ export default function TrackedCompetitors() {
                 )}
 
                 {/* Top Signals */}
-                {quickSummaryData.summary.topSignals && quickSummaryData.summary.topSignals.length > 0 && (
+                {quickSummaryData.summary?.topSignals && quickSummaryData.summary.topSignals.length > 0 && (
                   <div>
                     <h3 className="font-bold text-lg mb-3 text-foreground">Top Signals</h3>
                     <div className="space-y-2">
