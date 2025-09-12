@@ -381,7 +381,7 @@ export default function TrackedCompetitors() {
                   });
                   setLockDialogOpen(false);
                 }}
-                className="w-full bg-gradient-to-r from-yellow-400 to-orange-500 hover:from-yellow-500 hover:to-orange-600 text-white font-bold py-4 rounded-full hover:scale-105 transition-all duration-200 shadow-lg text-lg"
+                className="w-full bg-gradient-to-r from-yellow-300 to-yellow-500 hover:from-yellow-400 hover:to-yellow-600 text-white font-bold py-4 rounded-full hover:scale-105 transition-all duration-200 shadow-lg text-lg"
               >
                 <Crown className="w-5 h-5 mr-2" />
                 🍋 Upgrade to Premium
@@ -428,7 +428,7 @@ export default function TrackedCompetitors() {
                   });
                   setShowRemovalDialog(false);
                 }}
-                className="w-full bg-gradient-to-r from-yellow-400 to-orange-500 hover:from-yellow-500 hover:to-orange-600 text-white font-bold py-4 rounded-full hover:scale-105 transition-all duration-200 shadow-lg text-lg"
+                className="w-full bg-gradient-to-r from-yellow-300 to-yellow-500 hover:from-yellow-400 hover:to-yellow-600 text-white font-bold py-4 rounded-full hover:scale-105 transition-all duration-200 shadow-lg text-lg"
               >
                 <Crown className="w-5 h-5 mr-2" />
                 🍋 Upgrade to Premium
