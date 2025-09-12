@@ -10,6 +10,14 @@ import { apiRequest } from "@/lib/queryClient";
 import { Plus, X, Building2, Clock, TrendingUp, Zap, Lock, Crown } from "lucide-react";
 import type { TrackedCompetitor } from "@shared/schema";
 
+interface UsageData {
+  current: number;
+  limit: number;
+  remaining: number;
+  plan: string;
+  isLoggedIn: boolean;
+}
+
 interface TrackedCompetitorsResponse {
   competitors: TrackedCompetitor[];
   count: number;
@@ -40,6 +48,11 @@ export default function TrackedCompetitors() {
   // Fetch tracked competitors
   const { data: trackedData, isLoading } = useQuery<TrackedCompetitorsResponse>({
     queryKey: ['/api/competitors/tracked'],
+  });
+
+  // Fetch usage data to determine user plan
+  const { data: usage } = useQuery<UsageData>({
+    queryKey: ['/api/usage'],
   });
 
   // Add competitor mutation
@@ -164,6 +177,9 @@ export default function TrackedCompetitors() {
         </div>
         <p className="text-sm text-muted-foreground font-medium">
           Manage your {trackedData?.limit ?? 3} tracked competitors. Each analysis adds competitors to this list, and we'll monitor them automatically.
+          {usage?.plan === 'premium' && (
+            <span className="text-primary font-semibold"> Premium users can remove competitors instantly.</span>
+          )}
         </p>
       </CardHeader>
       
@@ -300,16 +316,16 @@ export default function TrackedCompetitors() {
           </div>
         )}
 
-        {/* Lock Dialog */}
+        {/* Lock Dialog - Only shown for free users */}
         <Dialog open={lockDialogOpen} onOpenChange={setLockDialogOpen}>
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
               <DialogTitle className="flex items-center text-xl">
                 <Lock className="w-6 h-6 mr-2 text-orange-500" />
-                Competitor Locked
+                Competitor Locked (Free Plan)
               </DialogTitle>
               <DialogDescription className="text-base">
-                You can track up to {trackedData?.limit ?? 3} competitors with your plan, and newly added competitors are locked until the end of the month. Remove one to add another or upgrade for higher limits.
+                With the free plan, newly added competitors are locked until the end of the month to prevent abuse. Upgrade to premium for instant removal and higher limits.
               </DialogDescription>
             </DialogHeader>
             
@@ -336,7 +352,7 @@ export default function TrackedCompetitors() {
                   onClick={() => {
                     toast({
                       title: "Premium Coming Soon!",
-                      description: "Upgrade to premium for unlimited competitor tracking",
+                      description: "Upgrade to premium for instant competitor removal and unlimited tracking",
                     });
                     setLockDialogOpen(false);
                   }}

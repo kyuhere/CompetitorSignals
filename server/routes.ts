@@ -689,7 +689,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Remove a tracked competitor (with monthly lock) - supports both auth methods
+  // Remove a tracked competitor (with monthly lock for free users only) - supports both auth methods
   app.delete('/api/competitors/tracked/:id', async (req: any, res) => {
     try {
       const authContext = await getAuthContext(req);
@@ -707,24 +707,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Competitor not found" });
       }
 
-      // Check if competitor was added this month (locked until end of month)
-      const addedDate = new Date(competitor.addedAt!);
-      const now = new Date();
+      // Get user plan to determine if monthly lock applies
+      const user = await storage.getUser(userId);
+      const plan = getEffectivePlan(user, req);
+      
+      // Only apply monthly lock for free users
+      if (plan !== 'premium') {
+        // Check if competitor was added this month (locked until end of month)
+        const addedDate = new Date(competitor.addedAt!);
+        const now = new Date();
 
-      // Check if added in the current month
-      if (addedDate.getMonth() === now.getMonth() && addedDate.getFullYear() === now.getFullYear()) {
-        // Calculate end of current month
-        const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
-        const daysRemaining = Math.ceil((endOfMonth.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+        // Check if added in the current month
+        if (addedDate.getMonth() === now.getMonth() && addedDate.getFullYear() === now.getFullYear()) {
+          // Calculate end of current month
+          const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+          const daysRemaining = Math.ceil((endOfMonth.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
 
-        return res.status(400).json({
-          message: "Competitors are locked until the end of the month",
-          locked: true,
-          daysRemaining,
-          unlockDate: endOfMonth.toISOString(),
-          canUpgrade: true,
-          competitorId: id
-        });
+          return res.status(400).json({
+            message: "Competitors are locked until the end of the month",
+            locked: true,
+            daysRemaining,
+            unlockDate: endOfMonth.toISOString(),
+            canUpgrade: true,
+            competitorId: id
+          });
+        }
       }
 
       await storage.removeTrackedCompetitor(userId, id);
