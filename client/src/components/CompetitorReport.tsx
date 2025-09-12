@@ -1025,23 +1025,6 @@ export default function CompetitorReport({ report }: CompetitorReportProps) {
         </div>
         )}
 
-        {/* Key Strategic Insights */}
-        {analysis.strategic_insights && (
-          <div className="mt-8 p-6 bg-muted rounded-lg">
-            <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center">
-              <Lightbulb className="w-5 h-5 text-amber-500 mr-2" />
-              Key Strategic Insights
-            </h3>
-            <ul className="space-y-3">
-              {analysis.strategic_insights.map((insight: string, index: number) => (
-                <li key={index} className="flex items-start" data-testid={`strategic-insight-${index}`}>
-                  <CheckCircle className="w-5 h-5 text-green-600 mt-0.5 mr-3 flex-shrink-0" />
-                  <span className="text-foreground">{stripSourceTags(insight)}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
 
         {/* Source References */}
         {report.signals && report.signals.length > 0 && (
