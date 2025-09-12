@@ -386,7 +386,7 @@ export default function TrackedCompetitors() {
                 <Crown className="w-5 h-5 mr-2" />
                 🍋 Upgrade to Premium
               </AlertDialogAction>
-              <AlertDialogCancel className="w-full rounded-full px-6 py-3 border-2 border-border transition-colors hover:bg-muted text-base font-medium">
+              <AlertDialogCancel className="inline-flex items-center justify-center gap-2 whitespace-nowrap ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-background hover:text-accent-foreground h-10 mt-2 sm:mt-0 w-full rounded-full px-6 py-3 border-2 border-border transition-colors hover:bg-muted text-base font-medium text-[#000000]">
                 Got it
               </AlertDialogCancel>
             </AlertDialogFooter>
@@ -433,7 +433,7 @@ export default function TrackedCompetitors() {
                 <Crown className="w-5 h-5 mr-2" />
                 🍋 Upgrade to Premium
               </AlertDialogAction>
-              <AlertDialogCancel className="w-full rounded-full px-6 py-3 border-2 border-border transition-colors hover:bg-muted text-base font-medium">
+              <AlertDialogCancel className="inline-flex items-center justify-center gap-2 whitespace-nowrap ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-background hover:text-accent-foreground h-10 mt-2 sm:mt-0 w-full rounded-full px-6 py-3 border-2 border-border transition-colors hover:bg-muted text-base font-medium text-[#000000]">
                 Got it
               </AlertDialogCancel>
             </AlertDialogFooter>

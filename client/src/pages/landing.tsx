@@ -194,6 +194,12 @@ export default function Landing() {
                 size="lg" 
                 data-testid="button-learn-more" 
                 className="btn-glass-secondary text-lg px-8 py-4 h-auto rounded-full"
+                onClick={() => {
+                  const featuresSection = document.querySelector('[data-scroll-target="features"]');
+                  if (featuresSection) {
+                    featuresSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                  }
+                }}
               >
                 Learn More
               </Button>
@@ -261,7 +267,7 @@ export default function Landing() {
         </section>
       )}
       {/* Features Section */}
-      <section className="py-16 px-4 sm:px-6 lg:px-8 bg-muted/50">
+      <section className="py-16 px-4 sm:px-6 lg:px-8 bg-muted/50" data-scroll-target="features">
         <div className="max-w-6xl mx-auto">
           <h2 className="text-3xl font-bold text-center text-foreground mb-12">
             Everything You Need for Competitive Intelligence
