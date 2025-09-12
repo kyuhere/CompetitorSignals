@@ -48,20 +48,20 @@ const renderNewsletterMarkdown = (md: string) => {
     // Bold-only headings like **Executive Summary**
     if (/^\*\*.*\*\*$/.test(line)) {
       elements.push(
-        <h3 className="text-lg font-semibold text-foreground mt-4 mb-2 flex items-center" key={`h-${elements.length}`}>
+        <h3 className="text-2xl lg:text-3xl font-bold text-foreground mt-6 mb-4 flex items-center" key={`h-${elements.length}`}>
           <span dangerouslySetInnerHTML={{ __html: line.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') }} />
         </h3>
       );
     } else {
       // Paragraph
       elements.push(
-        <p className="text-sm text-foreground mb-2" key={`p-${elements.length}`} dangerouslySetInnerHTML={{ __html: line.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') }} />
+        <p className="text-base text-foreground mb-4" key={`p-${elements.length}`} dangerouslySetInnerHTML={{ __html: line.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') }} />
       );
     }
   }
   // flush any trailing list
   flushList();
-  return <div className="space-y-2">{elements}</div>;
+  return <div className="space-y-4">{elements}</div>;
 };
 
 interface CompetitorReportProps {
@@ -362,8 +362,8 @@ export default function CompetitorReport({ report }: CompetitorReportProps) {
   // Newsletter-only view
   if (isNewsletter) {
     return (
-      <Card data-testid="card-competitor-report">
-        <div className="p-6 border-b border-border">
+      <Card data-testid="card-competitor-report" className="card-rounded hover-lift">
+        <div className="p-8 border-b border-border">
           <div className="flex items-start justify-between">
             <div>
               <h1 className="text-2xl font-bold text-foreground mb-2 flex items-center gap-2" data-testid="text-report-title">
@@ -405,7 +405,7 @@ export default function CompetitorReport({ report }: CompetitorReportProps) {
             </div>
           </div>
         </div>
-        <CardContent className="p-6">
+        <CardContent className="p-8">
           {renderNewsletterMarkdown(report.summary as unknown as string)}
         </CardContent>
       </Card>
@@ -464,12 +464,12 @@ export default function CompetitorReport({ report }: CompetitorReportProps) {
 
 
   return (
-    <Card data-testid="card-competitor-report">
+    <Card data-testid="card-competitor-report" className="card-rounded hover-lift">
       {/* Report Header */}
-      <div className="p-6 border-b border-border">
+      <div className="p-8 border-b border-border">
         <div className="flex items-start justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-foreground mb-2 flex items-center gap-2" data-testid="text-report-title">
+            <h1 className="text-4xl lg:text-6xl font-extrabold leading-tight text-foreground mb-4 flex items-center gap-2" data-testid="text-report-title">
               {report.title}
               {(report as any)?.metadata?.type === 'quick_summary' && (
                 <Badge className="bg-yellow-100 text-yellow-800 border border-yellow-300">Quick Summary</Badge>
@@ -556,15 +556,15 @@ export default function CompetitorReport({ report }: CompetitorReportProps) {
       </div>
 
       {/* Report Content */}
-      <CardContent className="p-6">
+      <CardContent className="p-8">
         {/* Executive Summary */}
         <div className="mb-8">
-          <h2 className="text-lg font-semibold text-foreground mb-4 flex items-center">
+          <h2 className="text-3xl lg:text-4xl font-bold text-foreground mb-6 flex items-center">
             <BarChart3 className="w-5 h-5 text-primary mr-2" />
             Executive Summary
           </h2>
           <div className="bg-muted p-4 rounded-lg">
-            <p className="text-foreground leading-relaxed" data-testid="text-executive-summary">
+            <p className="text-base text-foreground leading-relaxed" data-testid="text-executive-summary">
               {isQuickSummary ? (quickSummary?.executiveSummary || analysis.executive_summary) : analysis.executive_summary}
             </p>
           </div>
@@ -576,7 +576,7 @@ export default function CompetitorReport({ report }: CompetitorReportProps) {
             {/* By Competitor */}
             {quickSummary?.competitorSnippets && quickSummary.competitorSnippets.length > 0 && (
               <div>
-                <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center">
+                <h3 className="text-2xl lg:text-3xl font-bold text-foreground mb-6 flex items-center">
                   <Target className="w-5 h-5 text-primary mr-2" />
                   By Competitor
                 </h3>
@@ -601,7 +601,7 @@ export default function CompetitorReport({ report }: CompetitorReportProps) {
             {/* Top Signals */}
             {quickSummary?.topSignals && quickSummary.topSignals.length > 0 && (
               <div>
-                <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center">
+                <h3 className="text-2xl lg:text-3xl font-bold text-foreground mb-6 flex items-center">
                   <Lightbulb className="w-5 h-5 text-primary mr-2" />
                   Top Signals
                 </h3>
@@ -619,7 +619,7 @@ export default function CompetitorReport({ report }: CompetitorReportProps) {
             {/* Key Strategic Insights */}
             {(quickSummary as any)?.strategicInsights && (quickSummary as any).strategicInsights.length > 0 && (
               <div className="mt-2 p-4 bg-muted rounded-lg">
-                <h3 className="text-lg font-semibold text-foreground mb-3 flex items-center">
+                <h3 className="text-2xl lg:text-3xl font-bold text-foreground mb-6 flex items-center">
                   <Lightbulb className="w-5 h-5 text-amber-500 mr-2" />
                   Key Strategic Insights
                 </h3>
