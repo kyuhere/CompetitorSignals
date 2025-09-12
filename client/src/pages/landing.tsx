@@ -210,7 +210,7 @@ export default function Landing() {
           {!searchMutation.isPending && (
             <div className="flex flex-wrap gap-3 justify-center">
               <Badge className="bg-gray-100 text-gray-800 font-medium px-4 py-2 rounded-full border">No Credit Card Required</Badge>
-              <Badge className="bg-gray-100 text-gray-800 font-medium px-4 py-2 rounded-full border">3 Reports Every Two Weeks</Badge>
+              <Badge className="bg-gray-100 text-gray-800 font-medium px-4 py-2 rounded-full border">5 Reports Every Two Weeks</Badge>
               <Badge className="bg-primary text-black font-bold px-4 py-2 rounded-full">AI-Powered Insights</Badge>
             </div>
           )}
@@ -251,7 +251,7 @@ export default function Landing() {
                     Want to receive this as a bi-weekly report?
                   </h3>
                   <p className="text-muted-foreground mb-6 font-medium">
-                    Sign up to get 3 competitor reports every two weeks, plus export and email features.
+                    Sign up to get 5 competitor reports every two weeks, plus export and email features.
                   </p>
                   <Button
                     onClick={() => setShowAuthModal(true)}
@@ -293,7 +293,7 @@ export default function Landing() {
                 </div>
                 <h3 className="text-xl font-semibold text-foreground mb-2">AI-Powered Analysis</h3>
                 <p className="text-muted-foreground">
-                  Get intelligent summaries and strategic insights powered by GPT-5 for deep competitive intelligence.
+                  Get intelligent summaries and strategic insights powered by advanced AI models for deep competitive intelligence.
                 </p>
               </CardContent>
             </Card>
@@ -355,7 +355,7 @@ export default function Landing() {
             Simple, Transparent Pricing
           </h2>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             <Card>
               <CardContent className="p-6">
                 <div className="text-center">
@@ -387,6 +387,50 @@ export default function Landing() {
                     data-testid="button-start-free"
                   >
                     Start Free
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="border-2 border-yellow-400 relative overflow-hidden">
+              <CardContent className="p-6">
+                <div className="absolute top-0 right-0 bg-gradient-to-l from-yellow-400 to-yellow-300 text-black px-3 py-1 text-xs font-bold rounded-bl-lg">
+                  BEST VALUE
+                </div>
+                <div className="text-center">
+                  <h3 className="text-2xl font-bold text-foreground mb-2">All Access</h3>
+                  <p className="text-3xl font-bold text-primary mb-4">$99<span className="text-sm font-normal text-muted-foreground">/month</span></p>
+                  
+                  <ul className="text-left space-y-3 mb-6">
+                    <li className="flex items-center">
+                      <Shield className="w-4 h-4 text-green-600 mr-2" />
+                      <span className="text-foreground">Everything in Premium</span>
+                    </li>
+                    <li className="flex items-center">
+                      <Shield className="w-4 h-4 text-green-600 mr-2" />
+                      <span className="text-foreground">Access to all future apps</span>
+                    </li>
+                    <li className="flex items-center">
+                      <Shield className="w-4 h-4 text-green-600 mr-2" />
+                      <span className="text-foreground">Early beta access</span>
+                    </li>
+                    <li className="flex items-center">
+                      <Shield className="w-4 h-4 text-green-600 mr-2" />
+                      <span className="text-foreground">Priority support</span>
+                    </li>
+                    <li className="flex items-center">
+                      <Shield className="w-4 h-4 text-green-600 mr-2" />
+                      <span className="text-foreground">Multi-app dashboard</span>
+                    </li>
+                  </ul>
+                  
+                  <Button 
+                    variant="outline" 
+                    className="w-full border-2 border-yellow-400 text-yellow-600 hover:bg-yellow-50" 
+                    disabled 
+                    data-testid="button-all-access"
+                  >
+                    Coming Soon
                   </Button>
                 </div>
               </CardContent>
