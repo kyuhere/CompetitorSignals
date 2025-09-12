@@ -985,7 +985,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         // Add or normalize strategic insights
         if (!compactPayload.strategicInsights) {
-          const insights = (existingSummary.strategic_insights || existingSummary.top_signals || []).slice(0, 5);
+          const insights = (
+            existingSummary.strategic_insights ||
+            existingSummary.top_signals ||
+            existingSummary.topSignals ||
+            compactPayload.topSignals ||
+            []
+          ).slice(0, 5);
           if (Array.isArray(insights) && insights.length > 0) {
             compactPayload.strategicInsights = insights;
           }
