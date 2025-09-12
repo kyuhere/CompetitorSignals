@@ -353,7 +353,7 @@ export default function TrackedCompetitors() {
                   </p>
                   <div className="flex items-center justify-between mt-3">
                     <span className="text-sm font-medium text-[#000000]">Unlock in:</span>
-                    <span className="text-2xl font-bold text-orange-600">
+                    <span className="text-2xl font-bold text-[#000000]">
                       {lockInfo?.daysRemaining} days
                     </span>
                   </div>
