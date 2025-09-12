@@ -21,6 +21,102 @@ interface CompetitorSignal {
   }>;
 }
 
+// Newsletter-style digest (Markdown output) — fast, concise, email-ready
+export async function summarizeNewsletterDigest(input: {
+  trackedCompanies: Array<{ canonicalName: string; aliases?: string[] }>,
+  history: Record<string, {
+    developments?: string[];
+    funding?: string[];
+    market?: string[];
+    tech?: string[];
+  }>,
+  fresh: Record<string, {
+    developments?: string[];
+    funding?: string[];
+    market?: string[];
+    tech?: string[];
+  }>,
+  period: { from: string; to: string }
+}): Promise<string> {
+  const { trackedCompanies, history, fresh, period } = input;
+  try {
+    const prompt = `
+Purpose:
+Create a fast, email-ready “newsletter” summary for up to 10 tracked competitors.
+This is NOT a mini full report. Keep it concise and scannable.
+
+INPUT (structured JSON):
+trackedCompanies: ${JSON.stringify(trackedCompanies)}
+history: ${JSON.stringify(history)}
+fresh: ${JSON.stringify(fresh)}
+period: ${JSON.stringify(period)}
+
+Critical rules (reflect real app constraints):
+- STRICTLY include only companies from trackedCompanies.
+- Normalize names: use canonicalName when displaying; map any alias to canonical.
+- Deduplicate facts within and across sections; do not repeat the same update twice.
+- Prioritize “fresh” items within the given period; if none, pull 1 strong recent item from history (<= 90 days) and mark “(earlier)”.
+- Omit reviews/public sentiment entirely.
+- If a company has no material updates for a section, omit that company from that section (do not add filler).
+- Sort companies by the order of trackedCompanies.
+- Keep output short, deterministic, and fast to render.
+
+Output format (email-friendly Markdown ONLY). Use EXACT section titles:
+
+**Executive Summary**
+- 1–2 short paragraphs that synthesize overall changes across all companies.
+- Blend fresh + historic context; do not repeat bullets verbatim.
+
+**Recent Developments**
+- **Company A**: bullet 1. bullet 2.
+
+**Funding & Business Changes**
+- **Company A**: bullet 1. bullet 2.
+
+**Market Trends**
+- **Company A**: bullet 1. bullet 2.
+
+**Technology & Innovation**
+- **Company A**: bullet 1. bullet 2.
+
+**Strategic Insights**
+- Cross-company insight 1.
+- Cross-company insight 2.
+- Cross-company insight 3. (3–5 total)
+
+Stylistic constraints:
+- Max 2 bullets per company per section; each bullet ≤ ~20–25 words.
+- Bold company names exactly as **Company** at the start of each line.
+- No extra sections, no closing remarks.
+- Focus on signal over noise; use plain, neutral, professional language.
+- No invented companies; no invented facts.
+
+Validation:
+- Ensure no duplicate “Strategic Insights” block (render once at the end).
+- Ensure every company mentioned appears in trackedCompanies and uses its canonicalName.
+
+Output only the formatted Markdown newsletter (no JSON, no preamble).
+`;
+
+    const response = await openai.chat.completions.create({
+      model: FAST_MODEL,
+      messages: [
+        { role: "system", content: "You produce concise, accurate newsletters in Markdown. Follow constraints exactly. Output Markdown only." },
+        { role: "user", content: prompt }
+      ],
+      max_tokens: 1600,
+      temperature: 0.2
+    });
+
+    const md = response.choices?.[0]?.message?.content || '';
+    if (!md) throw new Error('No newsletter content generated');
+    return md;
+  } catch (err) {
+    console.error('OpenAI newsletter digest error:', err);
+    throw new Error(`Failed to generate newsletter digest: ${err instanceof Error ? err.message : 'Unknown error'}`);
+  }
+}
+
 // Compact full-structure analysis (2-3 bullets per section) for speed but tab-friendly rendering
 export async function summarizeCompactSignals(
   signals: CompetitorSignal[],

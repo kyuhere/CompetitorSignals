@@ -131,7 +131,7 @@ export default function TrackedCompetitors({ onShowReport }: TrackedCompetitorsP
   // Quick Summary mutation
   const quickSummaryMutation = useMutation({
     mutationFn: async (): Promise<any> => {
-      const res = await apiRequest('POST', '/api/competitors/tracked/quick-summary', {});
+      const res = await apiRequest('POST', '/api/competitors/tracked/quick-summary?mode=newsletter', {});
       return res.json();
     },
     onSuccess: async (data) => {

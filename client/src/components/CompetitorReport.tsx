@@ -11,6 +11,61 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useState, useMemo } from "react";
 
+// Minimal markdown -> HTML converter tailored to our newsletter format
+// Supports: bold (**text**), bullet lines starting with "- ", and simple paragraphs
+const renderNewsletterMarkdown = (md: string) => {
+  const lines = (md || "").split(/\r?\n/);
+  const elements: JSX.Element[] = [];
+  let listBuffer: string[] = [];
+
+  const flushList = () => {
+    if (listBuffer.length > 0) {
+      elements.push(
+        <ul className="list-disc pl-6 space-y-1" key={`ul-${elements.length}`}>
+          {listBuffer.map((item, idx) => (
+            <li key={idx} dangerouslySetInnerHTML={{ __html: item.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') }} />
+          ))}
+        </ul>
+      );
+      listBuffer = [];
+    }
+  };
+
+  // Newsletter rendering is handled inside the component, not here.
+
+  // (Intentionally no return of newsletter here; handled inside the component)
+
+  for (const raw of lines) {
+    const line = raw.trimEnd();
+    if (line.trim().length === 0) {
+      flushList();
+      continue;
+    }
+    if (line.startsWith("- ")) {
+      listBuffer.push(line.substring(2));
+      continue;
+    }
+    // flush any pending list before a paragraph/heading
+    flushList();
+    // Bold-only headings like **Executive Summary**
+    if (/^\*\*.*\*\*$/.test(line)) {
+      elements.push(
+        <h3 className="text-lg font-semibold text-foreground mt-4 mb-2 flex items-center" key={`h-${elements.length}`}>
+          <span dangerouslySetInnerHTML={{ __html: line.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') }} />
+        </h3>
+      );
+    } else {
+      // Paragraph
+      elements.push(
+        <p className="text-sm text-foreground mb-2" key={`p-${elements.length}`} dangerouslySetInnerHTML={{ __html: line.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') }} />
+      );
+    }
+  }
+  // flush any trailing list
+  flushList();
+  return <div className="space-y-2">{elements}</div>;
+};
+
 interface CompetitorReportProps {
   report: {
     id: string;
@@ -217,6 +272,10 @@ export default function CompetitorReport({ report }: CompetitorReportProps) {
 
   const isQuickSummary = useMemo(() => {
     return (report as any)?.metadata?.type === 'quick_summary';
+  }, [report]);
+
+  const isNewsletter = useMemo(() => {
+    return (report as any)?.metadata?.type === 'newsletter_summary';
   }, [report]);
 
   const handleExport = async () => {

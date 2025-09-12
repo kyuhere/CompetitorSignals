@@ -9,7 +9,7 @@ import { z } from "zod";
 import { signalAggregator } from "./services/signalAggregator";
 import { enhancedSignalAggregator } from "./services/enhancedSignalAggregator";
 
-import { summarizeCompetitorSignals, generateFastPreview, summarizeCompactSignals } from "./services/openai";
+import { summarizeCompetitorSignals, generateFastPreview, summarizeCompactSignals, summarizeNewsletterDigest } from "./services/openai";
 import { trustpilotService } from "./services/trustpilot";
 import { sendCompetitorReport } from "./email";
 
