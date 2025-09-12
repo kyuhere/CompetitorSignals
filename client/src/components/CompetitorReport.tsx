@@ -194,6 +194,30 @@ export default function CompetitorReport({ report }: CompetitorReportProps) {
     }
   }, [report.summary]);
 
+  // Quick Summary parsing (for compact tracked summary reports)
+  const quickSummary = useMemo(() => {
+    try {
+      const raw = typeof report.summary === 'string' ? JSON.parse(report.summary) : (report.summary as any);
+      if (!raw || typeof raw !== 'object') return null;
+      // Accept both camelCase (quick summary) and snake_case (fast preview) keys
+      return {
+        executiveSummary: raw.executiveSummary || raw.executive_summary || '',
+        competitorSnippets: Array.isArray(raw.competitorSnippets) ? raw.competitorSnippets : (raw.competitor_insights || []).map((ins: any) => ({
+          competitor: ins.competitor,
+          bullets: ins.key_update ? [ins.key_update] : []
+        })),
+        topSignals: raw.topSignals || raw.top_signals || [],
+        meta: raw.meta || null,
+      };
+    } catch {
+      return null;
+    }
+  }, [report.summary]);
+
+  const isQuickSummary = useMemo(() => {
+    return (report as any)?.metadata?.type === 'quick_summary' || !!(quickSummary && (quickSummary.executiveSummary || (quickSummary.competitorSnippets?.length || quickSummary.topSignals?.length)));
+  }, [report, quickSummary]);
+
   const handleExport = async () => {
     try {
       // Dynamically import heavy libraries only when exporting
@@ -427,12 +451,59 @@ export default function CompetitorReport({ report }: CompetitorReportProps) {
           </h2>
           <div className="bg-muted p-4 rounded-lg">
             <p className="text-foreground leading-relaxed" data-testid="text-executive-summary">
-              {analysis.executive_summary}
+              {isQuickSummary ? (quickSummary?.executiveSummary || analysis.executive_summary) : analysis.executive_summary}
             </p>
           </div>
         </div>
 
-        {/* Comprehensive Competitor Analysis */}
+        {/* Quick Summary: compact one-page layout */}
+        {isQuickSummary ? (
+          <div className="space-y-8">
+            {/* By Competitor */}
+            {quickSummary?.competitorSnippets && quickSummary.competitorSnippets.length > 0 && (
+              <div>
+                <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center">
+                  <Target className="w-5 h-5 text-primary mr-2" />
+                  By Competitor
+                </h3>
+                <div className="grid gap-3">
+                  {quickSummary.competitorSnippets.map((snippet: any, index: number) => (
+                    <div key={index} className="border border-border rounded-lg p-4 bg-card">
+                      <h4 className="font-semibold text-foreground mb-2">{snippet.competitor}</h4>
+                      <ul className="space-y-2">
+                        {(snippet.bullets || []).slice(0, 2).map((bullet: string, bulletIndex: number) => (
+                          <li key={bulletIndex} className="text-sm text-foreground flex items-start">
+                            <div className="w-1.5 h-1.5 bg-primary rounded-full mt-2 mr-3 flex-shrink-0"></div>
+                            {bullet}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Top Signals */}
+            {quickSummary?.topSignals && quickSummary.topSignals.length > 0 && (
+              <div>
+                <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center">
+                  <Lightbulb className="w-5 h-5 text-primary mr-2" />
+                  Top Signals
+                </h3>
+                <div className="space-y-2">
+                  {quickSummary.topSignals.slice(0, 3).map((signal: string, index: number) => (
+                    <div key={index} className="flex items-start p-3 bg-muted/30 rounded-lg border border-border">
+                      <TrendingUp className="w-4 h-4 text-primary mt-1 mr-2 flex-shrink-0" />
+                      <span className="text-foreground text-sm">{signal}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        ) : (
+        /* Comprehensive Competitor Analysis (default full report) */
         <div className="space-y-8">
           {analysis.competitors?.map((competitor: any, index: number) => (
             <div key={index} className="border border-border rounded-lg p-6" data-testid={`competitor-analysis-${index}`}>

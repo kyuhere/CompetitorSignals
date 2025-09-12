@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -44,6 +45,7 @@ const avatarColors = [
 ];
 
 export default function TrackedCompetitors() {
+  const [, setLocation] = useLocation();
   const [newCompetitorName, setNewCompetitorName] = useState("");
   const [isAdding, setIsAdding] = useState(false);
   const [lockDialogOpen, setLockDialogOpen] = useState(false);
@@ -124,11 +126,18 @@ export default function TrackedCompetitors() {
 
   // Quick Summary mutation
   const quickSummaryMutation = useMutation({
-    mutationFn: async () => {
-      return apiRequest('POST', '/api/competitors/tracked/quick-summary', {});
+    mutationFn: async (): Promise<any> => {
+      const res = await apiRequest('POST', '/api/competitors/tracked/quick-summary', {});
+      return res.json();
     },
     onSuccess: (data) => {
       console.log("Quick summary API response:", data);
+      // Persisted as a normal report; navigate to standard report view
+      if (data?.id) {
+        setLocation(`/report/${data.id}`);
+        return;
+      }
+      // Fallback: keep modal if no id returned
       setQuickSummaryData(data);
       setShowQuickSummary(true);
       toast({

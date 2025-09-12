@@ -922,9 +922,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       let compactPayload: any;
       let reportId: string;
+      let createdAtISO: string | undefined;
 
       if (reusableReport) {
-        // Reuse existing report - extract compact data from summary
+        // Reuse existing report data, but persist a new compact quick-summary report for consistency/UI
         let existingSummary;
         try {
           existingSummary = typeof reusableReport.summary === 'string' 
@@ -970,7 +971,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
           };
         }
         
-        reportId = reusableReport.id;
+        // Persist as a new quick-summary report (do not overwrite the original)
+        const persisted = await storage.createReport({
+          userId,
+          title: `Quick Summary (Tracked) — ${new Date().toLocaleDateString()}`,
+          competitors: competitorList,
+          signals: [],
+          summary: JSON.stringify(compactPayload),
+          metadata: {
+            ...compactPayload.meta,
+            type: 'quick_summary',
+            reusedFromReportId: reusableReport.id,
+            signalCount: 0,
+            sources: ['news', 'funding', 'social']
+          }
+        });
+        reportId = persisted.id;
+        createdAtISO = persisted.createdAt ? new Date(persisted.createdAt).toISOString() : undefined;
       } else {
         // Generate fresh quick summary
         const sources = {
@@ -1024,13 +1041,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         const report = await storage.createReport(reportData);
         reportId = report.id;
+        createdAtISO = report.createdAt ? new Date(report.createdAt).toISOString() : undefined;
       }
 
       res.json({
         id: reportId,
-        title: reusableReport?.title || `Quick Summary (Tracked) — ${new Date().toLocaleDateString()}`,
+        title: `Quick Summary (Tracked) — ${new Date().toLocaleDateString()}`,
         summary: compactPayload,
-        createdAt: reusableReport?.createdAt || new Date().toISOString()
+        createdAt: createdAtISO || new Date().toISOString()
       });
     } catch (error) {
       console.error("Error generating quick summary:", error);
