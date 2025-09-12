@@ -2,6 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
+import { setupLocalAuth, requireLocalAuth, requirePremium } from "./localAuth";
 import { insertCompetitorReportSchema, insertTrackedCompetitorSchema } from "@shared/schema";
 import { z } from "zod";
 import { signalAggregator } from "./services/signalAggregator";
@@ -46,8 +47,9 @@ const competitorAnalysisSchema = z.object({
 });
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Auth middleware
+  // Auth middleware - Both Replit Auth and Local Auth
   await setupAuth(app);
+  setupLocalAuth(app);
 
   // Debug endpoint to inspect Trustpilot parsing
   app.get('/api/debug/trustpilot', async (req: any, res: any) => {

@@ -21,6 +21,10 @@ export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
   upsertUser(user: UpsertUser): Promise<User>;
   
+  // Email/password authentication operations
+  getUserByEmail(email: string): Promise<User | undefined>;
+  createUserWithPassword(user: Omit<UpsertUser, 'id'> & { passwordHash: string }): Promise<User>;
+  
   // Competitor report operations
   createReport(report: InsertCompetitorReport): Promise<CompetitorReport>;
   getReport(id: string): Promise<CompetitorReport | undefined>;
@@ -58,6 +62,20 @@ export class DatabaseStorage implements IStorage {
           updatedAt: new Date(),
         },
       })
+      .returning();
+    return user;
+  }
+
+  // Email/password authentication operations
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.email, email));
+    return user;
+  }
+
+  async createUserWithPassword(userData: Omit<UpsertUser, 'id'> & { passwordHash: string }): Promise<User> {
+    const [user] = await db
+      .insert(users)
+      .values(userData)
       .returning();
     return user;
   }
