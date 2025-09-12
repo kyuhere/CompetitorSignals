@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { useToast } from "@/hooks/use-toast";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import { Plus, X, Building2, Clock, TrendingUp, Zap, Lock, Crown } from "lucide-react";
+import { Plus, X, Building2, Clock, TrendingUp, Zap, Lock, Crown, FileText } from "lucide-react";
 import type { TrackedCompetitor } from "@shared/schema";
 import {
   AlertDialog,
@@ -53,6 +53,8 @@ export default function TrackedCompetitors() {
     competitorName: string;
   } | null>(null);
   const [showRemovalDialog, setShowRemovalDialog] = useState(false); // State for the removal dialog
+  const [showQuickSummary, setShowQuickSummary] = useState(false); // State for quick summary modal
+  const [quickSummaryData, setQuickSummaryData] = useState<any>(null); // Store quick summary data
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -117,6 +119,28 @@ export default function TrackedCompetitors() {
           variant: "destructive",
         });
       }
+    },
+  });
+
+  // Quick Summary mutation
+  const quickSummaryMutation = useMutation({
+    mutationFn: async () => {
+      return apiRequest('POST', '/api/competitors/tracked/quick-summary', {});
+    },
+    onSuccess: (data) => {
+      setQuickSummaryData(data);
+      setShowQuickSummary(true);
+      toast({
+        title: "Quick Summary Ready!",
+        description: "Your competitor quick summary has been generated.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to generate quick summary",
+        variant: "destructive",
+      });
     },
   });
 
@@ -303,23 +327,17 @@ export default function TrackedCompetitors() {
           </Button>
         )}
 
-        {/* Manual Analysis Button */}
+        {/* Quick Summary Button */}
         {trackedData && trackedData.count > 0 && (
           <Button
-            onClick={() => {
-              // This would trigger analysis of tracked competitors
-              // For now, we'll show a toast
-              toast({
-                title: "Analysis Started",
-                description: "Analyzing your tracked competitors. This may take a few minutes.",
-              });
-            }}
+            onClick={() => quickSummaryMutation.mutate()}
+            disabled={quickSummaryMutation.isPending}
             variant="outline"
             className="w-full py-4 text-lg border-2 border-primary text-primary hover:bg-primary hover:text-primary-foreground font-bold rounded-xl"
-            data-testid="button-analyze-tracked"
+            data-testid="button-create-quick-summary"
           >
             <Zap className="w-5 h-5 mr-2" />
-            Analyze Now
+            {quickSummaryMutation.isPending ? "Creating Summary..." : "Create Quick Summary"}
           </Button>
         )}
 
@@ -439,6 +457,128 @@ export default function TrackedCompetitors() {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+
+        {/* Quick Summary Modal */}
+        <Dialog open={showQuickSummary} onOpenChange={setShowQuickSummary}>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-2xl font-bold">
+                <Zap className="w-6 h-6 text-primary" />
+                Competitor Quick Summary
+              </DialogTitle>
+              <DialogDescription className="text-muted-foreground">
+                {quickSummaryData?.summary?.meta?.reused 
+                  ? "Based on recent analysis data" 
+                  : "Fresh analysis of your tracked competitors"}
+              </DialogDescription>
+            </DialogHeader>
+            
+            {quickSummaryData && (
+              <div className="space-y-6">
+                {/* Executive Summary */}
+                <div className="bg-primary/5 rounded-lg p-4 border border-primary/20">
+                  <h3 className="font-bold text-lg mb-2 text-foreground">Executive Summary</h3>
+                  <p className="text-foreground leading-relaxed">
+                    {quickSummaryData.summary.executiveSummary}
+                  </p>
+                </div>
+
+                {/* Competitor Insights */}
+                {quickSummaryData.summary.competitorSnippets && quickSummaryData.summary.competitorSnippets.length > 0 && (
+                  <div>
+                    <h3 className="font-bold text-lg mb-3 text-foreground">By Competitor</h3>
+                    <div className="grid gap-3">
+                      {quickSummaryData.summary.competitorSnippets.map((snippet: any, index: number) => (
+                        <div key={index} className="border border-border rounded-lg p-3 bg-card">
+                          <h4 className="font-semibold text-foreground mb-2">{snippet.competitor}</h4>
+                          <ul className="space-y-1">
+                            {snippet.bullets.slice(0, 2).map((bullet: string, bulletIndex: number) => (
+                              <li key={bulletIndex} className="text-sm text-muted-foreground flex items-start">
+                                <span className="w-1 h-1 bg-primary rounded-full mt-2 mr-2 flex-shrink-0"></span>
+                                {bullet}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Top Signals */}
+                {quickSummaryData.summary.topSignals && quickSummaryData.summary.topSignals.length > 0 && (
+                  <div>
+                    <h3 className="font-bold text-lg mb-3 text-foreground">Top Signals</h3>
+                    <div className="space-y-2">
+                      {quickSummaryData.summary.topSignals.slice(0, 3).map((signal: string, index: number) => (
+                        <div key={index} className="flex items-start p-3 bg-muted/30 rounded-lg border border-border">
+                          <TrendingUp className="w-4 h-4 text-primary mt-1 mr-2 flex-shrink-0" />
+                          <span className="text-foreground text-sm">{signal}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Email and Actions */}
+                <div className="flex gap-3 pt-4 border-t border-border">
+                  {usage?.plan === 'premium' ? (
+                    <Button
+                      onClick={() => {
+                        // TODO: Implement email functionality using existing endpoint
+                        const userEmail = prompt("Enter your email address:");
+                        if (userEmail && quickSummaryData.id) {
+                          // Use existing email endpoint
+                          apiRequest('POST', `/api/reports/${quickSummaryData.id}/email`, { email: userEmail })
+                            .then(() => {
+                              toast({
+                                title: "Email Sent!",
+                                description: "Quick summary has been sent to your email.",
+                              });
+                            })
+                            .catch((error: any) => {
+                              toast({
+                                title: "Email Failed",
+                                description: error.message || "Failed to send email",
+                                variant: "destructive",
+                              });
+                            });
+                        }
+                      }}
+                      className="btn-primary flex items-center gap-2"
+                    >
+                      <FileText className="w-4 h-4" />
+                      Email this Summary
+                    </Button>
+                  ) : (
+                    <Button
+                      variant="outline"
+                      disabled
+                      className="flex items-center gap-2"
+                    >
+                      <FileText className="w-4 h-4" />
+                      Email (Premium Only)
+                    </Button>
+                  )}
+                  
+                  <Button
+                    variant="outline"
+                    onClick={() => setShowQuickSummary(false)}
+                    className="flex-1"
+                  >
+                    Close
+                  </Button>
+                </div>
+
+                {/* Metadata */}
+                <div className="text-xs text-muted-foreground text-center">
+                  Generated on {new Date(quickSummaryData.summary.meta.generatedAt).toLocaleDateString()} • 
+                  {quickSummaryData.summary.meta.competitorCount} competitors analyzed
+                </div>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
       </CardContent>
     </Card>
   );

@@ -866,6 +866,178 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Quick Summary for Tracked Competitors
+  app.post('/api/competitors/tracked/quick-summary', async (req: any, res) => {
+    try {
+      const authContext = await getAuthContext(req);
+      
+      if (!authContext.isAuthenticated) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const userId = authContext.userId!;
+
+      // Get user's tracked competitors
+      const trackedCompetitors = await storage.getUserTrackedCompetitors(userId);
+
+      if (trackedCompetitors.length === 0) {
+        return res.status(400).json({
+          message: "No competitors are being tracked"
+        });
+      }
+
+      // Extract competitor names and build canonical set key
+      const competitorList = trackedCompetitors.map(c => c.competitorName);
+      
+      // Reuse the canonicalization logic from analyze endpoint
+      const toCanonical = (s: string) => {
+        const lower = (s || '').trim().toLowerCase();
+        const noProto = lower.replace(/^https?:\/\//, '').replace(/^www\./, '');
+        const firstToken = noProto.split('/')[0];
+        const baseLabel = firstToken.includes('.') ? firstToken.split('.')[0] : firstToken;
+        return baseLabel.replace(/[^a-z0-9]/g, '');
+      };
+
+      const canonicalCompetitors = competitorList.map(toCanonical).sort();
+      const canonicalKey = `tracked_qs:${canonicalCompetitors.join('|')}`;
+
+      // Try to reuse a recent matching report (within 14 days)
+      const reports = await storage.getUserReports(userId, 10);
+      const fourteenDaysAgo = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000);
+
+      let reusableReport = null;
+      for (const report of reports) {
+        if (report.createdAt && new Date(report.createdAt) > fourteenDaysAgo) {
+          // Check if this report has the same canonical competitor set
+          const reportCompetitors = (report.competitors as string[]) || [];
+          const reportCanonical = reportCompetitors.map(toCanonical).sort();
+          const reportKey = `tracked_qs:${reportCanonical.join('|')}`;
+          
+          if (reportKey === canonicalKey) {
+            reusableReport = report;
+            break;
+          }
+        }
+      }
+
+      let compactPayload: any;
+      let reportId: string;
+
+      if (reusableReport) {
+        // Reuse existing report - extract compact data from summary
+        let existingSummary;
+        try {
+          existingSummary = typeof reusableReport.summary === 'string' 
+            ? JSON.parse(reusableReport.summary) 
+            : reusableReport.summary;
+        } catch {
+          existingSummary = reusableReport.summary;
+        }
+
+        // Check if this is already a compact summary or needs to be converted
+        if (existingSummary.executiveSummary || existingSummary.executive_summary) {
+          // Already compact format or fast preview format
+          compactPayload = {
+            meta: { 
+              generatedAt: reusableReport.createdAt,
+              competitorCount: competitorList.length, 
+              canonicalKey,
+              reused: true 
+            },
+            executiveSummary: existingSummary.executiveSummary || existingSummary.executive_summary,
+            competitorSnippets: existingSummary.competitorSnippets || (existingSummary.competitor_insights || []).map((insight: any) => ({
+              competitor: insight.competitor,
+              bullets: [insight.key_update || "No recent updates"]
+            })),
+            topSignals: existingSummary.topSignals || existingSummary.top_signals || ["No significant signals found"]
+          };
+        } else {
+          // Convert full analysis to compact format
+          const competitors = existingSummary.competitors || [];
+          compactPayload = {
+            meta: { 
+              generatedAt: reusableReport.createdAt,
+              competitorCount: competitorList.length, 
+              canonicalKey,
+              reused: true 
+            },
+            executiveSummary: existingSummary.executive_summary || "Competitive landscape analysis available.",
+            competitorSnippets: competitors.slice(0, 5).map((comp: any) => ({
+              competitor: comp.competitor || "Unknown",
+              bullets: (comp.recent_developments || ["No recent developments"]).slice(0, 2)
+            })),
+            topSignals: existingSummary.strategic_insights?.slice(0, 3) || ["Analysis available in full report"]
+          };
+        }
+        
+        reportId = reusableReport.id;
+      } else {
+        // Generate fresh quick summary
+        const sources = {
+          news: true,
+          funding: true,
+          social: true,
+          products: false
+        };
+
+        // Aggregate signals (lightweight for quick summary)
+        const signals = await signalAggregator.aggregateSignals(
+          competitorList,
+          [], // No custom URLs
+          sources
+        );
+
+        // Generate fast preview
+        const preview = await generateFastPreview(signals, competitorList);
+        const parsedPreview = JSON.parse(preview);
+
+        // Build compact payload
+        compactPayload = {
+          meta: { 
+            generatedAt: new Date().toISOString(), 
+            competitorCount: competitorList.length, 
+            canonicalKey,
+            reused: false
+          },
+          executiveSummary: parsedPreview.executive_summary || "Competitive intelligence summary generated.",
+          competitorSnippets: (parsedPreview.competitor_insights || []).map((insight: any) => ({
+            competitor: insight.competitor,
+            bullets: [insight.key_update || "Activity level: " + (insight.activity_level || "unknown")]
+          })),
+          topSignals: parsedPreview.top_signals || ["Analysis complete"]
+        };
+
+        // Persist as new report
+        const reportData = {
+          userId,
+          title: `Quick Summary (Tracked) — ${new Date().toLocaleDateString()}`,
+          competitors: competitorList,
+          signals: [], // Quick summary is analysis-only
+          summary: JSON.stringify(compactPayload),
+          metadata: {
+            ...compactPayload.meta,
+            type: 'quick_summary',
+            signalCount: signals.reduce((acc: number, s: any) => acc + (s.items?.length || 0), 0),
+            sources: ['news', 'funding', 'social']
+          }
+        };
+
+        const report = await storage.createReport(reportData);
+        reportId = report.id;
+      }
+
+      res.json({
+        id: reportId,
+        title: reusableReport?.title || `Quick Summary (Tracked) — ${new Date().toLocaleDateString()}`,
+        summary: compactPayload,
+        createdAt: reusableReport?.createdAt || new Date().toISOString()
+      });
+    } catch (error) {
+      console.error("Error generating quick summary:", error);
+      res.status(500).json({ message: "Failed to generate quick summary" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

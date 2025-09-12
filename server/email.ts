@@ -29,10 +29,11 @@ export async function sendCompetitorReport({
     console.log(`Using API key: ${process.env.RESEND_API_KEY ? 'Present' : 'Missing'}`);
 
     const emailPayload = {
-      from: 'Competitor Lemonade <send@builtagent.com>',
+      from: process.env.RESEND_FROM || 'Competitor Lemonade <send@builtagent.com>',
       to: [to],
       subject: `🍋 ${reportTitle} - Competitor Analysis Report`,
       html: htmlContent,
+      replyTo: process.env.RESEND_REPLY_TO || undefined,
     };
 
     console.log('Email payload:', {
