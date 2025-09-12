@@ -358,8 +358,11 @@ export default function CompetitorReport({ report }: CompetitorReportProps) {
       <div className="p-6 border-b border-border">
         <div className="flex items-start justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-foreground mb-2" data-testid="text-report-title">
+            <h1 className="text-2xl font-bold text-foreground mb-2 flex items-center gap-2" data-testid="text-report-title">
               {report.title}
+              {(report as any)?.metadata?.type === 'quick_summary' && (
+                <Badge className="bg-yellow-100 text-yellow-800 border border-yellow-300">Quick Summary</Badge>
+              )}
             </h1>
             <div className="flex items-center space-x-4 text-sm text-muted-foreground">
               <span data-testid="text-report-date">
