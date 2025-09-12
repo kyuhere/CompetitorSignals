@@ -357,7 +357,7 @@ export default function TrackedCompetitors() {
                       {lockInfo?.daysRemaining} days
                     </span>
                   </div>
-                  <p className="text-sm text-orange-700 mt-2">
+                  <p className="text-sm mt-2 text-[#000000]">
                     Available on {lockInfo?.unlockDate ? new Date(lockInfo.unlockDate).toLocaleDateString('en-US', { 
                       month: 'long', 
                       day: 'numeric',
