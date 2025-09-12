@@ -1,0 +1,62 @@
+Recommended plan
+
+Backend
+Add endpoint to create a “Quick Summary” and persist it for future emails:
+POST /api/competitors/tracked/quick-summary
+Auth required.
+Loads tracked competitors for the current user, canonicalizes them (reuse 
+toCanonical()
+ logic from 
+server/routes.ts
+), and builds a stable key.
+Reuse a recent matching report:
+Get last N user reports (e.g., 10) via storage.getUserReports(userId, 10).
+If any report has the same canonical competitor set and is younger than 14 days, reuse its summary to build a compact “quick summary.”
+If no match, build a new quick summary fast:
+Fetch signals using signalAggregator.aggregateSignals(competitors, [], { news: true, funding: true, social: true, products: false }) to keep it lightweight.
+Use 
+generateFastPreview(signals, competitorList)
+ from 
+server/services/openai.ts
+ (fast, small tokens).
+Compact one-page payload:
+executiveSummary: 2–3 sentences.
+competitorSnippets: array of {competitor, bullets[1..2]}.
+topSignals: up to 3 cross-competitor bullets.
+meta: { generatedAt, competitorCount, canonicalKey, source: 'quick_summary' }.
+Persist as a new Report via storage.createReport():
+title: “Quick Summary (Tracked) — ”
+summary: compact payload (stringified JSON).
+competitors: the competitor names.
+metadata: include { type: 'quick_summary', canonicalKey, generatedAt } for later lookup.
+In-memory cache for 30 minutes keyed by the canonical set (optional).
+Response: { id, title, summaryCompact, createdAt }.
+Frontend
+Update Tracked Competitors button:
+File: 
+client/src/components/TrackedCompetitors.tsx
+Replace label “Analyze Now” with “Create Quick Summary”.
+On click:
+POST /api/competitors/tracked/quick-summary.
+Render the compact one-page summary (modal or the Home card space).
+Show CTA “Email this summary” (premium only) → POST /api/reports/:reportId/email.
+Home page section:
+File: 
+client/src/pages/home.tsx
+Use the existing “Track Your Competitors” card.
+When the quick summary is created, display it inside a card/modal that fits one page:
+Title, small executive summary paragraph.
+“By competitor” bullets (max 2 per competitor).
+“Top signals” list (max 3).
+Avoid heavy tables; keep it compact.
+Email and biweekly digests
+Use the stored quick summary report to power biweekly emails for premium users:
+Reuse 
+server/email.ts
+ via POST /api/reports/:id/email.
+Set RESEND_FROM="Competitor Lemonade Reports <send@builtagent.com>" so you can send beyond your own Gmail.
+Acceptance criteria
+Clicking “Create Quick Summary” returns results in 3–10s fresh; <2s when reusing a matching report.
+The quick summary is concise and fits in a single page/modal.
+The summary is persisted as a report and can be emailed via existing endpoint.
+Button label changed and UX is coherent on Home page.

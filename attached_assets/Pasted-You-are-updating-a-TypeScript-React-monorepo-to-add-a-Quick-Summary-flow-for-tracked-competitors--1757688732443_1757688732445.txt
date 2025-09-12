@@ -1,0 +1,79 @@
+You are updating a TypeScript/React monorepo to add a “Quick Summary” flow for tracked competitors.
+
+Goal
+- Add an endpoint to build and persist a compact “Quick Summary” report for the current user’s tracked competitors.
+- Wire the Tracked Competitors button to call it.
+- Render a one-page summary in the Home page card/modal.
+- Reuse a recent matching report (same canonical competitor set) for speed.
+
+Backend changes
+1) server/routes.ts
+- Add POST /api/competitors/tracked/quick-summary (isAuthenticated).
+- Steps:
+  - Load tracked competitors: storage.getUserTrackedCompetitors(userId), map to names.
+  - Implement a local toCanonical(s: string) helper (reuse logic in routes):
+    - lower → strip protocol/www → first token before '/' → base label before '.' → alnum only.
+  - Build canonical set key: 'tracked_qs:' + sorted unique canonical names joined by '|'.
+  - Try to reuse a recent matching report:
+    - const reports = await storage.getUserReports(userId, 10)
+    - For each report, reconstruct its canonical set from report.competitors.
+    - If same canonical set and createdAt within 14 days, use report.summary to produce the compact payload (if summary is already compact, use as-is; if it’s the full analysis, derive a compact snapshot using top-level fields like executive_summary, competitors[*].recent_developments).
+  - Else generate fresh quick summary:
+    - const signals = await signalAggregator.aggregateSignals(competitorList, [], { news: true, funding: true, social: true, products: false });
+    - const preview = await generateFastPreview(signals, competitorList); // Returns concise JSON string
+    - Parse preview and map into compact payload:
+      {
+        meta: { generatedAt: new Date().toISOString(), competitorCount: competitorList.length, canonicalKey },
+        executiveSummary: "<2–3 sentences>",
+        competitorSnippets: [{ competitor: "Name", bullets: ["Key update", "Activity level"] }...],
+        topSignals: ["Top finding 1", "Top finding 2", "Top finding 3"]
+      }
+  - Persist report via storage.createReport({
+      userId,
+      title: `Quick Summary (Tracked) — ${new Date().toLocaleDateString()}`,
+      competitors: competitorList,
+      signals: [], // quick summary is analysis-only
+      summary: JSON.stringify(compactPayload),
+      metadata: {
+        ...compactPayload.meta,
+        type: 'quick_summary'
+      }
+    })
+  - Return { id, title, summary: compactPayload, createdAt }.
+
+2) server/services/openai.ts
+- No changes; reuse generateFastPreview(signals, competitorNames).
+
+3) server/email.ts
+- Ensure From can use verified domain:
+  - Read env RESEND_FROM (e.g., "Competitor Lemonade Reports <send@builtagent.com>") and RESEND_REPLY_TO.
+  - (Optional but recommended) include a plaintext body for deliverability.
+
+Frontend changes
+1) client/src/components/TrackedCompetitors.tsx
+- Find the "Analyze Now" button and:
+  - Change text to: "Create Quick Summary".
+  - On click:
+    - Call POST /api/competitors/tracked/quick-summary.
+    - On success: store the returned quick summary (id, summary JSON).
+    - Open a modal or card to render the one-page summary:
+      - Executive summary paragraph.
+      - “By competitor”: name + up to 2 bullets (wrap long text).
+      - “Top signals”: up to 3 bullets.
+    - If premium: show "Email this summary" button which calls POST /api/reports/:id/email.
+    - If free: show an upgrade CTA tooltip or disabled email button.
+
+2) client/src/pages/home.tsx
+- Within the “Track Your Competitors” card, add a container/modal hook to display the quick summary (so the user sees immediate output on the Home page).
+- Keep the layout minimalist and readable in one page height.
+
+Env
+- Add to .env.example:
+  - RESEND_FROM="Competitor Lemonade Reports <send@builtagent.com>"
+  - RESEND_REPLY_TO="support@builtagent.com"
+
+Acceptance criteria
+- Quick summary returns in <= 10s; reuses a matching report within 2s.
+- Summary is persisted as a report and can be emailed via existing endpoint.
+- The UI button reads “Create Quick Summary” and shows the compact modal/card.
+- No regressions to /api/analyze or existing tracked competitors flows.
