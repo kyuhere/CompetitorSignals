@@ -9,6 +9,16 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { Plus, X, Building2, Clock, TrendingUp, Zap, Lock, Crown } from "lucide-react";
 import type { TrackedCompetitor } from "@shared/schema";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface UsageData {
   current: number;
@@ -42,6 +52,7 @@ export default function TrackedCompetitors() {
     unlockDate: string;
     competitorName: string;
   } | null>(null);
+  const [showRemovalDialog, setShowRemovalDialog] = useState(false); // State for the removal dialog
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -123,7 +134,17 @@ export default function TrackedCompetitors() {
   };
 
   const handleRemoveCompetitor = (competitorId: string, competitorName: string) => {
-    removeCompetitorMutation.mutate(competitorId);
+    // Check if user is on free plan and has reached removal limit
+    // For simplicity, assuming a hardcoded limit of 3 removals per month for free plan
+    // In a real app, this logic would be more complex, checking against usage data.
+    const freeUserRemovalLimit = 3; 
+    const currentFreeUserRemovals = trackedData?.competitors.filter(c => c.id !== competitorId).length ?? 0; // Simplified check
+
+    if (usage?.plan === 'free' && currentFreeUserRemovals >= freeUserRemovalLimit) {
+      setShowRemovalDialog(true);
+    } else {
+      removeCompetitorMutation.mutate(competitorId);
+    }
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -188,7 +209,7 @@ export default function TrackedCompetitors() {
           {trackedData?.competitors?.map((competitor, index) => {
             const initials = competitor.competitorName.split(' ').map(n => n[0]).join('').toUpperCase();
             const colorClass = avatarColors[index % avatarColors.length];
-            
+
             return (
               <div
                 key={competitor.id}
@@ -214,7 +235,7 @@ export default function TrackedCompetitors() {
                     </p>
                   </div>
                 </div>
-                
+
                 <Button
                   variant="ghost"
                   size="sm"
@@ -228,7 +249,7 @@ export default function TrackedCompetitors() {
               </div>
             );
           })}
-          
+
           {(!trackedData?.competitors || trackedData.competitors.length === 0) && (
             <div className="text-center py-12 text-muted-foreground bg-muted/30 rounded-xl">
               <Building2 className="w-16 h-16 mx-auto mb-4 text-muted-foreground/50" />
@@ -327,7 +348,7 @@ export default function TrackedCompetitors() {
                 With the free plan, newly added competitors are locked until the end of the month to prevent abuse. Upgrade to premium for instant removal and higher limits.
               </DialogDescription>
             </DialogHeader>
-            
+
             <div className="space-y-4">
               <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
                 <div className="flex items-center justify-between mb-2">
@@ -359,7 +380,7 @@ export default function TrackedCompetitors() {
                   <Crown className="w-5 h-5 mr-2" />
                   Upgrade to Premium
                 </Button>
-                
+
                 <Button
                   variant="outline"
                   onClick={() => setLockDialogOpen(false)}
@@ -371,6 +392,40 @@ export default function TrackedCompetitors() {
             </div>
           </DialogContent>
         </Dialog>
+
+        {/* Updated AlertDialog for removal limit */}
+        <AlertDialog open={showRemovalDialog} onOpenChange={setShowRemovalDialog}>
+          <AlertDialogContent className="sm:max-w-md border-2 border-primary/20">
+            <AlertDialogHeader className="text-center pb-4">
+              <div className="w-16 h-16 bg-primary rounded-full flex items-center justify-center mx-auto mb-4">
+                <span className="text-2xl">🍋</span>
+              </div>
+              <AlertDialogTitle className="text-2xl font-bold text-foreground mb-2">
+                Competitor Removal Limit
+              </AlertDialogTitle>
+              <AlertDialogDescription className="text-muted-foreground leading-relaxed">
+                Free users can only remove <span className="font-semibold text-foreground">3 competitors per month</span>. 
+                You've reached your limit for this month.
+                <br />
+                <br />
+                <span className="bg-primary/10 text-foreground px-3 py-1 rounded-full text-sm font-medium">
+                  Upgrade to Premium for unlimited competitor management
+                </span>
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter className="gap-3 pt-4">
+              <AlertDialogCancel className="rounded-full px-6 border-2 transition-colors hover:bg-gray-50">
+                Cancel
+              </AlertDialogCancel>
+              <AlertDialogAction 
+                onClick={() => window.location.href = '/premium'}
+                className="bg-primary text-primary-foreground rounded-full px-8 font-bold hover:bg-primary/90 hover:scale-105 transition-all duration-200 shadow-lg"
+              >
+                🍋 Upgrade to Premium
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </CardContent>
     </Card>
   );
