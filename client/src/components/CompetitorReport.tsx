@@ -33,8 +33,6 @@ const renderNewsletterMarkdown = (md: string) => {
 
   // Newsletter rendering is handled inside the component, not here.
 
-  // (Intentionally no return of newsletter here; handled inside the component)
-
   for (const raw of lines) {
     const line = raw.trimEnd();
     if (line.trim().length === 0) {
@@ -360,6 +358,59 @@ export default function CompetitorReport({ report }: CompetitorReportProps) {
 
   // Helper to strip any trailing inline source tags like "[Source: bing.com/news]"
   const stripSourceTags = (s: string) => (s || '').replace(/\s*\[source:[^\]]*\]/gi, '').trim();
+
+  // Newsletter-only view
+  if (isNewsletter) {
+    return (
+      <Card data-testid="card-competitor-report">
+        <div className="p-6 border-b border-border">
+          <div className="flex items-start justify-between">
+            <div>
+              <h1 className="text-2xl font-bold text-foreground mb-2 flex items-center gap-2" data-testid="text-report-title">
+                {report.title}
+                <Badge className="bg-blue-100 text-blue-800 border border-blue-300">Newsletter</Badge>
+              </h1>
+              <div className="flex items-center space-x-4 text-sm text-muted-foreground">
+                <span data-testid="text-report-date">
+                  Generated: {report.createdAt ? new Date(report.createdAt).toLocaleDateString() : 'Now'} at {report.createdAt ? new Date(report.createdAt).toLocaleTimeString() : 'Now'}
+                </span>
+                <span>•</span>
+                <span data-testid="text-competitor-count">{report.competitors?.length || 0} Competitors</span>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <Dialog open={emailDialogOpen} onOpenChange={setEmailDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button className="rounded-full flex items-center gap-2">
+                    <Mail className="w-4 h-4" /> Email
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Email Report</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-3">
+                    <Label htmlFor="email">Email address</Label>
+                    <Input id="email" placeholder="you@example.com" value={emailAddress} onChange={(e) => setEmailAddress(e.target.value)} />
+                    <div className="flex justify-end gap-2">
+                      <Button variant="outline" onClick={() => setEmailDialogOpen(false)}>Cancel</Button>
+                      <Button onClick={handleEmailReport} disabled={emailMutation.isPending}>Send</Button>
+                    </div>
+                  </div>
+                </DialogContent>
+              </Dialog>
+              <Button variant="outline" onClick={handleExport} className="rounded-full flex items-center gap-2">
+                <Download className="w-4 h-4" /> Export
+              </Button>
+            </div>
+          </div>
+        </div>
+        <CardContent className="p-6">
+          {renderNewsletterMarkdown(report.summary as unknown as string)}
+        </CardContent>
+      </Card>
+    );
+  }
 
   const renderSection = (title: string, icon: React.ReactNode, content: any, emptyMessage = "No reliable data found") => {
     const isNoDataString = (val: unknown) => typeof val === 'string' && val.trim().toLowerCase() === 'no reliable data found';
