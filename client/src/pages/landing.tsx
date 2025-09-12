@@ -291,9 +291,9 @@ export default function Landing() {
                 <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center mb-4">
                   <BarChart3 className="w-6 h-6 text-primary" />
                 </div>
-                <h3 className="text-xl font-semibold text-foreground mb-2">AI Analysis</h3>
+                <h3 className="text-xl font-semibold text-foreground mb-2">AI-Powered Analysis</h3>
                 <p className="text-muted-foreground">
-                  Get intelligent summaries and strategic insights powered by advanced AI models.
+                  Get intelligent summaries and strategic insights powered by GPT-5 for deep competitive intelligence.
                 </p>
               </CardContent>
             </Card>
@@ -303,9 +303,45 @@ export default function Landing() {
                 <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center mb-4">
                   <Users className="w-6 h-6 text-primary" />
                 </div>
-                <h3 className="text-xl font-semibold text-foreground mb-2">Team Ready</h3>
+                <h3 className="text-xl font-semibold text-foreground mb-2">Competitor Tracking</h3>
                 <p className="text-muted-foreground">
-                  Share reports with your team and keep track of competitive landscapes over time.
+                  Track up to 10 competitors with automatic monitoring and receive bi-weekly updates on their activities.
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-6">
+                <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center mb-4">
+                  <FileText className="w-6 h-6 text-primary" />
+                </div>
+                <h3 className="text-xl font-semibold text-foreground mb-2">Professional Reports</h3>
+                <p className="text-muted-foreground">
+                  Generate newsletter-style reports with executive summaries, strategic insights, and actionable recommendations.
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-6">
+                <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center mb-4">
+                  <Download className="w-6 h-6 text-primary" />
+                </div>
+                <h3 className="text-xl font-semibold text-foreground mb-2">Export & Share</h3>
+                <p className="text-muted-foreground">
+                  Export reports to PDF format and share with your team via email for collaborative strategic planning.
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-6">
+                <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center mb-4">
+                  <Shield className="w-6 h-6 text-primary" />
+                </div>
+                <h3 className="text-xl font-semibold text-foreground mb-2">Secure Authentication</h3>
+                <p className="text-muted-foreground">
+                  Multiple authentication options including Replit Auth and secure email/password with session management.
                 </p>
               </CardContent>
             </Card>
