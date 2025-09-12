@@ -494,9 +494,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.error('Auto-track step failed:', err);
         }
 
-        // Automatically send email to user after report is created
+        // Automatically send email to user after report is created (premium users only)
         const userEmail = authContext.user?.email;
-        if (userEmail) {
+        if (userEmail && plan === 'premium') {
           try {
             await sendCompetitorReport({
               to: userEmail,
@@ -504,11 +504,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
               reportContent: report.summary,
               competitors: report.competitors as string[]
             });
-            console.log(`Report email sent automatically to ${userEmail}`);
+            console.log(`Report email sent automatically to ${userEmail} (premium user)`);
           } catch (error) {
             console.error('Failed to send automatic email:', error);
             // Don't fail the entire request if email fails
           }
+        } else if (userEmail && plan !== 'premium') {
+          console.log(`Skipping automatic email for free user: ${userEmail}`);
         }
       } else {
         // Return temporary report for guests
