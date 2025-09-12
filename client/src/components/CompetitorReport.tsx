@@ -2,7 +2,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Download, Share, Mail, BarChart3, DollarSign, MessageCircle, Lightbulb, CheckCircle, TrendingUp, TrendingDown, Minus, Building2, Target, Code, Globe, Package, Users, ThumbsUp, ThumbsDown, AlertTriangle, Zap, ExternalLink } from "lucide-react";
+import { Download, Mail, BarChart3, DollarSign, MessageCircle, Lightbulb, CheckCircle, TrendingUp, TrendingDown, Minus, Building2, Target, Code, Globe, Package, Users, ThumbsUp, ThumbsDown, AlertTriangle, Zap, ExternalLink } from "lucide-react";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -246,10 +246,7 @@ export default function CompetitorReport({ report }: CompetitorReportProps) {
     }
   };
 
-  const handleShare = () => {
-    // TODO: Implement share functionality
-    navigator.clipboard.writeText(window.location.href);
-  };
+  
 
   const getActivityIcon = (level: string) => {
     switch (level) {
@@ -415,16 +412,6 @@ export default function CompetitorReport({ report }: CompetitorReportProps) {
             >
               <Download className="w-4 h-4 mr-2" />
               Export PDF
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleShare}
-              data-testid="button-share"
-              className="btn-glass-secondary"
-            >
-              <Share className="w-4 h-4 mr-2" />
-              Share
             </Button>
           </div>
         </div>
