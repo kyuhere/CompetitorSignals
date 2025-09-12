@@ -2,6 +2,7 @@ import { Express, RequestHandler } from 'express';
 import { z } from 'zod';
 import { storage } from './storage';
 import { hashPassword, comparePassword, validateEmail, validatePassword } from './utils/auth';
+import { rateLimitLogin, clearLoginRateLimit } from './utils/unified-auth';
 
 // Validation schemas
 const registerSchema = z.object({
@@ -119,14 +120,27 @@ export function setupLocalAuth(app: Express) {
         plan: 'free', // Default to free plan
       });
 
-      // Create session
-      req.session.localUserId = user.id;
+      // Create session with regeneration for security
+      req.session.regenerate((err) => {
+        if (err) {
+          console.error('Session regeneration error:', err);
+          return res.status(500).json({ message: 'Internal server error' });
+        }
+        
+        req.session.localUserId = user.id;
+        req.session.save((err) => {
+          if (err) {
+            console.error('Session save error:', err);
+            return res.status(500).json({ message: 'Internal server error' });
+          }
 
-      // Return user without password hash
-      const { passwordHash: _, ...userResponse } = user;
-      res.status(201).json({
-        message: 'User registered successfully',
-        user: userResponse
+          // Return user without password hash
+          const { passwordHash: _, ...userResponse } = user;
+          res.status(201).json({
+            message: 'User registered successfully',
+            user: userResponse
+          });
+        });
       });
 
     } catch (error) {
@@ -144,7 +158,7 @@ export function setupLocalAuth(app: Express) {
   });
 
   // Login with email/password
-  app.post('/api/auth/local/login', async (req, res) => {
+  app.post('/api/auth/local/login', rateLimitLogin, async (req, res) => {
     try {
       const { email, password } = loginSchema.parse(req.body);
 
@@ -165,14 +179,31 @@ export function setupLocalAuth(app: Express) {
         return res.status(401).json({ message: 'Invalid email or password' });
       }
 
-      // Create session
-      req.session.localUserId = user.id;
+      // Regenerate session for security (prevents session fixation)
+      req.session.regenerate((err) => {
+        if (err) {
+          console.error('Session regeneration error:', err);
+          return res.status(500).json({ message: 'Internal server error' });
+        }
+        
+        req.session.localUserId = user.id;
+        req.session.save((err) => {
+          if (err) {
+            console.error('Session save error:', err);
+            return res.status(500).json({ message: 'Internal server error' });
+          }
 
-      // Return user without password hash
-      const { passwordHash: _, ...userResponse } = user;
-      res.json({
-        message: 'Login successful',
-        user: userResponse
+          // Clear rate limiting on successful login
+          const clientIP = req.ip || req.connection.remoteAddress || 'unknown';
+          clearLoginRateLimit(clientIP);
+
+          // Return user without password hash
+          const { passwordHash: _, ...userResponse } = user;
+          res.json({
+            message: 'Login successful',
+            user: userResponse
+          });
+        });
       });
 
     } catch (error) {
@@ -191,8 +222,17 @@ export function setupLocalAuth(app: Express) {
 
   // Logout from local auth
   app.post('/api/auth/local/logout', (req, res) => {
-    req.session.localUserId = undefined;
-    res.json({ message: 'Logged out successfully' });
+    // Destroy session completely for security
+    req.session.destroy((err) => {
+      if (err) {
+        console.error('Session destruction error:', err);
+        return res.status(500).json({ message: 'Logout failed' });
+      }
+      
+      // Clear the session cookie
+      res.clearCookie('connect.sid'); // Default express-session cookie name
+      res.json({ message: 'Logged out successfully' });
+    });
   });
 
   // Get current local authenticated user

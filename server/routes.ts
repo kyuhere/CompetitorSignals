@@ -3,6 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
 import { setupLocalAuth, requireLocalAuth, requirePremium } from "./localAuth";
+import { requireAnyAuth, requirePremiumAny, addAuthContext, getAuthContext } from "./utils/unified-auth";
 import { insertCompetitorReportSchema, insertTrackedCompetitorSchema } from "@shared/schema";
 import { z } from "zod";
 import { signalAggregator } from "./services/signalAggregator";
@@ -66,11 +67,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Auth routes
-  app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
+  // Auth routes - now supports both Replit Auth and Local Auth
+  app.get('/api/auth/user', async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
+      const authContext = await getAuthContext(req);
+      
+      if (!authContext.isAuthenticated) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const user = authContext.user;
 
       // Check if there's a guest search to migrate
       const guestSearchData = req.headers['x-guest-search'];
@@ -80,7 +86,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           if (guestReport && guestReport.id && guestReport.id.startsWith('temp_')) {
             // Convert guest report to permanent report
             const reportData = {
-              userId,
+              userId: authContext.userId!,
               title: guestReport.title,
               competitors: guestReport.competitors,
               signals: guestReport.signals,
@@ -123,17 +129,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return plan;
   };
 
-  // Get user usage stats
+  // Get user usage stats - now supports both auth methods
   app.get('/api/usage', async (req: any, res) => {
     try {
-      const userId = req.user?.claims?.sub;
-      const isLoggedIn = !!userId;
+      const authContext = await getAuthContext(req);
+      const isLoggedIn = authContext.isAuthenticated;
+      const userId = authContext.userId;
 
-      let plan = 'free';
+      let plan = authContext.plan || 'free';
       let limit = 3; // Guest limit
       let current = 0;
 
-      if (isLoggedIn) {
+      if (isLoggedIn && userId) {
         // Get user's plan from database
         const user = await storage.getUser(userId);
         plan = getEffectivePlan(user, req);
@@ -182,12 +189,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     streamingSessions.set(req.params.sessionId, res);
   });
 
-  // Analyze competitors
+  // Analyze competitors - now supports both auth methods
   app.post('/api/analyze', async (req: any, res) => {
     try {
-      const userId = req.user?.claims?.sub;
+      const authContext = await getAuthContext(req);
+      const userId = authContext.userId;
       const sessionId = req.sessionID;
-      const isLoggedIn = !!userId;
+      const isLoggedIn = authContext.isAuthenticated;
 
       // Validate request
       const validation = competitorAnalysisSchema.safeParse(req.body);
@@ -256,7 +264,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let plan = 'free';
       let limit = 3; // Default guest limit
 
-      if (isLoggedIn) {
+      if (isLoggedIn && userId) {
         const user = await storage.getUser(userId);
         plan = getEffectivePlan(user, req);
         const planLimits = getPlanLimits(plan);
@@ -448,7 +456,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
 
       let report;
-      if (isLoggedIn) {
+      if (isLoggedIn && userId) {
         // Save report for logged-in users
         report = await storage.createReport(reportData);
 
