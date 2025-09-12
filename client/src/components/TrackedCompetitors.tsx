@@ -395,34 +395,47 @@ export default function TrackedCompetitors() {
 
         {/* Updated AlertDialog for removal limit */}
         <AlertDialog open={showRemovalDialog} onOpenChange={setShowRemovalDialog}>
-          <AlertDialogContent className="sm:max-w-md border-2 border-primary/20">
-            <AlertDialogHeader className="text-center pb-4">
-              <div className="w-16 h-16 bg-primary rounded-full flex items-center justify-center mx-auto mb-4">
-                <span className="text-2xl">🍋</span>
+          <AlertDialogContent className="sm:max-w-md card-rounded border-2 border-primary/20 bg-background">
+            <AlertDialogHeader className="text-center pb-6">
+              <div className="w-20 h-20 bg-primary rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg">
+                <span className="text-3xl">🍋</span>
               </div>
-              <AlertDialogTitle className="text-2xl font-bold text-foreground mb-2">
-                Competitor Removal Limit
+              <AlertDialogTitle className="text-3xl font-bold text-foreground mb-4">
+                Removal Limit Reached
               </AlertDialogTitle>
-              <AlertDialogDescription className="text-muted-foreground leading-relaxed">
-                Free users can only remove <span className="font-semibold text-foreground">3 competitors per month</span>. 
-                You've reached your limit for this month.
-                <br />
-                <br />
-                <span className="bg-primary/10 text-foreground px-3 py-1 rounded-full text-sm font-medium">
-                  Upgrade to Premium for unlimited competitor management
-                </span>
+              <AlertDialogDescription className="text-base text-muted-foreground leading-relaxed space-y-4">
+                <div className="bg-orange-50 border-2 border-orange-200 rounded-xl p-4">
+                  <p className="text-orange-800 font-semibold">
+                    Free users can only remove <span className="font-bold">3 competitors per month</span>
+                  </p>
+                  <p className="text-sm text-orange-700 mt-2">
+                    You've reached your limit for this month. Reset on the 1st!
+                  </p>
+                </div>
+                <div className="bg-primary/10 border-2 border-primary/20 rounded-xl p-4">
+                  <p className="text-foreground font-semibold text-center">
+                    ✨ Upgrade to Premium for unlimited competitor management
+                  </p>
+                </div>
               </AlertDialogDescription>
             </AlertDialogHeader>
-            <AlertDialogFooter className="gap-3 pt-4">
-              <AlertDialogCancel className="rounded-full px-6 border-2 transition-colors hover:bg-gray-50">
-                Cancel
-              </AlertDialogCancel>
+            <AlertDialogFooter className="flex flex-col gap-3 pt-4">
               <AlertDialogAction 
-                onClick={() => window.location.href = '/premium'}
-                className="bg-primary text-primary-foreground rounded-full px-8 font-bold hover:bg-primary/90 hover:scale-105 transition-all duration-200 shadow-lg"
+                onClick={() => {
+                  toast({
+                    title: "Premium Coming Soon!",
+                    description: "Upgrade to premium for unlimited competitor removal and tracking",
+                  });
+                  setShowRemovalDialog(false);
+                }}
+                className="w-full bg-gradient-to-r from-yellow-400 to-orange-500 hover:from-yellow-500 hover:to-orange-600 text-white font-bold py-4 rounded-full hover:scale-105 transition-all duration-200 shadow-lg text-lg"
               >
+                <Crown className="w-5 h-5 mr-2" />
                 🍋 Upgrade to Premium
               </AlertDialogAction>
+              <AlertDialogCancel className="w-full rounded-full px-6 py-3 border-2 border-border transition-colors hover:bg-muted text-base font-medium">
+                Got it
+              </AlertDialogCancel>
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
