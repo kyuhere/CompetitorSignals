@@ -348,7 +348,7 @@ export default function TrackedCompetitors() {
               </AlertDialogTitle>
               <AlertDialogDescription className="text-base text-muted-foreground leading-relaxed space-y-4">
                 <div className="border-2 border-orange-200 rounded-xl p-4 bg-[#feea48]">
-                  <p className="text-orange-800 font-semibold">
+                  <p className="font-semibold text-[#000000]">
                     Free plan competitors are locked until month-end to prevent abuse
                   </p>
                   <div className="flex items-center justify-between mt-3">
