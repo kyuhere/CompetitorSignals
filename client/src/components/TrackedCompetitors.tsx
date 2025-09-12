@@ -178,11 +178,10 @@ export default function TrackedCompetitors() {
         <p className="text-sm text-muted-foreground font-medium">
           Manage your {trackedData?.limit ?? 3} tracked competitors. Each analysis adds competitors to this list, and we'll monitor them automatically.
           {usage?.plan === 'premium' && (
-            <span className="text-primary font-semibold"> Premium users can remove competitors instantly.</span>
+            <span className="font-semibold text-[#7a7a7a]"> Premium users can remove competitors instantly.</span>
           )}
         </p>
       </CardHeader>
-      
       <CardContent className="space-y-4">
         {/* Competitor List */}
         <div className="space-y-3">
