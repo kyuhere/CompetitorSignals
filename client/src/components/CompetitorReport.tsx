@@ -1025,8 +1025,8 @@ export default function CompetitorReport({ report }: CompetitorReportProps) {
         </div>
         )}
 
-        {/* Key Strategic Insights */}
-        {analysis.strategic_insights && (
+        {/* Key Strategic Insights (full reports only) */}
+        {!isQuickSummary && Array.isArray(analysis.strategic_insights) && analysis.strategic_insights.length > 0 && (
           <div className="mt-8 p-6 bg-muted rounded-lg">
             <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center">
               <Lightbulb className="w-5 h-5 text-amber-500 mr-2" />

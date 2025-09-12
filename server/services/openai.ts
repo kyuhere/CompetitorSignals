@@ -21,6 +21,111 @@ interface CompetitorSignal {
   }>;
 }
 
+// Compact full-structure analysis (2-3 bullets per section) for speed but tab-friendly rendering
+export async function summarizeCompactSignals(
+  signals: CompetitorSignal[],
+  competitorNames: string[]
+): Promise<string> {
+  try {
+    const trimmedSignals = signals.map(signal => ({
+      source: signal.source,
+      competitor: signal.competitor,
+      items: signal.items.slice(0, 3)
+    }));
+
+    const prompt = `
+You are an expert competitive intelligence analyst. Analyze the following competitor signals and produce a COMPACT, FULL-STRUCTURE report in JSON with 2-3 bullet points per section per competitor.
+
+COMPETITOR NAMES: ${competitorNames.join(', ')}
+
+SIGNALS DATA:
+${JSON.stringify(trimmedSignals, null, 2)}
+
+Return JSON only with the structure below. Keep bullets concise (max ~18 words). If data is missing, use "No reliable data found".
+{
+  "executive_summary": "2-3 short sentences",
+  "competitors": [
+    {
+      "competitor": "Company Name",
+      "company_overview": {
+        "location": "..." ,
+        "market_positioning": "...",
+        "key_products_services": ["• ...", "• ..."]
+      },
+      "strengths_weaknesses": {
+        "strengths": ["• ...", "• ...", "• ..."],
+        "weaknesses": ["• ...", "• ...", "• ..."]
+      },
+      "pricing_strategy": {
+        "pricing_models": "...",
+        "general_strategy": "...",
+        "promotions_offers": "..."
+      },
+      "target_market": {
+        "primary_segments": "...",
+        "competitive_position": "..."
+      },
+      "tech_assessment": {
+        "tech_stack": "...",
+        "innovation_level": "..."
+      },
+      "market_presence": {
+        "market_share": "...",
+        "geographic_reach": "...",
+        "target_audience": "..."
+      },
+      "products_services": {
+        "main_offerings": ["• ...", "• ..."],
+        "unique_selling_points": ["• ...", "• ..."]
+      },
+      "swot_analysis": {
+        "strengths": ["• ...", "• ..."],
+        "weaknesses": ["• ...", "• ..."],
+        "opportunities": ["• ...", "• ..."],
+        "threats": ["• ...", "• ..."]
+      },
+      "customer_insights": {
+        "sentiment": "...",
+        "pain_points": ["• ...", "• ..."]
+      },
+      "tech_innovation": {
+        "patents_rd": "...",
+        "differentiating_innovations": "..."
+      },
+      "activity_level": "high|moderate|low",
+      "recent_developments": ["• ...", "• ...", "• ..."],
+      "funding_business": ["• ...", "• ...", "• ..."]
+    }
+  ],
+  "strategic_insights": ["• ...", "• ...", "• ..."],
+  "methodology": {
+    "sources_analyzed": ["Bing News RSS", "Funding News", "Social Media"],
+    "total_signals": ${signals.reduce((acc, s) => acc + s.items.length, 0)},
+    "confidence_level": "high|medium|low"
+  }
+}`;
+
+    const response = await openai.chat.completions.create({
+      model: FAST_MODEL,
+      messages: [
+        { role: "system", content: "You are an expert competitive intelligence analyst. Output compact, accurate, and structured JSON only." },
+        { role: "user", content: prompt }
+      ],
+      response_format: { type: "json_object" },
+      max_tokens: 1800,
+      temperature: 0.3
+    });
+
+    const result = response.choices[0].message.content || '{}';
+    // Validate JSON
+    JSON.parse(result);
+    return result;
+  } catch (error) {
+    console.error("OpenAI compact summarization error:", error);
+    throw new Error(`Failed to generate compact analysis: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
+}
+
 interface CompetitorSummary {
   competitor: string;
   activity_level: 'high' | 'moderate' | 'low';

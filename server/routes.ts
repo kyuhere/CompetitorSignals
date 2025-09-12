@@ -9,7 +9,7 @@ import { z } from "zod";
 import { signalAggregator } from "./services/signalAggregator";
 import { enhancedSignalAggregator } from "./services/enhancedSignalAggregator";
 
-import { summarizeCompetitorSignals, generateFastPreview } from "./services/openai";
+import { summarizeCompetitorSignals, generateFastPreview, summarizeCompactSignals } from "./services/openai";
 import { trustpilotService } from "./services/trustpilot";
 import { sendCompetitorReport } from "./email";
 
@@ -905,7 +905,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const reports = await storage.getUserReports(userId, 10);
       const fourteenDaysAgo = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000);
 
-      let reusableReport = null;
+      let reusableReport: any = null;
       for (const report of reports) {
         if (report.createdAt && new Date(report.createdAt) > fourteenDaysAgo) {
           // Check if this report has the same canonical competitor set
@@ -924,6 +924,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let reportId: string;
       let createdAtISO: string | undefined;
 
+      // Disable reuse to avoid stale or unrelated competitors in quick summaries
+      reusableReport = null;
       if (reusableReport) {
         // Reuse existing report data, but persist a new compact quick-summary report for consistency/UI
         let existingSummary;
@@ -1059,7 +1061,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         reportId = persisted.id;
         createdAtISO = persisted.createdAt ? new Date(persisted.createdAt).toISOString() : undefined;
       } else {
-        // Generate fresh quick summary
+        // Generate fresh compact full-structure analysis (fast, tab-friendly)
         const sources = {
           news: true,
           funding: true,
@@ -1067,99 +1069,73 @@ export async function registerRoutes(app: Express): Promise<Server> {
           products: false
         };
 
-        // Aggregate signals (lightweight for quick summary)
+        // Aggregate signals (lightweight)
         const signals = await signalAggregator.aggregateSignals(
           competitorList,
           [], // No custom URLs
           sources
         );
+        // Filter signals strictly to tracked competitors and map names
+        const trackedCanonToName = new Map<string, string>();
+        for (const name of competitorList) trackedCanonToName.set(toCanonical(name), name);
+        const filteredSignals = signals
+          .map((g: any) => ({
+            ...g,
+            _canon: toCanonical(g.competitor || ''),
+          }))
+          .filter((g: any) => trackedCanonToName.has(g._canon))
+          .map((g: any) => ({
+            source: g.source,
+            competitor: trackedCanonToName.get(g._canon)!,
+            items: (g.items || []).slice(0, 4)
+          }));
 
-        // Generate fast preview
-        const preview = await generateFastPreview(signals, competitorList);
-        const parsedPreview = JSON.parse(preview);
+        // Generate compact full-structure analysis
+        const compactJson = await summarizeCompactSignals(filteredSignals, competitorList);
+        const parsedCompact = JSON.parse(compactJson);
 
-        // Build compact payload
-        compactPayload = {
-          meta: { 
-            generatedAt: new Date().toISOString(), 
-            competitorCount: competitorList.length, 
-            canonicalKey,
-            reused: false
-          },
-          executiveSummary: parsedPreview.executive_summary || "Competitive intelligence summary generated.",
-          competitorSnippets: (parsedPreview.competitor_insights || []).map((insight: any) => ({
-            competitor: insight.competitor,
-            bullets: [
-              insight.key_update || "Activity level: " + (insight.activity_level || "unknown")
-            ]
-          })),
-          topSignals: parsedPreview.top_signals || ["Analysis complete"],
-          strategicInsights: parsedPreview.strategic_insights || []
-        };
-
-        // Enrich bullets with recent signal titles per competitor (up to 2 more)
+        // Normalize competitor names to tracked labels and filter out any extraneous competitors
         try {
-          const itemsByCompetitor = new Map<string, string[]>();
-          for (const group of signals) {
-            const comp = (group.competitor || '').toString();
-            if (!comp) continue;
-            const titles = (group.items || []).map((it: any) => it.title).filter(Boolean);
-            if (!itemsByCompetitor.has(comp)) itemsByCompetitor.set(comp, []);
-            itemsByCompetitor.set(comp, [...(itemsByCompetitor.get(comp) || []), ...titles]);
-          }
-          for (const snippet of compactPayload.competitorSnippets) {
-            const titles = itemsByCompetitor.get(snippet.competitor) || [];
-            const extras = titles.slice(0, 2);
-            snippet.bullets = [...(snippet.bullets || []), ...extras].slice(0, 3);
-          }
-        } catch {}
-
-        // Normalize and filter snippets to only tracked competitors; dedupe by canonical
-        try {
-          const trackedCanonToName = new Map<string, string>();
-          for (const name of competitorList) {
-            trackedCanonToName.set(toCanonical(name), name);
-          }
-
-          const seenCanon = new Set<string>();
-          compactPayload.competitorSnippets = (compactPayload.competitorSnippets || [])
-            .map((s: any) => ({ canon: toCanonical(s.competitor || ''), bullets: (s.bullets || []).filter(Boolean) }))
-            .filter((s: any) => trackedCanonToName.has(s.canon))
-            .filter((s: any) => {
-              if (seenCanon.has(s.canon)) return false;
-              seenCanon.add(s.canon);
-              return true;
-            })
-            .map((s: any) => ({ competitor: trackedCanonToName.get(s.canon)!, bullets: s.bullets }));
-        } catch {}
-
-        // Ensure every tracked competitor has a snippet entry
-        const present = new Set<string>((compactPayload.competitorSnippets || []).map((s: any) => (s.competitor || '').toString().toLowerCase()));
-        for (const name of competitorList) {
-          if (!present.has((name || '').toString().toLowerCase())) {
-            (compactPayload.competitorSnippets = compactPayload.competitorSnippets || []).push({
-              competitor: name,
-              bullets: ["No major updates detected in the last 2 weeks", "Monitoring for new signals"]
+          parsedCompact.competitors = (parsedCompact.competitors || [])
+            .map((c: any) => ({ ...c, _canon: toCanonical(c.competitor || '') }))
+            .filter((c: any) => trackedCanonToName.has(c._canon))
+            .map((c: any) => {
+              const mappedName = trackedCanonToName.get(c._canon)!;
+              c.competitor = mappedName;
+              return c;
             });
+
+          // Defensive truncation to keep it snappy
+          for (const c of parsedCompact.competitors) {
+            if (Array.isArray(c.company_overview?.key_products_services)) c.company_overview.key_products_services = c.company_overview.key_products_services.slice(0, 3);
+            if (Array.isArray(c.strengths_weaknesses?.strengths)) c.strengths_weaknesses.strengths = c.strengths_weaknesses.strengths.slice(0, 3);
+            if (Array.isArray(c.strengths_weaknesses?.weaknesses)) c.strengths_weaknesses.weaknesses = c.strengths_weaknesses.weaknesses.slice(0, 3);
+            if (Array.isArray(c.products_services?.main_offerings)) c.products_services.main_offerings = c.products_services.main_offerings.slice(0, 3);
+            if (Array.isArray(c.products_services?.unique_selling_points)) c.products_services.unique_selling_points = c.products_services.unique_selling_points.slice(0, 3);
+            if (Array.isArray(c.swot_analysis?.strengths)) c.swot_analysis.strengths = c.swot_analysis.strengths.slice(0, 3);
+            if (Array.isArray(c.swot_analysis?.weaknesses)) c.swot_analysis.weaknesses = c.swot_analysis.weaknesses.slice(0, 3);
+            if (Array.isArray(c.swot_analysis?.opportunities)) c.swot_analysis.opportunities = c.swot_analysis.opportunities.slice(0, 3);
+            if (Array.isArray(c.swot_analysis?.threats)) c.swot_analysis.threats = c.swot_analysis.threats.slice(0, 3);
+            if (Array.isArray(c.recent_developments)) c.recent_developments = c.recent_developments.slice(0, 3);
+            if (Array.isArray(c.funding_business)) c.funding_business = c.funding_business.slice(0, 3);
           }
-        }
+          if (Array.isArray(parsedCompact.strategic_insights)) parsedCompact.strategic_insights = parsedCompact.strategic_insights.slice(0, 5);
+        } catch {}
 
-        // If strategic insights empty, derive from top signals
-        if (!compactPayload.strategicInsights || compactPayload.strategicInsights.length === 0) {
-          compactPayload.strategicInsights = (compactPayload.topSignals || []).slice(0, 5);
-        }
-
-        // Persist as new report
+        // Persist as new report (compact full)
         const reportData = {
           userId,
           title: `Quick Summary (Tracked) — ${new Date().toLocaleDateString()}`,
           competitors: competitorList,
-          signals: [], // Quick summary is analysis-only
-          summary: JSON.stringify(compactPayload),
+          signals: filteredSignals,
+          summary: typeof parsedCompact === 'string' ? parsedCompact : JSON.stringify(parsedCompact),
           metadata: {
-            ...compactPayload.meta,
-            type: 'quick_summary',
-            signalCount: signals.reduce((acc: number, s: any) => acc + (s.items?.length || 0), 0),
+            generatedAt: new Date().toISOString(),
+            competitorCount: competitorList.length,
+            canonicalKey,
+            reused: false,
+            type: 'compact_full',
+            signalCount: filteredSignals.reduce((acc: number, s: any) => acc + (s.items?.length || 0), 0),
             sources: ['news', 'funding', 'social']
           }
         };
