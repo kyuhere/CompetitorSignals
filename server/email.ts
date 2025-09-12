@@ -104,7 +104,7 @@ function generateReportEmailHTML(title: string, reportContent: any, competitors:
           overflow: hidden;
         }
         .header {
-          background: linear-gradient(135deg, #FFE606, #20C997);
+          background: linear-gradient(135deg, #FFE606, #FFD600);
           padding: 40px 30px;
           text-align: center;
           color: #000000;
@@ -158,7 +158,7 @@ function generateReportEmailHTML(title: string, reportContent: any, competitors:
           margin: 10px 0;
           padding: 12px 15px;
           border-radius: 8px;
-          border-left: 3px solid #20C997;
+          border-left: 3px solid #FFE606;
         }
         .footer {
           background: #F9FAFB;
@@ -210,20 +210,20 @@ function generateReportEmailHTML(title: string, reportContent: any, competitors:
             })}</p>
           </div>
 
+          ${parsedContent.key_takeaways && parsedContent.key_takeaways.length > 0 ? `
+          <div class="section">
+            <h2>🔥 3 Key Takeaways</h2>
+            <p style="margin-bottom: 15px; font-style: italic;">The most important insights from your competitor analysis:</p>
+            <ul class="insights-list">
+              ${parsedContent.key_takeaways.slice(0, 3).map((takeaway: string) => `<li>${takeaway}</li>`).join('')}
+            </ul>
+          </div>
+          ` : ''}
+
           ${parsedContent.executive_summary ? `
           <div class="section">
             <h2>🎯 Executive Summary</h2>
             <p>${parsedContent.executive_summary}</p>
-          </div>
-          ` : ''}
-
-          ${parsedContent.key_takeaways && parsedContent.key_takeaways.length > 0 ? `
-          <div class="section">
-            <h2>🔥 15 Key Takeaways</h2>
-            <p style="margin-bottom: 15px; font-style: italic;">The most important insights from your competitor analysis:</p>
-            <ul class="insights-list">
-              ${parsedContent.key_takeaways.map((takeaway: string) => `<li>${takeaway}</li>`).join('')}
-            </ul>
           </div>
           ` : ''}
 
@@ -254,7 +254,7 @@ function generateReportEmailHTML(title: string, reportContent: any, competitors:
 
           <div class="section" style="text-align: center;">
             <h2>Want More Insights?</h2>
-            <p>Get <span class="highlight">5 competitor reports every two weeks</span> with full AI analysis and email delivery.</p>
+            <p>Get <span class="highlight">10 competitor reports</span> bi-weekly with full AI analysis and email delivery.</p>
             <a href="https://your-domain.replit.app" class="cta-button">
               Access Your Dashboard 🍋
             </a>
