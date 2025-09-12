@@ -352,7 +352,7 @@ export default function TrackedCompetitors() {
                     Free plan competitors are locked until month-end to prevent abuse
                   </p>
                   <div className="flex items-center justify-between mt-3">
-                    <span className="text-sm font-medium text-orange-700">Unlock in:</span>
+                    <span className="text-sm font-medium text-[#000000]">Unlock in:</span>
                     <span className="text-2xl font-bold text-orange-600">
                       {lockInfo?.daysRemaining} days
                     </span>
