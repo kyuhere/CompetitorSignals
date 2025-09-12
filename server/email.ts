@@ -29,7 +29,7 @@ export async function sendCompetitorReport({
     console.log(`Using API key: ${process.env.RESEND_API_KEY ? 'Present' : 'Missing'}`);
 
     const emailPayload = {
-      from: 'Competitor Lemonade <onboarding@resend.dev>',
+      from: 'Competitor Lemonade <send@builtagent.com>',
       to: [to],
       subject: `🍋 ${reportTitle} - Competitor Analysis Report`,
       html: htmlContent,
