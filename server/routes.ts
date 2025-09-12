@@ -971,6 +971,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
           };
         }
         
+        // Normalize and filter snippets to only tracked competitors; dedupe by canonical
+        try {
+          const trackedCanonToName = new Map<string, string>();
+          for (const name of competitorList) {
+            trackedCanonToName.set(toCanonical(name), name);
+          }
+
+          const seenCanon = new Set<string>();
+          compactPayload.competitorSnippets = (compactPayload.competitorSnippets || [])
+            .map((s: any) => ({ canon: toCanonical(s.competitor || ''), bullets: (s.bullets || []).filter(Boolean) }))
+            .filter((s: any) => trackedCanonToName.has(s.canon))
+            .filter((s: any) => {
+              if (seenCanon.has(s.canon)) return false;
+              seenCanon.add(s.canon);
+              return true;
+            })
+            .map((s: any) => ({ competitor: trackedCanonToName.get(s.canon)!, bullets: s.bullets }));
+        } catch {}
+
         // Ensure every tracked competitor has a snippet entry
         const existingNames = new Set<string>((compactPayload.competitorSnippets || []).map((s: any) => (s.competitor || '').toString().toLowerCase()));
         for (const name of competitorList) {
@@ -996,6 +1015,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
             compactPayload.strategicInsights = insights;
           }
         }
+
+        // Enrich fallback-only snippets with last-known insights from the reusable report
+        try {
+          const canonToRecentBullet = new Map<string, string>();
+          const fromFast = (existingSummary.competitorSnippets || existingSummary.competitor_insights || []) as any[];
+          for (const ins of fromFast) {
+            const canon = toCanonical(ins.competitor || '');
+            const bullet = ins.key_update || (Array.isArray(ins.bullets) ? ins.bullets[0] : undefined);
+            if (canon && bullet && !canonToRecentBullet.has(canon)) canonToRecentBullet.set(canon, bullet);
+          }
+          const fromFull = (existingSummary.competitors || []) as any[];
+          for (const comp of fromFull) {
+            const canon = toCanonical(comp.competitor || '');
+            const bullet = Array.isArray(comp.recent_developments) ? comp.recent_developments[0] : undefined;
+            if (canon && bullet && !canonToRecentBullet.has(canon)) canonToRecentBullet.set(canon, bullet);
+          }
+          for (const snip of compactPayload.competitorSnippets) {
+            const canon = toCanonical(snip.competitor || '');
+            const hasOnlyFallback = !snip.bullets || snip.bullets.length === 0 || snip.bullets.every((b: string) => /No major updates|Monitoring for new signals/i.test(b));
+            if (hasOnlyFallback) {
+              const lastKnown = canonToRecentBullet.get(canon);
+              if (lastKnown) snip.bullets = [lastKnown, ...(snip.bullets || [])].slice(0, 3);
+            }
+          }
+        } catch {}
 
         // Persist as a new quick-summary report (do not overwrite the original)
         const persisted = await storage.createReport({
@@ -1068,6 +1112,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
             const extras = titles.slice(0, 2);
             snippet.bullets = [...(snippet.bullets || []), ...extras].slice(0, 3);
           }
+        } catch {}
+
+        // Normalize and filter snippets to only tracked competitors; dedupe by canonical
+        try {
+          const trackedCanonToName = new Map<string, string>();
+          for (const name of competitorList) {
+            trackedCanonToName.set(toCanonical(name), name);
+          }
+
+          const seenCanon = new Set<string>();
+          compactPayload.competitorSnippets = (compactPayload.competitorSnippets || [])
+            .map((s: any) => ({ canon: toCanonical(s.competitor || ''), bullets: (s.bullets || []).filter(Boolean) }))
+            .filter((s: any) => trackedCanonToName.has(s.canon))
+            .filter((s: any) => {
+              if (seenCanon.has(s.canon)) return false;
+              seenCanon.add(s.canon);
+              return true;
+            })
+            .map((s: any) => ({ competitor: trackedCanonToName.get(s.canon)!, bullets: s.bullets }));
         } catch {}
 
         // Ensure every tracked competitor has a snippet entry
