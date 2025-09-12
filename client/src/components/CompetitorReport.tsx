@@ -207,6 +207,7 @@ export default function CompetitorReport({ report }: CompetitorReportProps) {
           bullets: ins.key_update ? [ins.key_update] : []
         })),
         topSignals: raw.topSignals || raw.top_signals || [],
+        strategicInsights: raw.strategicInsights || raw.strategic_insights || [],
         meta: raw.meta || null,
       };
     } catch {
