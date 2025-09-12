@@ -340,7 +340,7 @@ export default function TrackedCompetitors() {
         <AlertDialog open={lockDialogOpen} onOpenChange={setLockDialogOpen}>
           <AlertDialogContent className="sm:max-w-md card-rounded border-2 border-primary/20 bg-background">
             <AlertDialogHeader className="text-center pb-6">
-              <div className="w-20 h-20 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg">
+              <div className="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg bg-[#feea48]">
                 <Lock className="w-10 h-10 text-orange-500" />
               </div>
               <AlertDialogTitle className="text-3xl font-bold text-foreground mb-4">
