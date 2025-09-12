@@ -1,0 +1,111 @@
+Goal: Make the whole app plan-aware and synced front-to-back for Free vs Premium users, without breaking existing code. The app already has email+password login, Postgres (Neon) with Drizzle ORM, and routes/screens for: landing search, overview, news, reviews, SWOT, email reports, and competitor tracking. Free users see most analysis but NOT reviews/social sentiment, can track up to 3 competitors, and can only change tracked competitors once every 30 days (a popup explains the cooldown). Premium users see reviews/social sentiment, can track up to 10 competitors, can change at any time, and get automatic email reports (Free can trigger manual emails only).
+
+Constraints:
+- Be framework-agnostic: detect the current stack and reuse it (Express/Next/Nest/etc.). If something is missing, scaffold minimal code and explain how to integrate.
+- Don’t rewrite big files; add new modules and small, explicit edits. List each file you created/edited at the end.
+- Use the existing DB connection (Postgres + Drizzle) if available; otherwise create a minimal abstraction that I can adapt.
+- Security: never trust the client for plan/entitlements; always check server-side. If using JWT sessions, ensure plan refresh after upgrade.
+
+Deliverables (create these in small, composable units):
+1) Data model + migrations
+   - Add/verify a users table with: id, email, passwordHash, plan (enum 'free'|'premium' default 'free'), createdAt.
+   - Create a competitors table (or adjust existing) to record which companies a user tracks:
+       columns: id, userId (FK users), companyId or slug, createdAt, updatedAt.
+   - Add a competitor_changes table (or a lastChangedAt per tracked row) to enforce the 30-day cooldown for Free:
+       columns: id, userId, companyId, changedAt.
+   - Add an email_reports table or job_settings table to store scheduling prefs:
+       columns: id, userId, frequency ('daily'|'weekly'|'off'), lastRunAt, nextRunAt, createdAt.
+   - Indices: users.email unique; competitors (userId), competitor_changes (userId, changedAt DESC).
+   - Provide Drizzle SQL migrations; if Drizzle isn’t present, generate raw SQL with notes on where to run.
+
+2) Central entitlements module
+   - Create `shared/entitlements.ts` (or similar) exporting a single source of truth:
+       ```ts
+       export const ENTITLEMENTS = {
+         free:   { maxCompetitors: 3, canSeeReviews: false, canSeeSocial: false, canAutoEmail: false, competitorChangeCooldownDays: 30 },
+         premium:{ maxCompetitors:10, canSeeReviews: true,  canSeeSocial: true,  canAutoEmail: true,  competitorChangeCooldownDays: 0  }
+       };
+       export type Plan = keyof typeof ENTITLEMENTS;
+       export function getEntitlements(plan: Plan) { return ENTITLEMENTS[plan]; }
+       ```
+   - Server-side helpers:
+       - `requireAuth` middleware: attaches `req.user` with fresh user record from DB.
+       - `requirePlan(planOrPredicate)` middleware: checks entitlements dynamically.
+       - Utility to compute “canChangeCompetitor`” by comparing now vs last change timestamp and plan cooldown.
+
+3) Session + plan refresh
+   - If using JWT cookies: ensure the app does NOT trust JWT `plan` blindly. For protected routes, re-fetch user from DB. Provide a `POST /auth/refresh` endpoint that re-issues the cookie after upgrades. On successful upgrade, call this endpoint from the client to immediately reflect plan changes.
+   - If using server sessions: ensure session uses userId only, and plan is always fetched on each request or cached briefly with revalidation.
+
+4) Backend routes (augment, don’t rewrite):
+   - `GET /api/me` returns { userId, plan, entitlements } for the current session.
+   - `GET /api/competitors` returns the user’s tracked competitors plus remaining slots, and cooldown info for each slot.
+   - `POST /api/competitors/add`:
+       - Enforce `maxCompetitors` based on plan.
+       - On Free: if at max, return 403 with friendly message.
+   - `POST /api/competitors/change`:
+       - On Free: enforce `competitorChangeCooldownDays` using lastChangedAt; if blocked, return 403 with next eligible date.
+       - On Premium: allow always; update lastChangedAt.
+   - `GET /api/reviews?company=...` and `GET /api/social-sentiment?company=...`:
+       - Gate with `canSeeReviews/canSeeSocial`. Return 403 with an upsell hint if blocked.
+   - `POST /api/reports/generate`:
+       - Allow both plans to manually trigger; throttle if needed.
+   - Automatic reports:
+       - Add a lightweight scheduler (node-cron or setInterval fallback) that runs only for Premium users who have `canAutoEmail` and `frequency!='off'`.
+       - Provide `POST /api/reports/settings` to set frequency (Premium only), and update `nextRunAt`.
+   - Return consistent JSON error shapes: { error: { code, message, details? } }.
+
+5) Frontend gating + UX (SSR/CSR safe)
+   - Create a `useSession()` or `useMe()` hook that calls `/api/me` and exposes { user, entitlements, loading }.
+   - In UI:
+       - Disable/blur Reviews and Social for Free with a small “Upgrade to unlock” CTA. Don’t render sensitive data client-side if blocked.
+       - On competitors page: show counters “2/3 used” for Free, “5/10 used” for Premium. On change attempt:
+           - Free: if under cooldown, show modal with next eligible date (computed server-side and returned by `/api/competitors`).
+           - Premium: allow instantly.
+       - Landing page behavior:
+           - Anonymous users: treat as “visitor” (trial) separately from a real Free account. Keep logic explicit to avoid UI mismatch.
+           - After login/upgrade: call `/auth/refresh` then refetch `/api/me` to immediately update UI.
+   - Ensure SSR hydration matches entitlements: during SSR, render based on a server session if available, otherwise fallback to a skeleton and fetch client-side before revealing gated content.
+
+6) Upgrade flow (stub if payment not live)
+   - Add `POST /api/upgrade` that sets user.plan='premium' (admin/test path).
+   - After upgrade: re-issue session (or instruct client to call `/auth/refresh`), enqueue creating default report schedule, and invalidate any caches.
+
+7) Observability & safety
+   - Log key events: login, plan change, competitor add/change, blocked access attempts, report runs.
+   - Rate-limit sensitive endpoints to prevent abuse.
+   - Add unit tests for entitlements helpers and competitor cooldown math. Add minimal integration tests for route guards.
+
+8) Data migration & backfill
+   - Migration to create/alter tables and enums.
+   - Backfill existing users to plan='free' if null.
+   - Add safe down migrations.
+   - Provide a short script to flip plan for testing (e.g., `scripts/setPlan.ts userEmail premium`).
+
+9) Acceptance tests (create a checklist.md in repo and ensure all pass)
+   - Free user:
+       - Can track up to 3; 4th returns 403.
+       - Changing a tracked competitor returns cooldown modal with a date.
+       - Reviews/social endpoints return 403 (and UI shows upgrade CTA).
+       - Manual email report works; no automatic emails scheduled.
+   - Premium user:
+       - Can track up to 10; can change anytime.
+       - Reviews/social visible and returned by API.
+       - Automatic reports are scheduled and run (simulate a tick).
+   - Upgrade path:
+       - Start as Free → hit `/api/upgrade` → refresh session → UI updates immediately; Premium features unlocked without reload.
+
+What to output now:
+- The exact file additions/edits, with code for:
+  a) Migrations (Drizzle if present; raw SQL alternative if not).
+  b) `shared/entitlements.ts` and server-side guards (`requireAuth`, `requirePlan`, helper `canChangeCompetitor`).
+  c) Backend routes listed above, wired into existing router.
+  d) Frontend hook `useMe()` and minimal UI examples showing gating for Reviews, Social, competitor cooldown modal, and counters.
+  e) Lightweight scheduler for automatic reports with an in-process cron; abstract it so I can swap for a proper job runner later.
+  f) A short README section: integration steps, environment variables, how to run migrations, and how to test upgrade/refresh.
+
+General rules:
+- Keep changes minimal and additive. No large refactors.
+- Detect existing libraries; if something isn’t installed (e.g., node-cron), add it and note the install command.
+- Comment your code where business rules apply (limits, cooldowns, gating), and centralize constants in `entitlements.ts`.
+- After generating code, include a “Files changed” list with paths and a quick diff summary so I can review.

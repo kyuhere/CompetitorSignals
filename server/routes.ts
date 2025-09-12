@@ -76,7 +76,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ message: "Unauthorized" });
       }
 
-      const user = authContext.user;
+      const user = authContext.user!;
+
+      // Sanitize user data - remove sensitive fields before sending to client
+      const { passwordHash, ...safeUser } = user;
 
       // Check if there's a guest search to migrate
       const guestSearchData = req.headers['x-guest-search'];
@@ -100,7 +103,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      res.json(user);
+      res.json(safeUser);
     } catch (error) {
       console.error("Error fetching user:", error);
       res.status(500).json({ message: "Failed to fetch user" });
@@ -492,7 +495,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
 
         // Automatically send email to user after report is created
-        const userEmail = req.user.claims.email;
+        const userEmail = authContext.user?.email;
         if (userEmail) {
           try {
             await sendCompetitorReport({
@@ -542,10 +545,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get user reports
-  app.get('/api/reports', isAuthenticated, async (req: any, res) => {
+  // Get user reports - supports both auth methods
+  app.get('/api/reports', async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const authContext = await getAuthContext(req);
+      
+      if (!authContext.isAuthenticated) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const userId = authContext.userId!;
       const reports = await storage.getUserReports(userId, 20);
       res.json(reports);
     } catch (error) {
@@ -579,10 +588,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Tracked Competitors API
 
-  // Get user's tracked competitors
-  app.get('/api/competitors/tracked', isAuthenticated, async (req: any, res) => {
+  // Get user's tracked competitors - supports both auth methods
+  app.get('/api/competitors/tracked', async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const authContext = await getAuthContext(req);
+      
+      if (!authContext.isAuthenticated) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const userId = authContext.userId!;
       const trackedCompetitors = await storage.getUserTrackedCompetitors(userId);
       const count = await storage.getTrackedCompetitorCount(userId);
 
@@ -602,10 +617,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Add a tracked competitor
-  app.post('/api/competitors/tracked', isAuthenticated, async (req: any, res) => {
+  // Add a tracked competitor - supports both auth methods
+  app.post('/api/competitors/tracked', async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const authContext = await getAuthContext(req);
+      
+      if (!authContext.isAuthenticated) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const userId = authContext.userId!;
 
       const validation = insertTrackedCompetitorSchema.safeParse({
         userId,
@@ -646,7 +667,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Determine plan-based limit
       const user = await storage.getUser(userId);
-      const plan = (user?.plan as string) || (req.user?.claims?.plan as string) || 'free';
+      const plan = authContext.plan || 'free';
       const planLimits = getPlanLimits(plan);
 
       // Check limit (plan-based)
@@ -668,10 +689,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Remove a tracked competitor (with monthly lock)
-  app.delete('/api/competitors/tracked/:id', isAuthenticated, async (req: any, res) => {
+  // Remove a tracked competitor (with monthly lock) - supports both auth methods
+  app.delete('/api/competitors/tracked/:id', async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const authContext = await getAuthContext(req);
+      
+      if (!authContext.isAuthenticated) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const userId = authContext.userId!;
       const { id } = req.params;
 
       // Get the competitor to check when it was added
@@ -708,10 +735,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Analyze tracked competitors (for automated weekly analysis)
-  app.post('/api/competitors/tracked/analyze', isAuthenticated, async (req: any, res) => {
+  // Analyze tracked competitors (for automated weekly analysis) - supports both auth methods
+  app.post('/api/competitors/tracked/analyze', async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const authContext = await getAuthContext(req);
+      
+      if (!authContext.isAuthenticated) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const userId = authContext.userId!;
 
       // Get user's tracked competitors
       const trackedCompetitors = await storage.getUserTrackedCompetitors(userId);
