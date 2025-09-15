@@ -69,6 +69,31 @@ export default function TrackedCompetitors({ onShowReport }: TrackedCompetitorsP
     queryKey: ['/api/competitors/tracked'],
   });
 
+  // Send newsletter now (self) – premium-only convenience trigger
+  const sendNewsletterNowMutation = useMutation({
+    mutationFn: async (): Promise<any> => {
+      const res = await apiRequest('POST', '/api/automation/quick-summary/send/me?force=true', {});
+      return res.json();
+    },
+    onSuccess: async (data) => {
+      toast({
+        title: "Newsletter Sent",
+        description: data?.reportId
+          ? "We generated a fresh newsletter and emailed it to you."
+          : data?.skipped === 'recent_newsletter_exists'
+          ? "Skipped: a newsletter was already sent recently."
+          : "Triggered successfully. Check your inbox.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Failed to send",
+        description: error.message || "Could not send the newsletter",
+        variant: "destructive",
+      });
+    },
+  });
+
   // Fetch usage data to determine user plan
   const { data: usage } = useQuery<UsageData>({
     queryKey: ['/api/usage'],
@@ -360,6 +385,18 @@ export default function TrackedCompetitors({ onShowReport }: TrackedCompetitorsP
           >
             <Zap className="w-5 h-5 mr-2" />
             {quickSummaryMutation.isPending ? "Creating Summary..." : "Create Quick Summary"}
+          </Button>
+        )}
+
+        {/* Send Newsletter Now (Premium) */}
+        {trackedData && trackedData.count > 0 && usage?.plan === 'premium' && (
+          <Button
+            onClick={() => sendNewsletterNowMutation.mutate()}
+            disabled={sendNewsletterNowMutation.isPending}
+            className="w-full py-3 text-base btn-primary rounded-xl"
+            data-testid="button-send-newsletter-now"
+          >
+            {sendNewsletterNowMutation.isPending ? 'Sending…' : 'Send Newsletter Now'}
           </Button>
         )}
 

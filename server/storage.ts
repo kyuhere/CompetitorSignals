@@ -42,6 +42,9 @@ export interface IStorage {
   getTrackedCompetitorById(userId: string, competitorId: string): Promise<TrackedCompetitor | undefined>;
   removeTrackedCompetitor(userId: string, competitorId: string): Promise<void>;
   getTrackedCompetitorCount(userId: string): Promise<number>;
+  
+  // Automation helpers
+  getPremiumUsers(): Promise<User[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -249,6 +252,15 @@ export class DatabaseStorage implements IStorage {
         eq(trackedCompetitors.isActive, true)
       ));
     return result[0]?.count || 0;
+  }
+
+  // List all premium users (with a valid email) for automation
+  async getPremiumUsers(): Promise<User[]> {
+    const rows = await db
+      .select()
+      .from(users)
+      .where(eq(users.plan, 'premium'));
+    return rows.filter(u => !!u.email);
   }
 }
 
