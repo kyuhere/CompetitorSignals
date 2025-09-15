@@ -75,8 +75,56 @@ function generateReportEmailHTML(title: string, reportContent: any, competitors:
     try {
       parsedContent = JSON.parse(reportContent);
     } catch (e) {
-      parsedContent = { executiveSummary: reportContent };
+      // Fallback for plain text/Markdown content
+      // Use snake_case key that the template checks (executive_summary)
+      parsedContent = { executive_summary: reportContent } as any;
     }
+  }
+
+  // Detect Newsletter Markdown (from summarizeNewsletterDigest)
+  const originalString = typeof reportContent === 'string' ? reportContent : '';
+  const isNewsletter = /\*\*Executive Summary\*\*/.test(originalString);
+
+  const mdBold = (s: string) => s.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+
+  function renderNewsletterMarkdown(md: string): string {
+    const lines = md.split(/\r?\n/);
+    const out: string[] = [];
+    let listOpen = false;
+
+    const flushList = () => {
+      if (listOpen) {
+        out.push('</ul>');
+        listOpen = false;
+      }
+    };
+
+    for (const raw of lines) {
+      const line = raw.trim();
+      if (!line) { flushList(); continue; }
+
+      // Headings like **Executive Summary**
+      if (/^\*\*.*\*\*$/.test(line)) {
+        flushList();
+        out.push(`<h2 style="font-size:22px;font-weight:700;margin:20px 0 12px 0;border-bottom:2px solid #FFE606;padding-bottom:6px;">${mdBold(line.replace(/^\*\*(.*)\*\*$/, '$1'))}</h2>`);
+        continue;
+      }
+
+      // Bullets like - **Company**: update text
+      if (/^-\s+/.test(line)) {
+        if (!listOpen) { out.push('<ul style="padding-left:20px;margin:0 0 14px 0;">'); listOpen = true; }
+        const li = mdBold(line.replace(/^-\s+/, ''));
+        out.push(`<li style="margin:8px 0;">${li}</li>`);
+        continue;
+      }
+
+      // Paragraph
+      flushList();
+      out.push(`<p style="margin:10px 0;">${mdBold(line)}</p>`);
+    }
+    flushList();
+    // Wrap in a styled section
+    return `<div class="section">${out.join('')}</div>`;
   }
 
   return `
@@ -211,7 +259,9 @@ function generateReportEmailHTML(title: string, reportContent: any, competitors:
             })}</p>
           </div>
 
-          ${parsedContent.key_takeaways && parsedContent.key_takeaways.length > 0 ? `
+          ${isNewsletter ? renderNewsletterMarkdown(originalString) : ''}
+
+          ${!isNewsletter && parsedContent.key_takeaways && parsedContent.key_takeaways.length > 0 ? `
           <div class="section">
             <h2>🔥 3 Key Takeaways</h2>
             <p style="margin-bottom: 15px; font-style: italic;">The most important insights from your competitor analysis:</p>
@@ -221,14 +271,14 @@ function generateReportEmailHTML(title: string, reportContent: any, competitors:
           </div>
           ` : ''}
 
-          ${parsedContent.executive_summary ? `
+          ${!isNewsletter && parsedContent.executive_summary ? `
           <div class="section">
             <h2>🎯 Executive Summary</h2>
             <p>${parsedContent.executive_summary}</p>
           </div>
           ` : ''}
 
-          ${parsedContent.strategic_insights && parsedContent.strategic_insights.length > 0 ? `
+          ${!isNewsletter && parsedContent.strategic_insights && parsedContent.strategic_insights.length > 0 ? `
           <div class="section">
             <h2>🚀 Strategic Insights</h2>
             <ul class="insights-list">
@@ -237,7 +287,7 @@ function generateReportEmailHTML(title: string, reportContent: any, competitors:
           </div>
           ` : ''}
 
-          ${parsedContent.competitors && parsedContent.competitors.length > 0 ? `
+          ${!isNewsletter && parsedContent.competitors && parsedContent.competitors.length > 0 ? `
           <div class="section">
             <h2>🏢 Competitor Analysis</h2>
             ${parsedContent.competitors.map((competitor: any) => `
