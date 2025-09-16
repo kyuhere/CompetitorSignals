@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import AppHeader from "@/components/AppHeader";
 import CompetitorInputForm from "@/components/CompetitorInputForm";
@@ -23,6 +24,7 @@ export default function Home() {
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState<"tracking" | "analysis" | "reports">("tracking");
   const [showSignupModal, setShowSignupModal] = useState(false);
+  const { isAuthenticated } = useAuth();
 
   // Fetch usage stats
   const { data: usage, isLoading: usageLoading } = useQuery({
@@ -37,8 +39,8 @@ export default function Home() {
 
   // Guest gating: one free search per session
   const isGuest = useMemo(() => {
-    return !(usage as any)?.isLoggedIn;
-  }, [usage]);
+    return !isAuthenticated;
+  }, [isAuthenticated]);
 
   const [guestHasSearched, setGuestHasSearched] = useState<boolean>(false);
 
@@ -135,6 +137,10 @@ export default function Home() {
       });
     },
     onError: (error) => {
+      // Suppress noisy toast for guest gating (we already showed modal)
+      if (error instanceof Error && error.message.includes('Sign up required')) {
+        return;
+      }
       if (isUnauthorizedError(error)) {
         toast({
           title: "Unauthorized",
@@ -294,7 +300,11 @@ export default function Home() {
               {/* Right Column: Report Display */}
               <div className="xl:col-span-2">
                 {currentReport ? (
-                  <CompetitorReport report={currentReport} />
+                  <CompetitorReport
+                    report={currentReport}
+                    guestGateActive={isGuest && guestHasSearched}
+                    onGuestGate={() => triggerSignupGate()}
+                  />
                 ) : (
                   <Card className="h-96 flex items-center justify-center card-rounded hover-lift">
                     <CardContent className="text-center">
@@ -329,11 +339,17 @@ export default function Home() {
               reports={(reports as any) || []}
               isLoading={reportsLoading}
               onLoadReport={handleLoadReport}
+              guestGateActive={isGuest && guestHasSearched}
+              onGuestGate={() => triggerSignupGate()}
             />
             
             {currentReport && (
               <div className="mt-8">
-                <CompetitorReport report={currentReport} />
+                <CompetitorReport
+                  report={currentReport}
+                  guestGateActive={isGuest && guestHasSearched}
+                  onGuestGate={() => triggerSignupGate()}
+                />
               </div>
             )}
           </TabsContent>

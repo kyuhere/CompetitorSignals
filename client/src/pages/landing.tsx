@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -20,6 +20,16 @@ export default function Landing() {
   const [loadingProgress, setLoadingProgress] = useState(0);
   const { toast } = useToast();
 
+  // Guest gating: allow one free search per session (localStorage)
+  const [guestHasSearched, setGuestHasSearched] = useState<boolean>(false);
+  useEffect(() => {
+    try {
+      const flag = localStorage.getItem('guest_one_free_search_done');
+      setGuestHasSearched(flag === '1');
+    } catch {}
+  }, []);
+  const triggerSignupGate = () => setShowSignupDialog(true);
+
   // Store the guest search result in localStorage for potential account creation
   const storeGuestSearch = (result: any) => {
     if (result && result.id && result.id.startsWith('temp_')) {
@@ -29,6 +39,14 @@ export default function Landing() {
 
   const searchMutation = useMutation({
     mutationFn: async (competitor: string) => {
+      // Block second search for guests
+      try {
+        const flag = localStorage.getItem('guest_one_free_search_done');
+        if (flag === '1') {
+          triggerSignupGate();
+          throw new Error('Sign up required for additional searches');
+        }
+      } catch {}
       // Reset and start progress
       setLoadingProgress(10);
       
@@ -67,6 +85,8 @@ export default function Landing() {
     },
     onSuccess: (data) => {
       setSearchResult(data);
+      try { localStorage.setItem('guest_one_free_search_done', '1'); } catch {}
+      setGuestHasSearched(true);
       storeGuestSearch(data);
       // Auto-scroll to the analysis section after a short delay
       setTimeout(() => {
@@ -92,6 +112,7 @@ export default function Landing() {
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (!searchQuery.trim()) return;
+    if (guestHasSearched) { triggerSignupGate(); return; }
     
     searchMutation.mutate(searchQuery.trim());
   };
@@ -227,6 +248,8 @@ export default function Landing() {
             
             <CompetitorReport 
               report={searchResult}
+              guestGateActive={guestHasSearched}
+              onGuestGate={() => triggerSignupGate()}
             />
             
             {/* Export/Email and CTA Section */}

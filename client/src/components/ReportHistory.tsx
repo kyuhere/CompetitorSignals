@@ -12,9 +12,11 @@ interface ReportHistoryProps {
   }>;
   isLoading: boolean;
   onLoadReport: (report: any) => void;
+  guestGateActive?: boolean;
+  onGuestGate?: () => void;
 }
 
-export default function ReportHistory({ reports, isLoading, onLoadReport }: ReportHistoryProps) {
+export default function ReportHistory({ reports, isLoading, onLoadReport, guestGateActive, onGuestGate }: ReportHistoryProps) {
   const [, setLocation] = useLocation();
 
   const formatTimeAgo = (dateString: string) => {
@@ -68,7 +70,10 @@ export default function ReportHistory({ reports, isLoading, onLoadReport }: Repo
               <div 
                 key={report.id}
                 className="flex items-center justify-between p-4 bg-muted rounded-xl hover:bg-primary hover:text-primary-foreground transition-all duration-200 cursor-pointer group gap-2 flex-wrap"
-                onClick={() => setLocation(`/report/${report.id}`)}
+                onClick={() => {
+                  if (guestGateActive) { onGuestGate && onGuestGate(); return; }
+                  setLocation(`/report/${report.id}`);
+                }}
                 data-testid={`report-item-${report.id}`}
               >
                 <div className="flex-1 min-w-0">
@@ -84,6 +89,7 @@ export default function ReportHistory({ reports, isLoading, onLoadReport }: Repo
                   size="sm"
                   onClick={(e) => {
                     e.stopPropagation();
+                    if (guestGateActive) { onGuestGate && onGuestGate(); return; }
                     setLocation(`/report/${report.id}`);
                   }}
                   data-testid={`button-view-report-${report.id}`}
