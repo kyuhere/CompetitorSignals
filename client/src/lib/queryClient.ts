@@ -1,6 +1,7 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
+import { handleQueryError, handleMutationError } from "./errorHandling";
 
-async function throwIfResNotOk(res: Response) {
+async function throwIfResNotOk(res: Response, url?: string) {
   if (!res.ok) {
     const text = await res.text();
     let errorData;
@@ -11,8 +12,20 @@ async function throwIfResNotOk(res: Response) {
     }
     
     const error = new Error(errorData.message || `${res.status}: ${res.statusText}`);
-    // Attach additional error data for lock handling
+    // Attach additional error data for lock handling and better error classification
     Object.assign(error, errorData);
+    // Attach response context for proper retry logic and error handling
+    (error as any).status = res.status;
+    (error as any).code = res.status;
+    (error as any).statusText = res.statusText;
+    if (url) (error as any).url = url;
+    if (text) {
+      try {
+        (error as any).body = JSON.parse(text);
+      } catch {
+        (error as any).body = text;
+      }
+    }
     throw error;
   }
 }
@@ -47,7 +60,7 @@ export async function apiRequest(method: string, url: string, data?: any): Promi
     credentials: "include",
   });
 
-  await throwIfResNotOk(res);
+  await throwIfResNotOk(res, url);
   return res;
 }
 
@@ -65,7 +78,7 @@ export const getQueryFn: <T>(options: {
       return null;
     }
 
-    await throwIfResNotOk(res);
+    await throwIfResNotOk(res, queryKey.join("/") as string);
     return await res.json();
   };
 
@@ -85,9 +98,33 @@ export const queryClient = new QueryClient({
         return failureCount < 2;
       },
       retryDelay: attemptIndex => Math.min(1000 * 2 ** attemptIndex, 30000),
+      onError: (error: any, query) => {
+        // Allow queries to opt out of global error handling
+        if (query.meta?.silent) return;
+        
+        // Handle global query errors
+        handleQueryError(error, {
+          component: 'QueryClient',
+          showToast: !query.meta?.noToast,
+          redirectToErrorPage: query.meta?.redirectToErrorPage,
+        });
+      },
     },
     mutations: {
       retry: false,
+      onError: (error: any, variables, context, mutation) => {
+        // Allow mutations to opt out of global error handling
+        if (mutation.meta?.silent) return;
+        
+        // Handle global mutation errors
+        handleMutationError(error, {
+          component: 'QueryClient',
+          showToast: !mutation.meta?.noToast,
+        });
+      },
     },
   },
 });
+
+// Create specialized queryFn for auth queries that shouldn't throw on 401
+export const authQueryFn = getQueryFn({ on401: "returnNull" });

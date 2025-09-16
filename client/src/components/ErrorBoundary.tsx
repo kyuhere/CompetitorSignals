@@ -2,6 +2,7 @@ import { Component, ErrorInfo, ReactNode } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { AlertTriangle, RefreshCw, Home, Bug } from "lucide-react";
+import { queryClient } from "@/lib/queryClient";
 
 interface Props {
   children: ReactNode;
@@ -11,15 +12,24 @@ interface State {
   hasError: boolean;
   error?: Error;
   errorInfo?: ErrorInfo;
+  retryCount: number;
+  errorId: string;
 }
 
 class ErrorBoundary extends Component<Props, State> {
   public state: State = {
     hasError: false,
+    retryCount: 0,
+    errorId: '',
   };
 
-  public static getDerivedStateFromError(error: Error): State {
-    return { hasError: true, error };
+  public static getDerivedStateFromError(error: Error): Partial<State> {
+    const errorId = `ERR_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    return { 
+      hasError: true, 
+      error,
+      errorId,
+    };
   }
 
   public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
@@ -31,7 +41,17 @@ class ErrorBoundary extends Component<Props, State> {
   }
 
   private handleRetry = () => {
-    this.setState({ hasError: false, error: undefined, errorInfo: undefined });
+    // Clear React Query cache to ensure clean state
+    queryClient.clear();
+    
+    // Increment retry count and reset error state
+    this.setState(prevState => ({ 
+      hasError: false, 
+      error: undefined, 
+      errorInfo: undefined,
+      retryCount: prevState.retryCount + 1,
+      errorId: '',
+    }));
   };
 
   private handleGoHome = () => {
@@ -127,8 +147,13 @@ class ErrorBoundary extends Component<Props, State> {
                   If this error persists, try refreshing the page or contact support.
                 </p>
                 <p className="mt-1">
-                  Error ID: {Date.now().toString(36)}
+                  Error ID: {this.state.errorId}
                 </p>
+                {this.state.retryCount > 0 && (
+                  <p className="mt-1 text-yellow-600">
+                    Retry attempts: {this.state.retryCount}
+                  </p>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -136,7 +161,12 @@ class ErrorBoundary extends Component<Props, State> {
       );
     }
 
-    return this.props.children;
+    // Use retry count as key to force remount of children on retry
+    return (
+      <div key={`error-boundary-${this.state.retryCount}`}>
+        {this.props.children}
+      </div>
+    );
   }
 }
 
