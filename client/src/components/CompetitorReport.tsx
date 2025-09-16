@@ -467,8 +467,8 @@ export default function CompetitorReport({ report }: CompetitorReportProps) {
     <Card data-testid="card-competitor-report" className="card-rounded hover-lift">
       {/* Report Header */}
       <div className="p-4 sm:p-6 lg:p-8 border-b border-border">
-        <div className="flex items-start justify-between">
-          <div>
+        <div className="flex flex-col sm:flex-row items-start sm:items-start justify-between gap-3 sm:gap-2">
+          <div className="min-w-0 w-full sm:w-auto">
             <h1 className="text-2xl sm:text-4xl lg:text-6xl font-extrabold leading-tight text-foreground mb-4 flex items-center gap-2" data-testid="text-report-title">
               {report.title}
               {(report as any)?.metadata?.type === 'quick_summary' && (
@@ -490,7 +490,7 @@ export default function CompetitorReport({ report }: CompetitorReportProps) {
             </div>
           </div>
 
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center flex-wrap gap-2 justify-end max-w-full overflow-x-hidden w-full sm:w-auto">
             <Dialog open={emailDialogOpen} onOpenChange={setEmailDialogOpen}>
               <DialogTrigger asChild>
                 <Button
@@ -652,12 +652,15 @@ export default function CompetitorReport({ report }: CompetitorReportProps) {
               </div>
 
               <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="w-full">
-                <TabsList className="w-full overflow-x-auto flex gap-2 sm:gap-3">
-                  <TabsTrigger value="overview" className="whitespace-nowrap px-3 py-2">Overview</TabsTrigger>
-                  <TabsTrigger value="analysis" className="whitespace-nowrap px-3 py-2">Analysis</TabsTrigger>
-                  <TabsTrigger value="reviews" className="whitespace-nowrap px-3 py-2">Reviews</TabsTrigger>
-                  <TabsTrigger value="market" className="whitespace-nowrap px-3 py-2">Market</TabsTrigger>
-                  <TabsTrigger value="tech" className="whitespace-nowrap px-3 py-2">Tech & Innovation</TabsTrigger>
+                <TabsList
+                  className="w-full overflow-x-auto overflow-y-hidden flex items-center gap-2 sm:gap-3 pb-1 glass-panel p-1 rounded-2xl pl-2 pr-2"
+                  style={{ WebkitOverflowScrolling: 'touch' }}
+                >
+                  <TabsTrigger value="overview" className="whitespace-nowrap px-3 h-10 leading-none flex-shrink-0">Overview</TabsTrigger>
+                  <TabsTrigger value="analysis" className="whitespace-nowrap px-3 h-10 leading-none flex-shrink-0">Analysis</TabsTrigger>
+                  <TabsTrigger value="reviews" className="whitespace-nowrap px-3 h-10 leading-none flex-shrink-0">Reviews</TabsTrigger>
+                  <TabsTrigger value="market" className="whitespace-nowrap px-3 h-10 leading-none flex-shrink-0">Market</TabsTrigger>
+                  <TabsTrigger value="tech" className="whitespace-nowrap px-3 h-10 leading-none flex-shrink-0">Tech & Innovation</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="overview" className="space-y-8 mt-6">
