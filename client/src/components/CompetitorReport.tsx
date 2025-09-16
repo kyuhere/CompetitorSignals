@@ -363,10 +363,10 @@ export default function CompetitorReport({ report }: CompetitorReportProps) {
   if (isNewsletter) {
     return (
       <Card data-testid="card-competitor-report" className="card-rounded hover-lift">
-        <div className="p-8 border-b border-border">
+        <div className="p-4 sm:p-6 lg:p-8 border-b border-border">
           <div className="flex items-start justify-between">
             <div>
-              <h1 className="text-2xl font-bold text-foreground mb-2 flex items-center gap-2" data-testid="text-report-title">
+              <h1 className="text-xl sm:text-2xl font-bold text-foreground mb-2 flex items-center gap-2" data-testid="text-report-title">
                 {report.title}
                 <Badge className="bg-blue-100 text-blue-800 border border-blue-300">Newsletter</Badge>
               </h1>
@@ -405,7 +405,7 @@ export default function CompetitorReport({ report }: CompetitorReportProps) {
             </div>
           </div>
         </div>
-        <CardContent className="p-8">
+        <CardContent className="p-4 sm:p-6 lg:p-8">
           {renderNewsletterMarkdown(report.summary as unknown as string)}
         </CardContent>
       </Card>
@@ -466,10 +466,10 @@ export default function CompetitorReport({ report }: CompetitorReportProps) {
   return (
     <Card data-testid="card-competitor-report" className="card-rounded hover-lift">
       {/* Report Header */}
-      <div className="p-8 border-b border-border">
+      <div className="p-4 sm:p-6 lg:p-8 border-b border-border">
         <div className="flex items-start justify-between">
           <div>
-            <h1 className="text-4xl lg:text-6xl font-extrabold leading-tight text-foreground mb-4 flex items-center gap-2" data-testid="text-report-title">
+            <h1 className="text-2xl sm:text-4xl lg:text-6xl font-extrabold leading-tight text-foreground mb-4 flex items-center gap-2" data-testid="text-report-title">
               {report.title}
               {(report as any)?.metadata?.type === 'quick_summary' && (
                 <Badge className="bg-yellow-100 text-yellow-800 border border-yellow-300">Quick Summary</Badge>
@@ -503,7 +503,7 @@ export default function CompetitorReport({ report }: CompetitorReportProps) {
                   Email Report
                 </Button>
               </DialogTrigger>
-              <DialogContent className="sm:max-w-md">
+              <DialogContent className="w-[95vw] sm:max-w-md p-4 sm:p-6">
                 <DialogHeader>
                   <DialogTitle>📧 Email Report</DialogTitle>
                 </DialogHeader>
@@ -556,7 +556,7 @@ export default function CompetitorReport({ report }: CompetitorReportProps) {
       </div>
 
       {/* Report Content */}
-      <CardContent className="p-8">
+      <CardContent className="p-4 sm:p-6 lg:p-8">
         {/* Executive Summary */}
         <div className="mb-8">
           <h2 className="text-3xl lg:text-4xl font-bold text-foreground mb-6 flex items-center">
@@ -652,12 +652,12 @@ export default function CompetitorReport({ report }: CompetitorReportProps) {
               </div>
 
               <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="w-full">
-                <TabsList className="grid w-full grid-cols-5">
-                  <TabsTrigger value="overview">Overview</TabsTrigger>
-                  <TabsTrigger value="analysis">Analysis</TabsTrigger>
-                  <TabsTrigger value="reviews">Reviews</TabsTrigger>
-                  <TabsTrigger value="market">Market</TabsTrigger>
-                  <TabsTrigger value="tech">Tech & Innovation</TabsTrigger>
+                <TabsList className="w-full overflow-x-auto flex gap-2 sm:gap-3">
+                  <TabsTrigger value="overview" className="whitespace-nowrap px-3 py-2">Overview</TabsTrigger>
+                  <TabsTrigger value="analysis" className="whitespace-nowrap px-3 py-2">Analysis</TabsTrigger>
+                  <TabsTrigger value="reviews" className="whitespace-nowrap px-3 py-2">Reviews</TabsTrigger>
+                  <TabsTrigger value="market" className="whitespace-nowrap px-3 py-2">Market</TabsTrigger>
+                  <TabsTrigger value="tech" className="whitespace-nowrap px-3 py-2">Tech & Innovation</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="overview" className="space-y-8 mt-6">

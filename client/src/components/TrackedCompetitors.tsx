@@ -267,7 +267,7 @@ export default function TrackedCompetitors({ onShowReport }: TrackedCompetitorsP
                     <span className="text-sm font-bold text-gray-700">{initials}</span>
                   </div>
                   <div>
-                    <p className="font-bold text-foreground text-lg" data-testid={`text-competitor-name-${competitor.id}`}>
+                    <p className="font-bold text-foreground text-lg truncate max-w-[60vw] sm:max-w-none" data-testid={`text-competitor-name-${competitor.id}`}>
                       {competitor.competitorName}
                     </p>
                     <p className="text-xs text-muted-foreground flex items-center font-medium">
@@ -482,7 +482,7 @@ export default function TrackedCompetitors({ onShowReport }: TrackedCompetitorsP
 
         {/* Quick Summary Modal */}
         <Dialog open={showQuickSummary} onOpenChange={setShowQuickSummary}>
-          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="w-[95vw] sm:max-w-3xl max-h-[90vh] overflow-y-auto p-4 sm:p-6">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2 text-2xl font-bold">
                 <Zap className="w-6 h-6 text-primary" />
