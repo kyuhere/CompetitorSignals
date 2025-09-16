@@ -21,27 +21,25 @@ export default function AppHeader({ usage }: AppHeaderProps) {
   return (
     <header className="bg-card border-b border-border sticky top-0 z-50" data-testid="header-app">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
-          <div className="flex items-center space-x-4">
-            <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-primary rounded-2xl flex items-center justify-center shadow-lg">
-                <span className="text-2xl">🍋</span>
-              </div>
-              <span className="text-2xl font-bold text-foreground">Competitor Lemonade</span>
+        <div className="flex flex-wrap items-center justify-between gap-2 py-2">
+          <div className="flex items-center space-x-3 min-w-0">
+            <div className="w-10 h-10 bg-primary rounded-2xl flex items-center justify-center shadow-lg flex-shrink-0">
+              <span className="text-2xl">🍋</span>
             </div>
+            <span className="text-xl sm:text-2xl font-bold text-foreground truncate">Competitor Lemonade</span>
           </div>
 
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center gap-2 flex-wrap justify-end max-w-full overflow-x-hidden">
             {isAuthenticated && user ? (
               <>
                 {/* User Status Indicator */}
-                <div className="flex items-center space-x-3 text-sm bg-soft-green px-4 py-2 rounded-xl border-2 border-primary/20" data-testid="user-status">
-                  <User className="w-4 h-4 text-gray-700" />
-                  <span className="font-medium text-gray-800" data-testid="text-user-email">{(user as any)?.email || 'User'}</span>
+                <div className="flex items-center space-x-2 text-sm bg-soft-green px-3 py-1.5 rounded-xl border-2 border-primary/20 whitespace-nowrap" data-testid="user-status">
+                  <User className="w-4 h-4 text-gray-700 flex-shrink-0" />
+                  <span className="font-medium text-gray-800 truncate max-w-[40vw] sm:max-w-none" data-testid="text-user-email">{(user as any)?.email || 'User'}</span>
                   {(() => {
                     const plan = (usage?.plan || (user as any)?.plan || 'free') as 'free' | 'premium';
                     return (
-                      <Badge className="bg-primary text-primary-foreground font-bold" data-testid="badge-user-tier">
+                      <Badge className="bg-primary text-primary-foreground font-bold flex-shrink-0" data-testid="badge-user-tier">
                         {plan === 'premium' ? 'Premium' : 'Free'}
                       </Badge>
                     );
@@ -50,7 +48,7 @@ export default function AppHeader({ usage }: AppHeaderProps) {
 
                 {/* Query Limit Indicator */}
                 {usage && (
-                  <div className="flex items-center space-x-3 text-sm bg-peach px-4 py-2 rounded-xl border-2 border-primary/20" data-testid="usage-indicator">
+                  <div className="flex items-center space-x-2 text-sm bg-peach px-3 py-1.5 rounded-xl border-2 border-primary/20 whitespace-nowrap" data-testid="usage-indicator">
                     <span className="font-medium text-gray-800">🍋 {usage.isTrackingBased ? 'Tracking limit:' : 'Daily limit:'}</span>
                     <span className="font-bold text-gray-900" data-testid="text-usage-current">{usage.current}</span>
                     <span className="text-gray-700">/</span>
@@ -62,7 +60,7 @@ export default function AppHeader({ usage }: AppHeaderProps) {
                 )}
 
                 <Button
-                  className="bg-primary text-primary-foreground rounded-xl hover:bg-primary"
+                  className="bg-primary text-primary-foreground rounded-xl hover:bg-primary flex-shrink-0"
                   size="sm"
                   onClick={() => window.location.href = '/api/logout'}
                   data-testid="button-logout"

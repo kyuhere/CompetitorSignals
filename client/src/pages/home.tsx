@@ -167,17 +167,20 @@ export default function Home() {
       
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <Tabs defaultValue="tracking" className="w-full">
-          <TabsList className="grid w-full grid-cols-3 mb-8 glass-panel p-1 rounded-2xl">
-            <TabsTrigger value="tracking" className="glass-button flex items-center font-semibold text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground" data-testid="tab-tracking">
-              <Target className="w-4 h-4 mr-2" />
+          <TabsList
+            className="w-full overflow-x-auto overflow-y-hidden flex items-center gap-2 sm:gap-3 mb-8 glass-panel p-1 rounded-2xl"
+            style={{ WebkitOverflowScrolling: 'touch' }}
+          >
+            <TabsTrigger value="tracking" className="glass-button flex items-center font-semibold text-sm whitespace-nowrap h-10 leading-none px-3 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground" data-testid="tab-tracking">
+              <Target className="w-4 h-4 mr-2 flex-shrink-0" />
               Competitor Tracking
             </TabsTrigger>
-            <TabsTrigger value="analysis" className="glass-button flex items-center font-semibold text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground" data-testid="tab-analysis">
-              <TrendingUp className="w-4 h-4 mr-2" />
+            <TabsTrigger value="analysis" className="glass-button flex items-center font-semibold text-sm whitespace-nowrap h-10 leading-none px-3 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground" data-testid="tab-analysis">
+              <TrendingUp className="w-4 h-4 mr-2 flex-shrink-0" />
               One-Time Analysis
             </TabsTrigger>
-            <TabsTrigger value="reports" className="glass-button flex items-center font-semibold text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground" data-testid="tab-reports">
-              <BarChart3 className="w-4 h-4 mr-2" />
+            <TabsTrigger value="reports" className="glass-button flex items-center font-semibold text-sm whitespace-nowrap h-10 leading-none px-3 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground" data-testid="tab-reports">
+              <BarChart3 className="w-4 h-4 mr-2 flex-shrink-0" />
               Report History
             </TabsTrigger>
           </TabsList>

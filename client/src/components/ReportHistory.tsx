@@ -53,7 +53,7 @@ export default function ReportHistory({ reports, isLoading, onLoadReport }: Repo
 
   return (
     <Card data-testid="card-report-history" className="card-rounded hover-lift">
-      <CardContent className="p-6">
+      <CardContent className="p-4 sm:p-6">
         <h2 className="text-foreground mb-4">Recent Reports</h2>
         
         {reports.length === 0 ? (
@@ -67,12 +67,12 @@ export default function ReportHistory({ reports, isLoading, onLoadReport }: Repo
             {reports.slice(0, 5).map((report) => (
               <div 
                 key={report.id}
-                className="flex items-center justify-between p-4 bg-muted rounded-xl hover:bg-primary hover:text-primary-foreground transition-all duration-200 cursor-pointer group"
+                className="flex items-center justify-between p-4 bg-muted rounded-xl hover:bg-primary hover:text-primary-foreground transition-all duration-200 cursor-pointer group gap-2 flex-wrap"
                 onClick={() => setLocation(`/report/${report.id}`)}
                 data-testid={`report-item-${report.id}`}
               >
-                <div className="flex-1">
-                  <p className="font-medium group-hover:text-primary-foreground" data-testid={`text-report-title-${report.id}`}>
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium group-hover:text-primary-foreground truncate" data-testid={`text-report-title-${report.id}`}>
                     {report.title}
                   </p>
                   <p className="text-sm text-muted-foreground group-hover:text-primary-foreground/80" data-testid={`text-report-meta-${report.id}`}>
@@ -87,7 +87,7 @@ export default function ReportHistory({ reports, isLoading, onLoadReport }: Repo
                     setLocation(`/report/${report.id}`);
                   }}
                   data-testid={`button-view-report-${report.id}`}
-                  className="group-hover:text-primary-foreground group-hover:hover:bg-primary-foreground/10"
+                  className="group-hover:text-primary-foreground group-hover:hover:bg-primary-foreground/10 flex-shrink-0"
                 >
                   <ExternalLink className="w-4 h-4" />
                 </Button>
