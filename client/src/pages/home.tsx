@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -13,6 +13,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { BarChart3, Building2, TrendingUp, Zap, Target, FileText } from "lucide-react";
 
 export default function Home() {
@@ -20,6 +21,8 @@ export default function Home() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [loadingProgress, setLoadingProgress] = useState(0);
   const { toast } = useToast();
+  const [activeTab, setActiveTab] = useState<"tracking" | "analysis" | "reports">("tracking");
+  const [showSignupModal, setShowSignupModal] = useState(false);
 
   // Fetch usage stats
   const { data: usage, isLoading: usageLoading } = useQuery({
@@ -32,9 +35,36 @@ export default function Home() {
     queryKey: ["/api/reports"],
   });
 
+  // Guest gating: one free search per session
+  const isGuest = useMemo(() => {
+    return !(usage as any)?.isLoggedIn;
+  }, [usage]);
+
+  const [guestHasSearched, setGuestHasSearched] = useState<boolean>(false);
+
+  useEffect(() => {
+    try {
+      const flag = localStorage.getItem("guest_one_free_search_done");
+      setGuestHasSearched(flag === "1");
+    } catch {}
+  }, []);
+
+  const triggerSignupGate = () => setShowSignupModal(true);
+  const shouldBlockTabs = isGuest && (guestHasSearched || !!currentReport);
+
   // Analyze competitors mutation
   const analyzeMutation = useMutation({
     mutationFn: async (data: any) => {
+      // Block second search for guests
+      if (isGuest) {
+        try {
+          const flag = localStorage.getItem("guest_one_free_search_done");
+          if (flag === "1") {
+            triggerSignupGate();
+            throw new Error("Sign up required for additional searches");
+          }
+        } catch {}
+      }
       setIsAnalyzing(true);
       setLoadingProgress(10);
       
@@ -92,6 +122,10 @@ export default function Home() {
     },
     onSuccess: (report) => {
       setCurrentReport(report);
+      if (isGuest) {
+        try { localStorage.setItem("guest_one_free_search_done", "1"); } catch {}
+        setGuestHasSearched(true);
+      }
       queryClient.invalidateQueries({ queryKey: ["/api/usage"] });
       queryClient.invalidateQueries({ queryKey: ["/api/reports"] });
       queryClient.invalidateQueries({ queryKey: ["/api/competitors/tracked"] });
@@ -125,7 +159,20 @@ export default function Home() {
   });
 
   const handleAnalysis = (formData: any) => {
+    // Guard before mutation for guests who already used the free search
+    if (isGuest && guestHasSearched) {
+      triggerSignupGate();
+      return;
+    }
     analyzeMutation.mutate(formData);
+  };
+
+  const handleMainTabChange = (value: string) => {
+    if (shouldBlockTabs) {
+      triggerSignupGate();
+      return;
+    }
+    setActiveTab(value as any);
   };
 
   const handleLoadReport = (report: any) => {
@@ -166,7 +213,7 @@ export default function Home() {
       </div>
       
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <Tabs defaultValue="tracking" className="w-full">
+        <Tabs value={activeTab} onValueChange={handleMainTabChange} className="w-full">
           <TabsList
             className="w-full overflow-x-auto overflow-y-hidden flex items-center gap-2 sm:gap-3 mb-8 glass-panel p-1 rounded-2xl pl-2 pr-2"
             style={{ WebkitOverflowScrolling: 'touch' }}
@@ -196,7 +243,11 @@ export default function Home() {
               {/* Right Column: Report Display */}
               <div className="xl:col-span-2">
                 {currentReport ? (
-                  <CompetitorReport report={currentReport} />
+                  <CompetitorReport
+                    report={currentReport}
+                    guestGateActive={isGuest && guestHasSearched}
+                    onGuestGate={() => triggerSignupGate()}
+                  />
                 ) : (
                   <Card className="h-96 flex items-center justify-center card-rounded hover-lift">
                     <CardContent className="text-center">
@@ -287,6 +338,33 @@ export default function Home() {
             )}
           </TabsContent>
         </Tabs>
+
+        {/* Signup Gate Modal for Guests */}
+        <div>
+          <Dialog open={showSignupModal} onOpenChange={setShowSignupModal as any}>
+            <DialogContent className="w-[95vw] sm:max-w-md p-4 sm:p-6">
+              <DialogHeader>
+                <DialogTitle className="text-2xl font-bold">Sign up to continue</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-3">
+                <p className="text-sm text-muted-foreground">
+                  You’ve used your free preview. Create a free account to:
+                </p>
+                <ul className="list-disc pl-5 text-sm space-y-1 text-foreground">
+                  <li>Save and revisit reports</li>
+                  <li>Track competitors and get periodic updates</li>
+                  <li>Access detailed tabs: Analysis, Reviews, Market, Tech</li>
+                </ul>
+                <div className="flex gap-2 justify-end pt-2">
+                  <Button variant="outline" onClick={() => setShowSignupModal(false)}>Not now</Button>
+                  <Button onClick={() => { window.location.href = '/api/login'; }} className="bg-primary text-primary-foreground">
+                    Sign up free
+                  </Button>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
+        </div>
       </main>
 
       <LoadingModal isOpen={isAnalyzing} progress={loadingProgress} />

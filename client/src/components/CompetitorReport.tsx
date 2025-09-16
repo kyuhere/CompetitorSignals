@@ -147,9 +147,12 @@ interface CompetitorReportProps {
     };
     createdAt: string;
   };
+  // Guest gating: when true, block tab switches and gated actions
+  guestGateActive?: boolean;
+  onGuestGate?: () => void;
 }
 
-export default function CompetitorReport({ report }: CompetitorReportProps) {
+export default function CompetitorReport({ report, guestGateActive, onGuestGate }: CompetitorReportProps) {
   const { toast } = useToast();
   const [emailDialogOpen, setEmailDialogOpen] = useState(false);
   const [emailAddress, setEmailAddress] = useState("");
@@ -379,7 +382,13 @@ export default function CompetitorReport({ report }: CompetitorReportProps) {
               </div>
             </div>
             <div className="flex gap-2">
-              <Dialog open={emailDialogOpen} onOpenChange={setEmailDialogOpen}>
+              <Dialog open={emailDialogOpen} onOpenChange={(open) => {
+              if (guestGateActive) {
+                onGuestGate && onGuestGate();
+                return; // keep dialog closed
+              }
+              setEmailDialogOpen(open);
+            }}>
                 <DialogTrigger asChild>
                   <Button className="rounded-full flex items-center gap-2">
                     <Mail className="w-4 h-4" /> Email
@@ -498,6 +507,12 @@ export default function CompetitorReport({ report }: CompetitorReportProps) {
                   size="sm"
                   data-testid="button-email-report"
                   className="btn-glass-secondary"
+                  onClick={(e) => {
+                    if (guestGateActive) {
+                      e.preventDefault();
+                      onGuestGate && onGuestGate();
+                    }
+                  }}
                 >
                   <Mail className="w-4 h-4 mr-2" />
                   Email Report
@@ -544,7 +559,14 @@ export default function CompetitorReport({ report }: CompetitorReportProps) {
             <Button
               variant="outline"
               size="sm"
-              onClick={handleExport}
+              onClick={(e) => {
+                if (guestGateActive) {
+                  e.preventDefault();
+                  onGuestGate && onGuestGate();
+                  return;
+                }
+                handleExport();
+              }}
               data-testid="button-export-pdf"
               className="btn-glass-secondary"
             >
@@ -651,7 +673,10 @@ export default function CompetitorReport({ report }: CompetitorReportProps) {
                 </div>
               </div>
 
-              <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="w-full">
+              <Tabs value={activeTab} onValueChange={(v) => {
+                if (guestGateActive) { onGuestGate && onGuestGate(); return; }
+                setActiveTab(v as any);
+              }} className="w-full">
                 <TabsList
                   className="w-full overflow-x-auto overflow-y-hidden flex items-center gap-2 sm:gap-3 pb-1 glass-panel p-1 rounded-2xl pl-2 pr-2"
                   style={{ WebkitOverflowScrolling: 'touch' }}
