@@ -16,6 +16,25 @@ import { sendCompetitorReport } from "./email";
 // Store active streaming sessions
 const streamingSessions = new Map<string, any>();
 
+// --- Enhanced SWR cache & streaming ---
+type EnhancedCacheItem = {
+  payload: any; // enhanced array shape
+  lastUpdated: number; // epoch ms
+  expires: number; // epoch ms
+};
+const ENHANCED_TTL_MS = 10 * 60 * 1000; // 10 minutes
+const enhancedCacheByReport = new Map<string, EnhancedCacheItem>();
+const enhancedStreamSubscribers = new Map<string, Set<any>>(); // reportId -> Set<Response>
+
+function pushEnhancedUpdate(reportId: string, payload: any) {
+  const subs = enhancedStreamSubscribers.get(reportId);
+  if (!subs || subs.size === 0) return;
+  const data = JSON.stringify({ type: 'enhanced_update', payload });
+  subs.forEach((res) => {
+    try { res.write(`data: ${data}\n\n`); } catch {}
+  });
+}
+
 // In-memory cache for repeated analyses (15 min TTL)
 type CachedPayload = {
   signals: any[];
@@ -585,6 +604,102 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching report:", error);
       res.status(500).json({ message: "Failed to fetch report" });
+    }
+  });
+
+  // Helper: trigger background refresh of enhanced data for a report
+  async function refreshEnhancedForReport(reportId: string, report: any) {
+    try {
+      const competitors: string[] = Array.isArray(report.competitors) ? report.competitors : [];
+      const sources = (report.metadata?.sources || []).reduce((acc: any, k: string) => { acc[k] = true; return acc; }, { news: true, funding: true, social: true, products: false });
+      const mode: 'free' | 'premium' = (report.metadata?.enhanced?.locked === false) ? 'premium' : 'free';
+
+      const enhancedResults = await enhancedSignalAggregator.aggregateEnhancedSignals(
+        competitors,
+        [],
+        sources,
+        undefined,
+        { mode, computeSentiment: mode === 'premium' }
+      );
+
+      const enhancedData = enhancedResults.enhanced || [];
+      const cacheItem: EnhancedCacheItem = {
+        payload: enhancedData,
+        lastUpdated: Date.now(),
+        expires: Date.now() + ENHANCED_TTL_MS,
+      };
+      enhancedCacheByReport.set(reportId, cacheItem);
+      pushEnhancedUpdate(reportId, enhancedData);
+    } catch (err) {
+      console.error('[Enhanced] Refresh failed for report', reportId, err);
+    }
+  }
+
+  // SWR: get enhanced data (instant cached + background refresh)
+  app.get('/api/reports/:id/enhanced', async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const report = await storage.getReportById(id);
+      if (!report) return res.status(404).json({ message: 'Report not found' });
+
+      // Seed from report metadata if cache empty
+      let cacheItem = enhancedCacheByReport.get(id);
+      if (!cacheItem) {
+        const seeded = (report as any).metadata?.enhanced?.reviewData;
+        if (seeded) {
+          cacheItem = {
+            payload: seeded,
+            lastUpdated: Date.now(),
+            expires: Date.now() + ENHANCED_TTL_MS,
+          };
+          enhancedCacheByReport.set(id, cacheItem);
+        }
+      }
+
+      const stale = !cacheItem || cacheItem.expires <= Date.now();
+      res.setHeader('X-Data-Stale', String(stale));
+      if (cacheItem) {
+        res.setHeader('X-Last-Updated', new Date(cacheItem.lastUpdated).toISOString());
+        res.json(cacheItem.payload);
+      } else {
+        res.json([]);
+      }
+
+      // Trigger background refresh if stale
+      if (stale) {
+        refreshEnhancedForReport(id, report);
+      }
+    } catch (err) {
+      console.error('[Enhanced] get enhanced failed', err);
+      res.status(500).json({ message: 'Failed to fetch enhanced data' });
+    }
+  });
+
+  // SWR: SSE stream for enhanced updates
+  app.get('/api/reports/:id/enhanced/stream', async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      res.writeHead(200, {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive',
+        'Access-Control-Allow-Origin': '*',
+      });
+
+      // register subscriber
+      if (!enhancedStreamSubscribers.has(id)) enhancedStreamSubscribers.set(id, new Set());
+      const set = enhancedStreamSubscribers.get(id)!;
+      set.add(res);
+
+      // send initial keepalive
+      res.write('data: {"type":"keepalive"}\n\n');
+
+      req.on('close', () => {
+        try { set.delete(res); } catch {}
+      });
+    } catch (err) {
+      console.error('[Enhanced] stream failed', err);
+      res.status(500).end();
     }
   });
 
