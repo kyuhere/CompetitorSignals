@@ -1,4 +1,5 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=PT+Mono&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -6,7 +7,7 @@
 
 :root {
   /* Lemonade Brand Colors */
-  --background: hsl(0 0% 100%);                    /* Pure white */
+  --background: hsl(45 41% 92%);                    /* #F4F0E0 warm retro-tech */
   --foreground: hsl(0 0% 0%);                      /* Pure black */
   --card: hsl(0 0% 100%);                          /* White cards */
   --card-foreground: hsl(0 0% 0%);                 /* Black text on cards */
@@ -75,7 +76,7 @@
   /* Typography */
   --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --font-serif: Georgia, serif;
-  --font-mono: Menlo, monospace;
+  --font-mono: 'PT Mono', monospace;
   
   /* Glass Lemon Effects */
   --glass-bg: rgba(255, 255, 255, 0.7);
@@ -174,6 +175,13 @@
     letter-spacing: -0.025em;
   }
   
+  /* Retro-tech headline typography */
+  h1, .hero-headline, .text-hero {
+    font-family: 'PT Mono', monospace;
+    letter-spacing: 0; /* mono looks better without tight tracking */
+    font-feature-settings: normal;
+  }
+  
   /* Glass Lemon Typography Scale */
   .text-hero {
     font-size: 3rem;
@@ -232,8 +240,8 @@
   
   /* Glass Lemon Secondary Button */
   .btn-glass-secondary {
-    @apply glass-button text-foreground border border-gray-300;
-    @apply hover:border-primary hover:text-primary;
+    @apply glass-button text-foreground border border-gray-400 shadow-sm;
+    @apply hover:border-primary hover:text-primary hover:shadow-md;
   }
   
   /* Enhanced Lemonade Brand Components */
