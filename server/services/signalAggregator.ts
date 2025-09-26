@@ -479,9 +479,9 @@ Respond with only "RELEVANT" or "NOT_RELEVANT"`;
       
       return rssItems.map((item: any) => ({
         title: item.title || '',
-        content: item.description || item.content || '',
-        url: item.link || '',
-        publishedAt: item.pubDate || new Date().toISOString(),
+        content: item.content || '',
+        url: item.url || '',
+        publishedAt: item.publishedAt || new Date().toISOString(),
         type: 'funding' as const,
       })).slice(0, 5);
     } catch (error) {
@@ -510,9 +510,9 @@ Respond with only "RELEVANT" or "NOT_RELEVANT"`;
       
       return rssItems.map((item: any) => ({
         title: item.title || '',
-        content: item.description || item.content || '',
-        url: item.link || '',
-        publishedAt: item.pubDate || new Date().toISOString(),
+        content: item.content || '',
+        url: item.url || '',
+        publishedAt: item.publishedAt || new Date().toISOString(),
         type: 'social' as const,
       })).slice(0, 5);
     } catch (error) {

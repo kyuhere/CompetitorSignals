@@ -318,18 +318,18 @@ Please generate a comprehensive competitive intelligence analysis with structure
       },
       "strengths_weaknesses": {
         "strengths": [
-          "• Strength 1 [Source: bing.com/news]",
-          "• Strength 2 [Source: bing.com/news]",
-          "• Strength 3 [Source: bing.com/news]",
-          "• Strength 4 [Source: bing.com/news]",
-          "• Strength 5 [Source: bing.com/news]"
+          "• Strength 1 [Source: example.com](https://example.com/article)",
+          "• Strength 2 [Source: example.com](https://example.com/article)",
+          "• Strength 3 [Source: example.com](https://example.com/article)",
+          "• Strength 4 [Source: example.com](https://example.com/article)",
+          "• Strength 5 [Source: example.com](https://example.com/article)"
         ],
         "weaknesses": [
-          "• Weakness 1 [Source: bing.com/news]",
-          "• Weakness 2 [Source: bing.com/news]",
-          "• Weakness 3 [Source: bing.com/news]",
-          "• Weakness 4 [Source: bing.com/news]",
-          "• Weakness 5 [Source: bing.com/news]"
+          "• Weakness 1 [Source: example.com](https://example.com/article)",
+          "• Weakness 2 [Source: example.com](https://example.com/article)",
+          "• Weakness 3 [Source: example.com](https://example.com/article)",
+          "• Weakness 4 [Source: example.com](https://example.com/article)",
+          "• Weakness 5 [Source: example.com](https://example.com/article)"
         ]
       },
       "pricing_strategy": {
@@ -370,38 +370,38 @@ Please generate a comprehensive competitive intelligence analysis with structure
       },
       "activity_level": "high|moderate|low",
       "recent_developments": [
-        "• Recent product launch or update with market impact [Source: bing.com/news]",
-        "• Partnership announcements and strategic moves [Source: bing.com/news]",
-        "• Executive changes or organizational updates [Source: bing.com/news]"
+        "• Recent product launch or update with market impact [Source: example.com](https://example.com/article)",
+        "• Partnership announcements and strategic moves [Source: example.com](https://example.com/article)",
+        "• Executive changes or organizational updates [Source: example.com](https://example.com/article)"
       ],
       "funding_business": [
-        "• Funding rounds with amounts and investors [Source: bing.com/news]",
-        "• Business expansion or market entry news [Source: bing.com/news]",
-        "• Revenue or growth announcements [Source: bing.com/news]"
+        "• Funding rounds with amounts and investors [Source: example.com](https://example.com/article)",
+        "• Business expansion or market entry news [Source: example.com](https://example.com/article)",
+        "• Revenue or growth announcements [Source: example.com](https://example.com/article)"
       ]
     }
   ],
   "key_takeaways": [
-    "• Key takeaway 1: Most important finding for your business [Source: bing.com/news]",
-    "• Key takeaway 2: Competitor strategy change to monitor [Source: bing.com/news]",
-    "• Key takeaway 3: Market opportunity to capitalize on [Source: bing.com/news]",
-    "• Key takeaway 4: Threat or challenge to address [Source: bing.com/news]",
-    "• Key takeaway 5: Innovation or trend to watch [Source: bing.com/news]",
-    "• Key takeaway 6: Partnership or alliance development [Source: bing.com/news]",
-    "• Key takeaway 7: Pricing or positioning insight [Source: bing.com/news]",
-    "• Key takeaway 8: Customer sentiment or feedback trend [Source: bing.com/news]",
-    "• Key takeaway 9: Technology or product advancement [Source: bing.com/news]",
-    "• Key takeaway 10: Funding or investment activity [Source: bing.com/news]",
-    "• Key takeaway 11: Market expansion or entry news [Source: bing.com/news]",
-    "• Key takeaway 12: Leadership or organizational change [Source: bing.com/news]",
-    "• Key takeaway 13: Regulatory or industry development [Source: bing.com/news]",
-    "• Key takeaway 14: Strategic weakness to exploit [Source: bing.com/news]",
-    "• Key takeaway 15: Future outlook or prediction [Source: bing.com/news]"
+    "• Key takeaway 1: Most important finding for your business [Source: example.com](https://example.com/article)",
+    "• Key takeaway 2: Competitor strategy change to monitor [Source: example.com](https://example.com/article)",
+    "• Key takeaway 3: Market opportunity to capitalize on [Source: example.com](https://example.com/article)",
+    "• Key takeaway 4: Threat or challenge to address [Source: example.com](https://example.com/article)",
+    "• Key takeaway 5: Innovation or trend to watch [Source: example.com](https://example.com/article)",
+    "• Key takeaway 6: Partnership or alliance development [Source: example.com](https://example.com/article)",
+    "• Key takeaway 7: Pricing or positioning insight [Source: example.com](https://example.com/article)",
+    "• Key takeaway 8: Customer sentiment or feedback trend [Source: example.com](https://example.com/article)",
+    "• Key takeaway 9: Technology or product advancement [Source: example.com](https://example.com/article)",
+    "• Key takeaway 10: Funding or investment activity [Source: example.com](https://example.com/article)",
+    "• Key takeaway 11: Market expansion or entry news [Source: example.com](https://example.com/article)",
+    "• Key takeaway 12: Leadership or organizational change [Source: example.com](https://example.com/article)",
+    "• Key takeaway 13: Regulatory or industry development [Source: example.com](https://example.com/article)",
+    "• Key takeaway 14: Strategic weakness to exploit [Source: example.com](https://example.com/article)",
+    "• Key takeaway 15: Future outlook or prediction [Source: example.com](https://example.com/article)"
   ],
   "strategic_insights": [
-    "• Cross-competitor trend 1 with market implications [Source: bing.com/news]",
-    "• Industry development 2 affecting competitive landscape [Source: bing.com/news]",
-    "• Strategic opportunity or threat 3 for consideration [Source: bing.com/news]"
+    "• Cross-competitor trend 1 with market implications [Source: example.com](https://example.com/article)",
+    "• Industry development 2 affecting competitive landscape [Source: example.com](https://example.com/article)",
+    "• Strategic opportunity or threat 3 for consideration [Source: example.com](https://example.com/article)"
   ],
   "sources_referenced": "Brief summary of news articles, funding announcements, social mentions, and other sources analyzed",
   "methodology": {
@@ -419,11 +419,14 @@ CRITICAL FORMATTING REQUIREMENTS:
 - Each competitor must include ALL sections: company_overview, strengths_weaknesses, pricing_strategy, target_market, tech_assessment, market_presence, products_services, swot_analysis, customer_insights, and tech_innovation
 - For strengths_weaknesses: provide exactly 5 bullet points for strengths and 5 for weaknesses
 - For SWOT analysis: provide at least 2 points for each category (strengths, weaknesses, opportunities, threats)
-- Append Markdown source links using the item's URL when available, formatted as [Source: domain](URL) (e.g., [Source: wsj.com](https://www.wsj.com/...)). Use the actual publisher domain, not bing.com/news.
+- Append Markdown source links using the item's URL from SIGNALS DATA when available, formatted as [Source: domain](URL) (e.g., [Source: wsj.com](https://www.wsj.com/...)). Use the actual publisher domain, not bing.com/news.
+- You MUST derive sources from the provided SIGNALS DATA items' url fields. Never use generic placeholders like "[Source: news]" or "[Source: bing.com/news]".
+- If multiple items support the same point, choose one representative, recent source.
 - Recent developments (last 30 days prioritized)
 - Business impact and strategic implications
 - Rate activity level based on signal volume and recency
 - If an item's URL is missing, omit the link; do not invent URLs. Keep link labels short (domain only).
+- For basic facts (e.g., company headquarters location) that are widely known and unambiguous, you may include them from general knowledge if not explicitly present in SIGNALS DATA; otherwise output "No reliable data found".
 - IMPORTANT: Always populate ALL sections for each competitor even if data is limited
 - If specific data is not available, provide reasonable business estimates or note "No reliable data found"
 - Do NOT leave any section empty or undefined
