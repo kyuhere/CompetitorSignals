@@ -22,6 +22,12 @@ interface CompetitorSignals {
   items: SignalItem[];
 }
 
+interface SuggestedCompetitor {
+  name: string;
+  domain: string;
+  url: string;
+}
+
 class SignalAggregator {
   // Calculate text similarity using Jaccard index
   private calculateSimilarity(text1: string, text2: string): number {
@@ -34,6 +40,100 @@ class SignalAggregator {
     const union = new Set([...Array.from(words1), ...Array.from(words2)]);
     
     return intersection.size / union.size;
+  }
+
+  // Public: Suggest competitors using Google Search
+  async getSuggestedCompetitorsFor(competitor: string): Promise<SuggestedCompetitor[]> {
+    if (!process.env.RAPIDAPI_KEY) return [];
+
+    const qCompetitor = (competitor || '').trim();
+    if (!qCompetitor) return [];
+
+    const queries = [
+      `${qCompetitor} competitors`,
+      `alternatives to ${qCompetitor}`,
+      `${qCompetitor} vs`,
+      `similar to ${qCompetitor}`,
+    ];
+
+    const fetchOne = async (q: string) => {
+      const url = `https://google-search116.p.rapidapi.com/?query=${encodeURIComponent(q)}`;
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 8000);
+      try {
+        const res = await fetch(url, {
+          method: 'GET',
+          headers: {
+            'x-rapidapi-host': 'google-search116.p.rapidapi.com',
+            'x-rapidapi-key': process.env.RAPIDAPI_KEY as string,
+          },
+          signal: controller.signal,
+        });
+        clearTimeout(timeout);
+        if (!res.ok) throw new Error(`Google Search RapidAPI failed: ${res.status}`);
+        const data = await res.json();
+        const entries = (data?.organic || data?.results || data?.items || []) as any[];
+        return entries.slice(0, 10).map((it: any) => {
+          const url = it.link || it.url || it.sourceUrl || '';
+          let domain = '';
+          try { domain = new URL(url).hostname.replace(/^www\./, ''); } catch {}
+          const base = (domain || '').split('.')[0];
+          const nameFromDomain = base ? (base.charAt(0).toUpperCase() + base.slice(1)) : '';
+          // Prefer title-derived name if appears like a brand token
+          const title = (it.title || it.name || '') as string;
+          const cleanTitle = title.replace(/[^A-Za-z0-9\s\-\|]/g, ' ');
+          const parts = cleanTitle.split(/\s+|\||-/).filter(Boolean);
+          let candidate = nameFromDomain;
+          for (const p of parts) {
+            const token = p.trim();
+            if (!token) continue;
+            // Skip the query brand token and generic words
+            const low = token.toLowerCase();
+            if (low === qCompetitor.toLowerCase()) continue;
+            if (['vs','and','or','top','best','alternatives','competitors','similar','to','the','a','an','of','for','review','pricing'].includes(low)) continue;
+            if (/^\d+$/.test(low)) continue;
+            if (token[0] === token[0]?.toUpperCase() && token.length > 2) { // Capitalized brandy token
+              candidate = token;
+              break;
+            }
+          }
+          return { name: candidate || nameFromDomain || domain || url, domain: domain || '', url: url } as SuggestedCompetitor;
+        });
+      } catch (err) {
+        clearTimeout(timeout);
+        console.error('[SuggestedCompetitors] query failed', { competitor, q, err: (err as Error)?.message });
+        return [] as SuggestedCompetitor[];
+      }
+    };
+
+    const all = (await Promise.allSettled(queries.map(fetchOne))).flatMap(r => r.status === 'fulfilled' ? r.value : []);
+
+    const own = qCompetitor.toLowerCase();
+    const counts = new Map<string, { item: SuggestedCompetitor, count: number }>();
+    for (const it of all) {
+      const domain = (it.domain || '').toLowerCase();
+      if (!domain) continue;
+      // Skip own domain or generic domains
+      if (domain.includes(`${own}.`)) continue;
+      if ([
+        'google.com','news.google.com','bing.com','news.bing.com','linkedin.com','twitter.com','x.com','youtube.com','medium.com','reddit.com','facebook.com'
+      ].includes(domain)) continue;
+      const key = domain;
+      const cur = counts.get(key);
+      const normalizedName = (it.name || '').trim();
+      const item = { name: normalizedName || (domain.split('.')[0] || ''), domain: domain, url: it.url } as SuggestedCompetitor;
+      if (!cur) counts.set(key, { item, count: 1 }); else cur.count++;
+    }
+
+    const ranked = Array.from(counts.values()).sort((a, b) => b.count - a.count).map(v => v.item);
+    // Clean display: title case from domain base if missing
+    const cleaned = ranked.map((r) => {
+      const base = (r.domain || '').split('.')[0];
+      const name = r.name && r.name.length > 1 ? r.name : (base ? (base.charAt(0).toUpperCase() + base.slice(1)) : r.domain);
+      return { ...r, name };
+    });
+
+    return cleaned.slice(0, 5);
   }
 
   // RapidAPI Google Search integration for broader discovery of business news
@@ -158,6 +258,26 @@ class SignalAggregator {
               })
               .catch((error: any) => {
                 console.error(`Error getting RapidAPI signals for ${competitor}:`, error);
+                return null;
+              })
+          );
+
+          // Also include Google Search as a distinct source for Source References breadth
+          tasks.push(
+            this.getGoogleSearchNews(competitor)
+              .then((googleItems) => {
+                if (googleItems && googleItems.length > 0) {
+                  const trimmed = this.trimContent(googleItems).slice(0, 10);
+                  return {
+                    source: "Google Search",
+                    competitor,
+                    items: trimmed,
+                  } as CompetitorSignals;
+                }
+                return null;
+              })
+              .catch((error: any) => {
+                console.error(`Error getting Google Search signals for ${competitor}:`, error);
                 return null;
               })
           );

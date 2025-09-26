@@ -714,6 +714,66 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Suggested competitors for a saved report (derive from first competitor)
+  app.get('/api/reports/:id/suggested-competitors', async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const report = await storage.getReportById(id);
+      if (!report) return res.status(404).json({ message: 'Report not found' });
+
+      const competitors: string[] = Array.isArray(report.competitors) ? report.competitors : [];
+      if (competitors.length === 0) return res.json([]);
+
+      const base = String(competitors[0] || '').trim();
+      const suggestions = await signalAggregator.getSuggestedCompetitorsFor(base);
+
+      const existing = new Set(competitors.map((c: string) => (c || '').toLowerCase()));
+      const deduped = [] as Array<{ name: string; domain: string; url: string }>;
+      const seenDomain = new Set<string>();
+      for (const s of suggestions) {
+        const domain = (s.domain || '').toLowerCase();
+        const name = (s.name || '').toLowerCase();
+        if (!domain) continue;
+        if (existing.has(name)) continue;
+        if (seenDomain.has(domain)) continue;
+        seenDomain.add(domain);
+        deduped.push({ name: s.name, domain: s.domain, url: s.url });
+        if (deduped.length >= 3) break;
+      }
+
+      res.json(deduped);
+    } catch (err) {
+      console.error('[Routes] /api/reports/:id/suggested-competitors failed', err);
+      res.status(500).json({ message: 'Failed to suggest competitors' });
+    }
+  });
+
+  // Suggested competitors for guest flow: ?query=name or ?competitors=a,b
+  app.get('/api/suggested-competitors', async (req: any, res) => {
+    try {
+      const q = (String(req.query.query || '') || '').trim();
+      const rawComps = String(req.query.competitors || '').trim();
+      const base = q || (rawComps.split(',').map((s: string) => s.trim()).filter(Boolean)[0] || '');
+      if (!base) return res.json([]);
+
+      const suggestions = await signalAggregator.getSuggestedCompetitorsFor(base);
+      const deduped = [] as Array<{ name: string; domain: string; url: string }>;
+      const seenDomain = new Set<string>();
+      for (const s of suggestions) {
+        const domain = (s.domain || '').toLowerCase();
+        if (!domain) continue;
+        if (seenDomain.has(domain)) continue;
+        seenDomain.add(domain);
+        deduped.push({ name: s.name, domain: s.domain, url: s.url });
+        if (deduped.length >= 3) break;
+      }
+      res.json(deduped);
+    } catch (err) {
+      console.error('[Routes] /api/suggested-competitors failed', err);
+      res.status(500).json({ message: 'Failed to suggest competitors' });
+    }
+  });
+
   // Helper: trigger background refresh of enhanced data for a report
   async function refreshEnhancedForReport(reportId: string, report: any) {
     try {
