@@ -38,6 +38,27 @@ const mdLinksToAnchors = (s: string) => {
         .replace(/>/g, '&gt;');
       return `<a href="${safeUrl}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1 underline text-blue-700">${safeLabel}</a>`;
     });
+
+  // Suggested Competitors (via backend helper)
+  const { data: suggestedComps } = useQuery({
+    queryKey: ["suggested-competitors", report.id, (report.competitors || []).join(',')],
+    queryFn: async () => {
+      try {
+        if (String(report.id || '').startsWith('temp_')) {
+          const q = encodeURIComponent((report.competitors || []).join(','));
+          const res = await apiRequest('GET', `/api/suggested-competitors?competitors=${q}`);
+          return Array.isArray(res) ? res : [];
+        } else {
+          const res = await apiRequest('GET', `/api/reports/${report.id}/suggested-competitors`);
+          return Array.isArray(res) ? res : [];
+        }
+      } catch (e) {
+        console.error('Failed to load suggested competitors', e);
+        return [] as Array<{ name: string; domain: string; url: string }>;
+      }
+    },
+    staleTime: 10 * 60 * 1000,
+  });
     
     // Auto-link bare URLs in remaining text segments (only if no markdown links were found)
     if (!text.includes('<a href=')) {
@@ -1239,26 +1260,38 @@ export default function CompetitorReport({ report, guestGateActive, onGuestGate 
           </div>
         )}
 
-        {/* Suggested Competitors (inferred) */}
-        {Array.isArray(suggestedCompetitors) && suggestedCompetitors.length > 0 && (
+        {/* Suggested Competitors */}
+        {Array.isArray(suggestedComps) && suggestedComps.length > 0 && (
           <div className="mt-8 p-6 bg-muted/60 rounded-lg">
             <h3 className="text-lg font-semibold text-foreground mb-3 flex items-center">
               <Users className="w-5 h-5 text-primary mr-2" />
               Suggested Competitors
             </h3>
-            <div className="flex flex-wrap gap-2">
-              {suggestedCompetitors.map((name) => (
-                <a
-                  key={name}
-                  href={`https://www.google.com/search?q=${encodeURIComponent(name + ' competitor')}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-xs bg-primary/10 text-primary px-2 py-1 rounded-full hover:bg-primary/20 transition-colors"
-                >
-                  {name}
-                </a>
-              ))}
-            </div>
+            <ul className="space-y-2">
+              {suggestedComps.slice(0, 3).map((it: any, idx: number) => {
+                const name = it?.name || '';
+                const domain = it?.domain || '';
+                const href = it?.url || (name ? `https://www.google.com/search?q=${encodeURIComponent(name + ' competitor')}` : '#');
+                return (
+                  <li key={idx} className="text-sm text-foreground flex items-start">
+                    <div className="w-1.5 h-1.5 bg-primary rounded-full mt-2 mr-3 flex-shrink-0"></div>
+                    <div>
+                      <a href={href} target="_blank" rel="noopener noreferrer" className="font-medium underline text-blue-700 hover:text-blue-800">
+                        {name}
+                      </a>
+                      {domain && (
+                        <>
+                          <span className="mx-2 text-muted-foreground">•</span>
+                          <a href={`https://${domain}`} target="_blank" rel="noopener noreferrer" className="text-muted-foreground underline">
+                            {domain}
+                          </a>
+                        </>
+                      )}
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
           </div>
         )}
 
