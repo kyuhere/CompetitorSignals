@@ -74,8 +74,8 @@ class SignalAggregator {
         });
       }
 
-      // Add RapidAPI news search for each competitor
-      if (process.env.RAPIDAPI_KEY) {
+      // Add RapidAPI news search for each competitor (skip when web_search flag is on)
+      if (process.env.RAPIDAPI_KEY && process.env.OPENAI_ENABLE_WEB_NEWS !== '1') {
         competitors.forEach(competitor => {
           tasks.push(
             this.getRapidAPINews(competitor)
@@ -216,7 +216,7 @@ class SignalAggregator {
 
   private async getNewsSignals(competitor: string): Promise<SignalItem[]> {
     try {
-      // Web-search first path (feature-flagged)
+      // Web-search first path (feature-flagged). If enabled, do NOT fall back.
       if (process.env.OPENAI_ENABLE_WEB_NEWS === '1') {
         try {
           const ws = await openaiWebSearch.searchNewsForCompetitor(competitor, 'general');
@@ -224,8 +224,10 @@ class SignalAggregator {
             // Limit for quality and consistency with existing pipeline
             return ws.slice(0, 5);
           }
+          return [];
         } catch (e) {
-          console.error('[SignalAggregator] Web news fetch failed, falling back', { competitor, error: (e as Error)?.message });
+          console.error('[SignalAggregator] Web news fetch failed (no fallback by flag)', { competitor, error: (e as Error)?.message });
+          return [];
         }
       }
       // Search for business-critical news about the competitor
@@ -245,10 +247,10 @@ class SignalAggregator {
           
           const results = rssItems.map((item: any) => ({
             title: item.title || '',
-            content: item.description || item.content || '',
-            url: item.link || '',
-            publishedAt: item.pubDate || new Date().toISOString(),
-            type: this.detectSignalType(query, item.title, item.description) as 'news' | 'funding' | 'social' | 'product',
+            content: item.content || '',
+            url: item.url || '',
+            publishedAt: item.publishedAt || new Date().toISOString(),
+            type: this.detectSignalType(query, item.title, item.content) as 'news' | 'funding' | 'social' | 'product',
           }));
           
           allResults.push(...results);
@@ -374,6 +376,10 @@ class SignalAggregator {
 
   // AI-powered content relevance filtering
   private async filterRelevantStories(items: SignalItem[]): Promise<SignalItem[]> {
+    // When web_search is enabled, upstream results are already high-quality. Skip extra AI passes to reduce latency.
+    if (process.env.OPENAI_ENABLE_WEB_NEWS === '1') {
+      return items;
+    }
     if (!process.env.OPENAI_API_KEY || items.length === 0) {
       return items;
     }
@@ -462,15 +468,17 @@ Respond with only "RELEVANT" or "NOT_RELEVANT"`;
 
   private async getFundingSignals(competitor: string): Promise<SignalItem[]> {
     try {
-      // Web-search first path (feature-flagged)
+      // Web-search first path (feature-flagged). If enabled, do NOT fall back.
       if (process.env.OPENAI_ENABLE_WEB_NEWS === '1') {
         try {
           const ws = await openaiWebSearch.searchNewsForCompetitor(competitor, 'funding');
           if (ws && ws.length > 0) {
             return ws.slice(0, 5).map(it => ({ ...it, type: 'funding' as const }));
           }
+          return [];
         } catch (e) {
-          console.error('[SignalAggregator] Web funding news failed, falling back', { competitor, error: (e as Error)?.message });
+          console.error('[SignalAggregator] Web funding news failed (no fallback by flag)', { competitor, error: (e as Error)?.message });
+          return [];
         }
       }
       const fundingQuery = `"${competitor}" "funding" OR "investment" OR "raised" OR "revenue" OR "valuation" OR "IPO"`;
@@ -492,7 +500,7 @@ Respond with only "RELEVANT" or "NOT_RELEVANT"`;
 
   private async getSocialSignals(competitor: string): Promise<SignalItem[]> {
     try {
-      // Web-search first path (feature-flagged)
+      // Web-search first path (feature-flagged). If enabled, do NOT fall back.
       if (process.env.OPENAI_ENABLE_WEB_NEWS === '1') {
         try {
           const ws = await openaiWebSearch.searchNewsForCompetitor(competitor, 'general');
@@ -500,8 +508,10 @@ Respond with only "RELEVANT" or "NOT_RELEVANT"`;
             // Reclassify as 'social' for this channel to keep downstream type intent
             return ws.slice(0, 5).map(it => ({ ...it, type: 'social' as const }));
           }
+          return [];
         } catch (e) {
-          console.error('[SignalAggregator] Web social signals failed, falling back', { competitor, error: (e as Error)?.message });
+          console.error('[SignalAggregator] Web social signals failed (no fallback by flag)', { competitor, error: (e as Error)?.message });
+          return [];
         }
       }
       const socialQuery = `"${competitor}" "customers" OR "reviews" OR "complaints" OR "satisfaction" OR "market share"`;
