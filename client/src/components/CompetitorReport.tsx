@@ -38,27 +38,6 @@ const mdLinksToAnchors = (s: string) => {
         .replace(/>/g, '&gt;');
       return `<a href="${safeUrl}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1 underline text-blue-700">${safeLabel}</a>`;
     });
-
-  // Suggested Competitors (via backend helper)
-  const { data: suggestedComps } = useQuery({
-    queryKey: ["suggested-competitors", report.id, (report.competitors || []).join(',')],
-    queryFn: async () => {
-      try {
-        if (String(report.id || '').startsWith('temp_')) {
-          const q = encodeURIComponent((report.competitors || []).join(','));
-          const res = await apiRequest('GET', `/api/suggested-competitors?competitors=${q}`);
-          return Array.isArray(res) ? res : [];
-        } else {
-          const res = await apiRequest('GET', `/api/reports/${report.id}/suggested-competitors`);
-          return Array.isArray(res) ? res : [];
-        }
-      } catch (e) {
-        console.error('Failed to load suggested competitors', e);
-        return [] as Array<{ name: string; domain: string; url: string }>;
-      }
-    },
-    staleTime: 10 * 60 * 1000,
-  });
     
     // Auto-link bare URLs in remaining text segments (only if no markdown links were found)
     if (!text.includes('<a href=')) {
@@ -242,6 +221,27 @@ export default function CompetitorReport({ report, guestGateActive, onGuestGate,
       }
     },
     staleTime: 5 * 60 * 1000,
+  });
+
+  // Suggested Competitors (via backend helper)
+  const { data: suggestedComps } = useQuery({
+    queryKey: ["suggested-competitors", report.id, (report.competitors || []).join(',')],
+    queryFn: async () => {
+      try {
+        if (String(report.id || '').startsWith('temp_')) {
+          const q = encodeURIComponent((report.competitors || []).join(','));
+          const res = await apiRequest('GET', `/api/suggested-competitors?competitors=${q}`);
+          return Array.isArray(res) ? res : [];
+        } else {
+          const res = await apiRequest('GET', `/api/reports/${report.id}/suggested-competitors`);
+          return Array.isArray(res) ? res : [];
+        }
+      } catch (e) {
+        console.error('Failed to load suggested competitors', e);
+        return [] as Array<{ name: string; domain: string; url: string }>;
+      }
+    },
+    staleTime: 10 * 60 * 1000,
   });
 
   // Email mutation
