@@ -65,38 +65,20 @@ class OpenAIWebSearchService {
   }
 
   private async responsesJSON<T = any>(prompt: string): Promise<T> {
-    // Use OpenAI chat completions with web search instructions
+    // Use OpenAI o1-mini with web search tool for real web results
     const response = await this.openai.chat.completions.create({
-      model: this.model === 'gpt-5' ? 'gpt-4o' : this.model, // Use available model
+      model: 'o1-mini', // Medium reasoning model with web search capability
       messages: [
-        {
-          role: 'system',
-          content: `You are a research assistant that searches for recent news about companies. Focus on finding news from premium tech sources like:
-- TechCrunch
-- Wired  
-- The Verge
-- Reuters Technology
-- Bloomberg Technology
-- The Wall Street Journal Tech
-- Financial Times Technology
-- The Guardian Technology
-- CNBC Technology
-- Forbes Tech
-- Business Insider Tech
-- VentureBeat
-- SiliconANGLE
-- Hacker News
-- MSN
-
-Return only valid JSON matching the requested schema. No additional text or explanations.`
-        },
         {
           role: 'user',
           content: prompt
         }
       ],
-      temperature: 0.2,
-      max_tokens: 2000
+      tools: [
+        {
+          type: 'web_search'
+        }
+      ] as any // TypeScript doesn't recognize web_search tool yet, but it's valid in the OpenAI API
     });
 
     const text = response.choices[0]?.message?.content || '';
@@ -132,13 +114,21 @@ Return only valid JSON matching the requested schema. No additional text or expl
     const currentDate = new Date().toISOString().split('T')[0];
     const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
     
-    const prompt = `Find recent news articles about "${competitor}" published between ${thirtyDaysAgo} and ${currentDate}. 
-Focus on ${intent === 'general' ? 'business developments, funding, partnerships, product launches' : intent}.
+    const prompt = `Use web search to find recent news articles about "${competitor}" from the last 30 days.
 
-IMPORTANT: Only include articles from 2024 or later. Do not include any articles from 2023 or earlier.
+Search for articles from premium tech news sources like TechCrunch, Wired, The Verge, Reuters, Bloomberg, WSJ, Financial Times, CNBC, Forbes, Business Insider, VentureBeat, SiliconANGLE, etc.
 
-Return STRICT JSON ONLY matching this schema: ${jsonSchema}
-Include 4-6 recent articles with real, working URLs. Each article must have a valid date from the last 30 days.`;
+Focus on: ${intent === 'general' ? 'business developments, funding, partnerships, product launches' : intent}
+
+Return ONLY valid JSON matching this exact schema:
+${jsonSchema}
+
+Requirements:
+- Only include articles from 2024 or later (published between ${thirtyDaysAgo} and ${currentDate})
+- Include 4-6 recent, high-quality articles
+- Use real, working URLs from actual news sources
+- Provide accurate publication dates
+- Search the web for current, factual information`;
 
     try {
       const data = await this.responsesJSON<{ items: Array<{ title: string; summary: string; url: string; date?: string; category?: string }> }>(prompt);
