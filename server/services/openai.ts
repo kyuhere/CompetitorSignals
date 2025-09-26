@@ -606,8 +606,25 @@ CRITICAL FORMATTING REQUIREMENTS:
 
     // Global arrays
     const pickAnyUrl = () => {
+      const isArticleLike = (u: string) => {
+        try {
+          const x = new URL(u);
+          if (!/^https?:$/i.test(x.protocol)) return false;
+          if (/bing\.com\/news/i.test(x.hostname + x.pathname)) return false;
+          const p = x.pathname || '/';
+          if (p === '/' || p.length < 3) return false;
+          const segs = p.split('/').filter(Boolean);
+          return segs.length >= 2 || /\d{4}/.test(p) || /-/.test(p);
+        } catch { return false; }
+      };
+      // First pass: prefer article-like URLs across all signals
       for (const s of signals) {
-        const it = (s.items || []).find(i => i.url);
+        const it = (s.items || []).find(i => i.url && isArticleLike(String(i.url)));
+        if (it?.url) return it.url;
+      }
+      // Fallback: any URL
+      for (const s of signals) {
+        const it = (s.items || []).find(i => i.url && String(i.url).length > 10);
         if (it?.url) return it.url;
       }
       return undefined;

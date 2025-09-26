@@ -607,7 +607,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Failed to fetch report" });
     }
   });
-
   // Latest News (OpenAI web_search): curated recent unique articles by report competitors
   app.get('/api/reports/:id/news', async (req: any, res) => {
     try {
@@ -652,7 +651,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       items.sort((a, b) => new Date(b.publishedAt || 0).getTime() - new Date(a.publishedAt || 0).getTime());
       res.json(items.slice(0, 12));
     } catch (err) {
-      console.error('[Routes] latest news endpoint failed', err);
+      console.error('[Routes] /api/news failed', err);
       res.status(500).json({ message: 'Failed to fetch latest news' });
     }
   });

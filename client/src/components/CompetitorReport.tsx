@@ -12,15 +12,30 @@ import { Label } from "@/components/ui/label";
 import { useState, useMemo } from "react";
 
 // Minimal markdown -> HTML converter tailored to our report format
-// Supports Markdown links [text](url), bold, and also auto-links bare URLs
+// - Converts Markdown links [text](url)
+// - Auto-links bare URLs in TEXT ONLY (never inside existing HTML tags)
+// - Displays domain-only labels for bare URLs
 const mdLinksToAnchors = (s: string) => {
   if (!s) return s;
-  let out = s;
-  // Convert Markdown links first
-  out = out.replace(/\[([^\]]+)\]\((https?:\/\/[^\)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1 underline text-blue-700">$1</a>');
-  // Auto-link bare URLs (avoid double-wrapping already converted anchors)
-  out = out.replace(/(https?:\/\/[^\s)]+)/g, '<a href="$1" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1 underline text-blue-700">$1</a>');
-  return out;
+  const toDomain = (url: string) => {
+    try { return new URL(url).hostname.replace(/^www\./, ''); } catch { return url; }
+  };
+  const parts = s.split(/(<[^>]+>)/g); // keep HTML tags intact
+  const processed = parts.map((part) => {
+    if (part.startsWith('<') && part.endsWith('>')) return part; // skip tags
+    let text = part;
+    // Convert Markdown links first
+    text = text.replace(/\[([^\]]+)\]\((https?:\/\/[^\)]+)\)/g, (_m, label, url) => {
+      return `<a href="${url}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1 underline text-blue-700">${label}</a>`;
+    });
+    // Auto-link bare URLs in remaining text segments
+    text = text.replace(/(https?:\/\/[^\s<)]+)/g, (m) => {
+      const label = toDomain(m);
+      return `<a href="${m}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1 underline text-blue-700">${label}</a>`;
+    });
+    return text;
+  });
+  return processed.join('');
 };
 
 const renderNewsletterMarkdown = (md: string) => {
@@ -174,8 +189,15 @@ export default function CompetitorReport({ report, guestGateActive, onGuestGate 
     queryKey: ["report-latest-news", report.id],
     queryFn: async () => {
       try {
-        const res = await apiRequest('GET', `/api/reports/${report.id}/news`);
-        return Array.isArray(res) ? res : [];
+        // For guest reports (temp_), there is no persisted report. Use fallback endpoint with competitor list.
+        if (String(report.id || '').startsWith('temp_')) {
+          const q = encodeURIComponent((report.competitors || []).join(','));
+          const res = await apiRequest('GET', `/api/news?competitors=${q}`);
+          return Array.isArray(res) ? res : [];
+        } else {
+          const res = await apiRequest('GET', `/api/reports/${report.id}/news`);
+          return Array.isArray(res) ? res : [];
+        }
       } catch (e) {
         console.error('Failed to load latest news', e);
         return [] as Array<{ title: string; url: string; domain: string; publishedAt?: string; competitor?: string }>;
@@ -615,9 +637,11 @@ export default function CompetitorReport({ report, guestGateActive, onGuestGate 
             Executive Summary
           </h2>
           <div className="bg-muted p-4 rounded-lg">
-            <p className="text-base text-foreground leading-relaxed" data-testid="text-executive-summary">
-              {isQuickSummary ? (quickSummary?.executiveSummary || analysis.executive_summary) : analysis.executive_summary}
-            </p>
+            <p
+              className="text-base text-foreground leading-relaxed"
+              data-testid="text-executive-summary"
+              dangerouslySetInnerHTML={{ __html: mdLinksToAnchors(isQuickSummary ? (quickSummary?.executiveSummary || analysis.executive_summary) : analysis.executive_summary) }}
+            />
           </div>
         </div>
 
@@ -726,7 +750,7 @@ export default function CompetitorReport({ report, guestGateActive, onGuestGate 
                                 {competitor.products_services.main_offerings.slice(0, 3).map((item: string, idx: number) => (
                                   <li key={idx} className="text-sm text-foreground flex items-start">
                                     <div className="w-1.5 h-1.5 bg-purple-600 rounded-full mt-2 mr-3 flex-shrink-0"></div>
-                                    {item}
+                                    <span dangerouslySetInnerHTML={{ __html: mdLinksToAnchors(item) }} />
                                   </li>
                                 ))}
                               </ul>
@@ -739,7 +763,7 @@ export default function CompetitorReport({ report, guestGateActive, onGuestGate 
                                 {competitor.products_services.unique_selling_points.slice(0, 3).map((item: string, idx: number) => (
                                   <li key={idx} className="text-sm text-foreground flex items-start">
                                     <div className="w-1.5 h-1.5 bg-purple-600 rounded-full mt-2 mr-3 flex-shrink-0"></div>
-                                    {item}
+                                    <span dangerouslySetInnerHTML={{ __html: mdLinksToAnchors(item) }} />
                                   </li>
                                 ))}
                               </ul>
@@ -786,7 +810,7 @@ export default function CompetitorReport({ report, guestGateActive, onGuestGate 
                           {competitor.strengths_weaknesses.strengths.slice(0, 5).map((item: string, idx: number) => (
                             <li key={idx} className="text-sm text-foreground flex items-start">
                               <CheckCircle className="w-4 h-4 text-green-600 mt-0.5 mr-3 flex-shrink-0" />
-                              {item}
+                              <span dangerouslySetInnerHTML={{ __html: mdLinksToAnchors(item) }} />
                             </li>
                           ))}
                         </ul>
@@ -804,7 +828,7 @@ export default function CompetitorReport({ report, guestGateActive, onGuestGate 
                           {competitor.strengths_weaknesses.weaknesses.slice(0, 5).map((item: string, idx: number) => (
                             <li key={idx} className="text-sm text-foreground flex items-start">
                               <AlertTriangle className="w-4 h-4 text-red-600 mt-0.5 mr-3 flex-shrink-0" />
-                              {item}
+                              <span dangerouslySetInnerHTML={{ __html: mdLinksToAnchors(item) }} />
                             </li>
                           ))}
                         </ul>
@@ -826,7 +850,7 @@ export default function CompetitorReport({ report, guestGateActive, onGuestGate 
                           {competitor.swot_analysis.opportunities.slice(0, 4).map((item: string, idx: number) => (
                             <li key={idx} className="text-sm text-foreground flex items-start">
                               <div className="w-1.5 h-1.5 bg-blue-600 rounded-full mt-2 mr-3 flex-shrink-0"></div>
-                              {item}
+                              <span dangerouslySetInnerHTML={{ __html: mdLinksToAnchors(item) }} />
                             </li>
                           ))}
                         </ul>
@@ -844,7 +868,7 @@ export default function CompetitorReport({ report, guestGateActive, onGuestGate 
                           {competitor.swot_analysis.threats.slice(0, 4).map((item: string, idx: number) => (
                             <li key={idx} className="text-sm text-foreground flex items-start">
                               <div className="w-1.5 h-1.5 bg-orange-600 rounded-full mt-2 mr-3 flex-shrink-0"></div>
-                              {item}
+                              <span dangerouslySetInnerHTML={{ __html: mdLinksToAnchors(item) }} />
                             </li>
                           ))}
                         </ul>
@@ -869,7 +893,7 @@ export default function CompetitorReport({ report, guestGateActive, onGuestGate 
                                 {competitor.customer_insights.pain_points.map((item: string, idx: number) => (
                                   <li key={idx} className="text-sm text-foreground flex items-start">
                                     <div className="w-1.5 h-1.5 bg-indigo-600 rounded-full mt-2 mr-3 flex-shrink-0"></div>
-                                    {item}
+                                    <span dangerouslySetInnerHTML={{ __html: mdLinksToAnchors(item) }} />
                                   </li>
                                 ))}
                               </ul>
