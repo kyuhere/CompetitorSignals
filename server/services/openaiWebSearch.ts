@@ -129,29 +129,45 @@ Return only valid JSON matching the requested schema. No additional text or expl
       ]
     }`;
 
-    const prompt = `Find the most recent news articles about "${competitor}" from the last 30 days. 
+    const currentDate = new Date().toISOString().split('T')[0];
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    
+    const prompt = `Find recent news articles about "${competitor}" published between ${thirtyDaysAgo} and ${currentDate}. 
 Focus on ${intent === 'general' ? 'business developments, funding, partnerships, product launches' : intent}.
 
-Search these premium sources first:
-- TechCrunch, Wired, The Verge, Reuters, Bloomberg, WSJ, Financial Times
-- CNBC, Forbes, Business Insider, VentureBeat, SiliconANGLE, Hacker News
+IMPORTANT: Only include articles from 2024 or later. Do not include any articles from 2023 or earlier.
 
 Return STRICT JSON ONLY matching this schema: ${jsonSchema}
-Include 4-6 recent, high-quality articles with real URLs. No duplicates or generic content.`;
+Include 4-6 recent articles with real, working URLs. Each article must have a valid date from the last 30 days.`;
 
     try {
       const data = await this.responsesJSON<{ items: Array<{ title: string; summary: string; url: string; date?: string; category?: string }> }>(prompt);
+      console.log(`[OpenAI] Raw response for ${competitor}:`, JSON.stringify(data, null, 2));
+      
       const items: SignalItem[] = (data?.items || []).map((it) => ({
         title: it.title?.trim() || '',
         content: it.summary?.trim() || '',
         url: it.url,
         publishedAt: it.date || now,
-        type: (it.category as any) === 'funding' ? 'funding' : (it.category as any) === 'product' ? 'product' : 'news',
-      }));
+        type: (it.category === 'funding' ? 'funding' : it.category === 'product' ? 'product' : 'news') as 'funding' | 'product' | 'news' | 'social',
+      })).filter(item => {
+        // Filter out articles older than 30 days or from 2023
+        if (item.publishedAt) {
+          const articleDate = new Date(item.publishedAt);
+          const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+          const year2024 = new Date('2024-01-01');
+          if (articleDate < thirtyDaysAgo || articleDate < year2024) {
+            console.log(`[OpenAI] Filtering out old article: ${item.title} (${item.publishedAt})`);
+            return false;
+          }
+        }
+        return item.title && item.url;
+      });
 
       // Basic cleanup
       const dedup = items.filter((item, idx, self) => idx === self.findIndex(t => (t.url && t.url === item.url) || t.title === item.title));
       const limited = dedup.slice(0, 6);
+      console.log(`[OpenAI] Returning ${limited.length} recent news items for ${competitor}`);
       this.setCached(this.cacheNews, key, limited);
       return limited;
     } catch (e) {
