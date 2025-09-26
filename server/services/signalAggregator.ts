@@ -74,8 +74,8 @@ class SignalAggregator {
         });
       }
 
-      // Add RapidAPI news search for each competitor (skip when web_search flag is on)
-      if (process.env.RAPIDAPI_KEY && process.env.OPENAI_ENABLE_WEB_NEWS !== '1') {
+      // Add RapidAPI news search for each competitor (always as fallback)
+      if (process.env.RAPIDAPI_KEY) {
         competitors.forEach(competitor => {
           tasks.push(
             this.getRapidAPINews(competitor)
@@ -216,19 +216,24 @@ class SignalAggregator {
 
   private async getNewsSignals(competitor: string): Promise<SignalItem[]> {
     try {
-      // Web-search first path (feature-flagged). If enabled, do NOT fall back.
+      // Try OpenAI web search first if enabled
       if (process.env.OPENAI_ENABLE_WEB_NEWS === '1') {
         try {
           const ws = await openaiWebSearch.searchNewsForCompetitor(competitor, 'general');
           if (ws && ws.length > 0) {
-            // Limit for quality and consistency with existing pipeline
-            return ws.slice(0, 5);
+            return ws.map(item => ({
+              title: item.title || 'No title',
+              content: (item as any).snippet || item.title || 'No content',
+              url: item.url,
+              publishedAt: item.publishedAt,
+              type: 'news' as const
+            }));
           }
-          return [];
+          console.log(`[SignalAggregator] OpenAI web search returned empty for ${competitor}, falling back to RapidAPI`);
         } catch (e) {
-          console.error('[SignalAggregator] Web news fetch failed (no fallback by flag)', { competitor, error: (e as Error)?.message });
-          return [];
+          console.error(`[SignalAggregator] OpenAI web search failed for ${competitor}, falling back to RapidAPI:`, e);
         }
+        // Fall through to RapidAPI fallback
       }
       // Search for business-critical news about the competitor
       const searchQueries = [
@@ -468,18 +473,24 @@ Respond with only "RELEVANT" or "NOT_RELEVANT"`;
 
   private async getFundingSignals(competitor: string): Promise<SignalItem[]> {
     try {
-      // Web-search first path (feature-flagged). If enabled, do NOT fall back.
+      // Try OpenAI web search first if enabled
       if (process.env.OPENAI_ENABLE_WEB_NEWS === '1') {
         try {
           const ws = await openaiWebSearch.searchNewsForCompetitor(competitor, 'funding');
           if (ws && ws.length > 0) {
-            return ws.slice(0, 5).map(it => ({ ...it, type: 'funding' as const }));
+            return ws.map(item => ({
+              title: item.title || 'No title',
+              content: (item as any).snippet || item.title || 'No content',
+              url: item.url,
+              publishedAt: item.publishedAt,
+              type: 'funding' as const
+            }));
           }
-          return [];
+          console.log(`[SignalAggregator] OpenAI web search returned empty for ${competitor} funding, falling back to RapidAPI`);
         } catch (e) {
-          console.error('[SignalAggregator] Web funding news failed (no fallback by flag)', { competitor, error: (e as Error)?.message });
-          return [];
+          console.error(`[SignalAggregator] OpenAI web search failed for ${competitor} funding, falling back to RapidAPI:`, e);
         }
+        // Fall through to RapidAPI fallback
       }
       const fundingQuery = `"${competitor}" "funding" OR "investment" OR "raised" OR "revenue" OR "valuation" OR "IPO"`;
       const rssUrl = `https://www.bing.com/news/search?format=RSS&q=${encodeURIComponent(fundingQuery)}&sortby=date&since=90days&count=5`;
@@ -500,19 +511,24 @@ Respond with only "RELEVANT" or "NOT_RELEVANT"`;
 
   private async getSocialSignals(competitor: string): Promise<SignalItem[]> {
     try {
-      // Web-search first path (feature-flagged). If enabled, do NOT fall back.
+      // Try OpenAI web search first if enabled
       if (process.env.OPENAI_ENABLE_WEB_NEWS === '1') {
         try {
           const ws = await openaiWebSearch.searchNewsForCompetitor(competitor, 'general');
           if (ws && ws.length > 0) {
-            // Reclassify as 'social' for this channel to keep downstream type intent
-            return ws.slice(0, 5).map(it => ({ ...it, type: 'social' as const }));
+            return ws.map(item => ({
+              title: item.title || 'No title',
+              content: (item as any).snippet || item.title || 'No content',
+              url: item.url,
+              publishedAt: item.publishedAt,
+              type: 'social' as const
+            }));
           }
-          return [];
+          console.log(`[SignalAggregator] OpenAI web search returned empty for ${competitor} social, falling back to RapidAPI`);
         } catch (e) {
-          console.error('[SignalAggregator] Web social signals failed (no fallback by flag)', { competitor, error: (e as Error)?.message });
-          return [];
+          console.error(`[SignalAggregator] OpenAI web search failed for ${competitor} social, falling back to RapidAPI:`, e);
         }
+        // Fall through to RapidAPI fallback
       }
       const socialQuery = `"${competitor}" "customers" OR "reviews" OR "complaints" OR "satisfaction" OR "market share"`;
       const rssUrl = `https://www.bing.com/news/search?format=RSS&q=${encodeURIComponent(socialQuery)}&sortby=date&since=90days&count=5`;

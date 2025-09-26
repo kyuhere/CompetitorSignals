@@ -127,7 +127,8 @@ No prose. Include 3–6 items maximum. Avoid duplicates and low-signal content.`
       this.setCached(this.cacheNews, key, limited);
       return limited;
     } catch (e) {
-      console.error('[WebSearch] news fetch failed', { competitor, intent, error: (e as Error)?.message });
+      console.error(`[OpenAIWebSearch] Failed to search news for ${competitor} (${intent}):`, e);
+      this.setCached(this.cacheNews, key, []);
       return [];
     }
   }
@@ -178,7 +179,7 @@ No prose. Keep quotes concise and include URLs when possible.`;
       this.setCached(this.cacheSocial, key, result);
       return result;
     } catch (e) {
-      console.error('[WebSearch] social sentiment fetch failed', { competitor, domain, error: (e as Error)?.message });
+      console.error('[WebSearch] social sentiment fetch failed', { competitor, domain, error: (e as Error)?.message || e });
       this.setCached(this.cacheSocial, key, null);
       return null;
     }

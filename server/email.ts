@@ -121,7 +121,20 @@ function generateReportEmailHTML(title: string, reportContent: any, competitors:
 
   const mdBold = (s: string) => s.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
   const mdLinks = (s: string) => s.replace(/\[([^\]]+)\]\((https?:\/\/[^\)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
-  const mdAuto = (s: string) => s.replace(/(https?:\/\/[^\s)]+)/g, '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>');
+  const toDomain = (url: string) => {
+    try { return new URL(url).hostname.replace(/^www\./, ''); } catch { return url; }
+  };
+  const mdAuto = (s: string) => {
+    // Split by HTML tags to avoid auto-linking inside existing anchors
+    const parts = s.split(/(<[^>]+>)/g);
+    return parts.map(part => {
+      if (part.startsWith('<') && part.endsWith('>')) return part;
+      return part.replace(/(https?:\/\/[^\s)]+)/g, (url) => {
+        const domain = toDomain(url);
+        return `<a href="${url}" target="_blank" rel="noopener noreferrer">${domain}</a>`;
+      });
+    }).join('');
+  };
   const mdInline = (s: string) => mdAuto(mdLinks(mdBold(s)));
   const extractMarkdownLinks = (s: string) => {
     const links: { text: string; url: string }[] = [];
