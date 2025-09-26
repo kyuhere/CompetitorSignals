@@ -342,6 +342,33 @@ export default function CompetitorReport({ report, guestGateActive, onGuestGate 
     return (report as any)?.metadata?.type === 'newsletter_summary';
   }, [report]);
 
+  // Infer suggested competitors from news source domains not already in report.competitors
+  const suggestedCompetitors = useMemo(() => {
+    const existing = new Set((report.competitors || []).map(c => (c || '').toLowerCase()));
+    const counts = new Map<string, number>();
+    const blacklist = new Set([
+      'bing.com','news.bing.com','google.com','news.google.com','linkedin.com','twitter.com','x.com','youtube.com','medium.com','reddit.com','facebook.com'
+    ]);
+    (report.signals || []).forEach((sig) => {
+      (sig.items || []).forEach((it) => {
+        if (!it?.url) return;
+        try {
+          const host = new URL(it.url).hostname.replace(/^www\./, '').toLowerCase();
+          if (blacklist.has(host)) return;
+          const base = host.split('.')[0];
+          if (!base) return;
+          const name = base.charAt(0).toUpperCase() + base.slice(1);
+          if (existing.has(name.toLowerCase())) return;
+          counts.set(name, (counts.get(name) || 0) + 1);
+        } catch {}
+      });
+    });
+    return Array.from(counts.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 3)
+      .map(([name]) => name);
+  }, [report.signals, report.competitors]);
+
   const handleExport = async () => {
     try {
       // Dynamically import heavy libraries only when exporting
@@ -1209,6 +1236,116 @@ export default function CompetitorReport({ report, guestGateActive, onGuestGate 
                 </li>
               ))}
             </ul>
+          </div>
+        )}
+
+        {/* Suggested Competitors (inferred) */}
+        {Array.isArray(suggestedCompetitors) && suggestedCompetitors.length > 0 && (
+          <div className="mt-8 p-6 bg-muted/60 rounded-lg">
+            <h3 className="text-lg font-semibold text-foreground mb-3 flex items-center">
+              <Users className="w-5 h-5 text-primary mr-2" />
+              Suggested Competitors
+            </h3>
+            <div className="flex flex-wrap gap-2">
+              {suggestedCompetitors.map((name) => (
+                <a
+                  key={name}
+                  href={`https://www.google.com/search?q=${encodeURIComponent(name + ' competitor')}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs bg-primary/10 text-primary px-2 py-1 rounded-full hover:bg-primary/20 transition-colors"
+                >
+                  {name}
+                </a>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Source References (from report.signals) */}
+        {Array.isArray(report.signals) && report.signals.length > 0 && (
+          <div className="mt-8 p-6 bg-muted/50 rounded-lg">
+            <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center">
+              <Globe className="w-5 h-5 text-blue-600 mr-2" />
+              Source References
+            </h3>
+            <div className="space-y-4">
+              {report.signals.map((signal, signalIndex) => {
+                let displaySource = signal.source || 'Source';
+                let sourceUrl: string | null = null;
+
+                if (displaySource.startsWith('RSS:')) {
+                  const host = displaySource.replace(/^RSS:\s*/i, '').trim();
+                  displaySource = host;
+                  try { sourceUrl = `https://${host}`; } catch {}
+                } else if (displaySource === 'RapidAPI News') {
+                  displaySource = 'RapidAPI News';
+                } else if (displaySource === 'Google Search') {
+                  sourceUrl = 'https://www.google.com';
+                } else if (displaySource.includes('bing.com')) {
+                  sourceUrl = 'https://www.bing.com/news';
+                }
+
+                return (
+                  <div key={signalIndex} className="border-l-2 border-blue-200 pl-4">
+                    <h4 className="font-medium text-foreground mb-2">
+                      {sourceUrl ? (
+                        <a
+                          href={sourceUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-blue-600 hover:text-blue-800 hover:underline"
+                        >
+                          {displaySource}
+                        </a>
+                      ) : (
+                        displaySource
+                      )}
+                      {signal.competitor ? (
+                        <span className="ml-2 text-xs text-muted-foreground">for {signal.competitor}</span>
+                      ) : null}
+                    </h4>
+                    <div className="space-y-2">
+                      {(signal.items || [])
+                        .filter((item) => item?.url)
+                        .slice(0, 5)
+                        .map((item, itemIndex) => {
+                          let title = (item.title || '').replace(/&#x27;/g, "'")
+                            .replace(/&quot;/g, '"')
+                            .replace(/&amp;/g, '&')
+                            .replace(/&lt;/g, '<')
+                            .replace(/&gt;/g, '>');
+                          return (
+                            <div key={itemIndex} className="flex items-start space-x-2">
+                              <div className="w-1.5 h-1.5 bg-blue-600 rounded-full mt-2 flex-shrink-0"></div>
+                              <div className="flex-1">
+                                <a
+                                  href={item.url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-sm text-blue-600 hover:text-blue-800 hover:underline font-medium"
+                                  data-testid={`source-link-${signalIndex}-${itemIndex}`}
+                                >
+                                  {title || 'Untitled'}
+                                </a>
+                                <p className="text-xs text-muted-foreground mt-1">
+                                  {(item.publishedAt ? new Date(item.publishedAt).toLocaleDateString() : '')}
+                                  {item.type ? ` • ${item.type}` : ''}
+                                </p>
+                              </div>
+                            </div>
+                          );
+                        })}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            <div className="mt-4 pt-4 border-t border-border">
+              <p className="text-xs text-muted-foreground">
+                <strong>Total Sources:</strong> {report.signals.reduce((acc, signal) => acc + (signal.items || []).filter(item => item?.url).length, 0)} articles and references analyzed
+              </p>
+            </div>
           </div>
         )}
 
