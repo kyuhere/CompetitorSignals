@@ -419,11 +419,11 @@ CRITICAL FORMATTING REQUIREMENTS:
 - Each competitor must include ALL sections: company_overview, strengths_weaknesses, pricing_strategy, target_market, tech_assessment, market_presence, products_services, swot_analysis, customer_insights, and tech_innovation
 - For strengths_weaknesses: provide exactly 5 bullet points for strengths and 5 for weaknesses
 - For SWOT analysis: provide at least 2 points for each category (strengths, weaknesses, opportunities, threats)
-- Include [Source: bing.com/news] references at the end of key points when data is available
+- Append Markdown source links using the item's URL when available, formatted as [Source: domain](URL) (e.g., [Source: wsj.com](https://www.wsj.com/...)). Use the actual publisher domain, not bing.com/news.
 - Recent developments (last 30 days prioritized)
 - Business impact and strategic implications
 - Rate activity level based on signal volume and recency
-- Use short, clean source references like [Source: bing.com/news] instead of full URLs
+- If an item's URL is missing, omit the link; do not invent URLs. Keep link labels short (domain only).
 - IMPORTANT: Always populate ALL sections for each competitor even if data is limited
 - If specific data is not available, provide reasonable business estimates or note "No reliable data found"
 - Do NOT leave any section empty or undefined

@@ -2,6 +2,7 @@ import { signalAggregator } from './signalAggregator';
 import { hackerNewsService } from './hackerNews';
 import { trustpilotService } from './trustpilot';
 import OpenAI from 'openai';
+import { openaiWebSearch } from './openaiWebSearch';
 
 interface EnhancedSignalItem {
   title: string;
@@ -206,6 +207,18 @@ export class EnhancedSignalAggregator {
 
   private async getHackerNewsSentiment(competitor: string, computeSentiment: boolean = true): Promise<ReviewSentimentData> {
     try {
+      // Web-search first path (feature-flagged)
+      if (process.env.OPENAI_ENABLE_WEB_ENHANCED === '1') {
+        try {
+          const webResult = await openaiWebSearch.fetchSocialSentiment(competitor);
+          if (webResult) {
+            return webResult;
+          }
+        } catch (e) {
+          console.error('[EnhancedAggregator] Web social sentiment failed, falling back', { competitor, error: (e as Error)?.message });
+        }
+      }
+
       const hnSentiment = await hackerNewsService.getCompetitorSentiment(competitor);
 
       // Use OpenAI to analyze HN sentiment

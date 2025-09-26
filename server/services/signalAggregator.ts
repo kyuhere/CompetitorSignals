@@ -1,4 +1,5 @@
 import { parseRSSFeed } from "./rssParser";
+import { openaiWebSearch } from "./openaiWebSearch";
 
 interface SignalSource {
   news: boolean;
@@ -215,6 +216,18 @@ class SignalAggregator {
 
   private async getNewsSignals(competitor: string): Promise<SignalItem[]> {
     try {
+      // Web-search first path (feature-flagged)
+      if (process.env.OPENAI_ENABLE_WEB_NEWS === '1') {
+        try {
+          const ws = await openaiWebSearch.searchNewsForCompetitor(competitor, 'general');
+          if (ws && ws.length > 0) {
+            // Limit for quality and consistency with existing pipeline
+            return ws.slice(0, 5);
+          }
+        } catch (e) {
+          console.error('[SignalAggregator] Web news fetch failed, falling back', { competitor, error: (e as Error)?.message });
+        }
+      }
       // Search for business-critical news about the competitor
       const searchQueries = [
         `"${competitor}" funding raised investment revenue earnings`,
@@ -449,6 +462,17 @@ Respond with only "RELEVANT" or "NOT_RELEVANT"`;
 
   private async getFundingSignals(competitor: string): Promise<SignalItem[]> {
     try {
+      // Web-search first path (feature-flagged)
+      if (process.env.OPENAI_ENABLE_WEB_NEWS === '1') {
+        try {
+          const ws = await openaiWebSearch.searchNewsForCompetitor(competitor, 'funding');
+          if (ws && ws.length > 0) {
+            return ws.slice(0, 5).map(it => ({ ...it, type: 'funding' as const }));
+          }
+        } catch (e) {
+          console.error('[SignalAggregator] Web funding news failed, falling back', { competitor, error: (e as Error)?.message });
+        }
+      }
       const fundingQuery = `"${competitor}" "funding" OR "investment" OR "raised" OR "revenue" OR "valuation" OR "IPO"`;
       const rssUrl = `https://www.bing.com/news/search?format=RSS&q=${encodeURIComponent(fundingQuery)}&sortby=date&since=90days&count=5`;
       const rssItems = await parseRSSFeed(rssUrl);
@@ -468,6 +492,18 @@ Respond with only "RELEVANT" or "NOT_RELEVANT"`;
 
   private async getSocialSignals(competitor: string): Promise<SignalItem[]> {
     try {
+      // Web-search first path (feature-flagged)
+      if (process.env.OPENAI_ENABLE_WEB_NEWS === '1') {
+        try {
+          const ws = await openaiWebSearch.searchNewsForCompetitor(competitor, 'general');
+          if (ws && ws.length > 0) {
+            // Reclassify as 'social' for this channel to keep downstream type intent
+            return ws.slice(0, 5).map(it => ({ ...it, type: 'social' as const }));
+          }
+        } catch (e) {
+          console.error('[SignalAggregator] Web social signals failed, falling back', { competitor, error: (e as Error)?.message });
+        }
+      }
       const socialQuery = `"${competitor}" "customers" OR "reviews" OR "complaints" OR "satisfaction" OR "market share"`;
       const rssUrl = `https://www.bing.com/news/search?format=RSS&q=${encodeURIComponent(socialQuery)}&sortby=date&since=90days&count=5`;
       const rssItems = await parseRSSFeed(rssUrl);

@@ -23,6 +23,7 @@ export async function parseRSSFeed(url: string): Promise<RSSItem[]> {
     
     return items.map(item => ({
       ...item,
+      url: item.url ? normalizeRssLink(item.url) : item.url,
       type: detectItemType(item.title, item.content),
     }));
   } catch (error) {
@@ -84,6 +85,50 @@ function cleanHtml(text: string): string {
     .replace(/&#39;/g, "'")
     .replace(/\s+/g, ' ')
     .trim();
+}
+
+function normalizeRssLink(rawUrl: string): string {
+  try {
+    const u = new URL(rawUrl);
+    const host = u.hostname.toLowerCase();
+
+    // Handle Bing News click-through links
+    if (host.includes('bing.com')) {
+      // apiclick path usually has original url in `url` parameter
+      const cand = u.searchParams.get('url') || u.searchParams.get('u') || '';
+      if (cand) {
+        // Try decodeURIComponent first
+        let decoded = '';
+        try { decoded = decodeURIComponent(cand); } catch { decoded = cand; }
+
+        // Some variants use base64 for `u`
+        if (!/^https?:\/\//i.test(decoded) && /^[A-Za-z0-9+/=_-]+$/.test(decoded)) {
+          try {
+            const base = decoded.replace(/-/g, '+').replace(/_/g, '/');
+            const buf = Buffer.from(base, 'base64');
+            const text = buf.toString('utf8');
+            if (/^https?:\/\//i.test(text)) decoded = text;
+          } catch {}
+        }
+
+        if (/^https?:\/\//i.test(decoded)) return decoded;
+      }
+
+      // Sometimes the path contains a redirect-like "ck/a" with encoded target in the query
+      const r = u.searchParams.get('r');
+      if (r && /^https?:\/\//i.test(r)) return r;
+    }
+
+    // Handle Google News style links if ever encountered (defensive)
+    if (host.includes('news.google.') || host.includes('news.url.google.')) {
+      const gu = u.searchParams.get('url');
+      if (gu && /^https?:\/\//i.test(gu)) return gu;
+    }
+
+    return rawUrl;
+  } catch {
+    return rawUrl;
+  }
 }
 
 function detectItemType(title: string, content: string): 'news' | 'funding' | 'social' | 'product' {
