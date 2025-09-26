@@ -11,12 +11,16 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useState, useMemo } from "react";
 
-// Minimal markdown -> HTML converter tailored to our newsletter format
-// Supports: bold (**text**), bullet lines starting with "- ", simple paragraphs, and Markdown links [text](url)
+// Minimal markdown -> HTML converter tailored to our report format
+// Supports Markdown links [text](url), bold, and also auto-links bare URLs
 const mdLinksToAnchors = (s: string) => {
   if (!s) return s;
-  // Convert Markdown links to HTML anchors; leave other text intact
-  return s.replace(/\[([^\]]+)\]\((https?:\/\/[^\)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1 underline text-blue-700">$1</a>');
+  let out = s;
+  // Convert Markdown links first
+  out = out.replace(/\[([^\]]+)\]\((https?:\/\/[^\)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1 underline text-blue-700">$1</a>');
+  // Auto-link bare URLs (avoid double-wrapping already converted anchors)
+  out = out.replace(/(https?:\/\/[^\s)]+)/g, '<a href="$1" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1 underline text-blue-700">$1</a>');
+  return out;
 };
 
 const renderNewsletterMarkdown = (md: string) => {
@@ -487,7 +491,11 @@ export default function CompetitorReport({ report, guestGateActive, onGuestGate 
           {icon}
           {title}
         </h4>
-        <div className="text-sm text-foreground">{typeof content === 'string' ? stripSourceTags(content) : content}</div>
+        {typeof content === 'string' ? (
+          <div className="text-sm text-foreground" dangerouslySetInnerHTML={{ __html: mdLinksToAnchors(stripSourceTags(content)) }} />
+        ) : (
+          <div className="text-sm text-foreground">{content}</div>
+        )}
       </div>
     );
   };
@@ -631,7 +639,7 @@ export default function CompetitorReport({ report, guestGateActive, onGuestGate 
                         {(snippet.bullets || []).slice(0, 2).map((bullet: string, bulletIndex: number) => (
                           <li key={bulletIndex} className="text-sm text-foreground flex items-start">
                             <div className="w-1.5 h-1.5 bg-primary rounded-full mt-2 mr-3 flex-shrink-0"></div>
-                            {bullet}
+                            <span dangerouslySetInnerHTML={{ __html: mdLinksToAnchors(bullet) }} />
                           </li>
                         ))}
                       </ul>
@@ -1157,7 +1165,7 @@ export default function CompetitorReport({ report, guestGateActive, onGuestGate 
               {analysis.strategic_insights.map((insight: string, index: number) => (
                 <li key={index} className="flex items-start" data-testid={`strategic-insight-${index}`}>
                   <CheckCircle className="w-5 h-5 text-green-600 mt-0.5 mr-3 flex-shrink-0" />
-                  <span className="text-foreground">{stripSourceTags(insight)}</span>
+                  <span className="text-foreground" dangerouslySetInnerHTML={{ __html: mdLinksToAnchors(stripSourceTags(insight)) }} />
                 </li>
               ))}
             </ul>

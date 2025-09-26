@@ -560,9 +560,25 @@ CRITICAL FORMATTING REQUIREMENTS:
 
       const idx = sigIndex[comp.competitor] || sigIndex[comp.competitor?.trim()] || { any: [], funding: [], news: [] };
       const pickUrl = (pref: 'funding' | 'news' | 'any') => {
-        const arr = idx[pref];
-        const withUrl = (arr || []).find(it => it.url && it.url.length > 10);
-        return withUrl?.url;
+        const arr = idx[pref] || [];
+        const candidates = (arr as any[]).map(it => it?.url).filter(Boolean) as string[];
+        const isArticleLike = (u: string) => {
+          try {
+            const x = new URL(u);
+            if (!/^https?:$/i.test(x.protocol)) return false;
+            if (/bing\.com\/news/i.test(x.hostname + x.pathname)) return false;
+            // Prefer non-homepage paths with slugs or dates
+            const p = x.pathname || '/';
+            if (p === '/' || p.length < 3) return false;
+            // Heuristics: hyphens or multiple segments imply article pages
+            const segs = p.split('/').filter(Boolean);
+            return segs.length >= 2 || /\d{4}/.test(p) || /-/.test(p);
+          } catch { return false; }
+        };
+        const article = candidates.find(isArticleLike);
+        if (article) return article;
+        // fallback: any non-empty URL
+        return candidates.find(u => (u || '').length > 10);
       };
 
       // Recent developments: prefer news-type URLs

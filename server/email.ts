@@ -1,4 +1,5 @@
 import { Resend } from 'resend';
+import { openaiWebSearch } from './services/openaiWebSearch';
 
 if (!process.env.RESEND_API_KEY) {
   throw new Error('RESEND_API_KEY environment variable is required');
@@ -19,8 +20,41 @@ export async function sendCompetitorReport({
   reportContent,
   competitors,
 }: EmailReportParams) {
+  // Fetch latest news via OpenAI web_search for the competitors
+  let latestNews: Array<{ title: string; url: string; publishedAt?: string; domain: string }> = [];
+  try {
+    const per = await Promise.allSettled(
+      (competitors || []).map(c => openaiWebSearch.searchNewsForCompetitor(String(c), 'general'))
+    );
+    const all = per.flatMap(r => r.status === 'fulfilled' && Array.isArray(r.value) ? r.value : []);
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    const seen = new Set<string>();
+    for (const it of all) {
+      const url = (it as any)?.url || '';
+      const title = (it as any)?.title || '';
+      if (!url || !title) continue;
+      try {
+        const key = `${new URL(url).href}|${title.trim().toLowerCase()}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        const publishedAt = (it as any)?.publishedAt;
+        if (publishedAt) {
+          const d = new Date(publishedAt);
+          if (!isNaN(d.getTime()) && d < thirtyDaysAgo) continue;
+        }
+        const domain = new URL(url).hostname.replace(/^www\./, '');
+        latestNews.push({ title, url, publishedAt, domain });
+      } catch {}
+    }
+    latestNews.sort((a, b) => new Date(b.publishedAt || 0).getTime() - new Date(a.publishedAt || 0).getTime());
+    latestNews = latestNews.slice(0, 10);
+  } catch (e) {
+    console.warn('[email] failed to fetch latest news for email:', e);
+  }
+
   // Generate HTML email content
-  const htmlContent = generateReportEmailHTML(reportTitle, reportContent, competitors);
+  const htmlContent = generateReportEmailHTML(reportTitle, reportContent, competitors, latestNews);
 
   try {
     console.log(`Attempting to send email to: ${to}`);
@@ -66,7 +100,7 @@ export async function sendCompetitorReport({
   }
 }
 
-function generateReportEmailHTML(title: string, reportContent: any, competitors: string[]): string {
+function generateReportEmailHTML(title: string, reportContent: any, competitors: string[], latestNews: Array<{ title: string; url: string; publishedAt?: string; domain: string }> = []): string {
   const competitorsList = competitors.join(', ');
 
   // Parse report content if it's a string
@@ -87,7 +121,8 @@ function generateReportEmailHTML(title: string, reportContent: any, competitors:
 
   const mdBold = (s: string) => s.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
   const mdLinks = (s: string) => s.replace(/\[([^\]]+)\]\((https?:\/\/[^\)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
-  const mdInline = (s: string) => mdLinks(mdBold(s));
+  const mdAuto = (s: string) => s.replace(/(https?:\/\/[^\s)]+)/g, '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>');
+  const mdInline = (s: string) => mdAuto(mdLinks(mdBold(s)));
   const extractMarkdownLinks = (s: string) => {
     const links: { text: string; url: string }[] = [];
     if (!s) return links;
@@ -315,45 +350,20 @@ function generateReportEmailHTML(title: string, reportContent: any, competitors:
           </div>
           ` : ''}
 
-          ${(() => {
-            // Build "Sources Referenced" section by extracting Markdown links from the content
-            let textBlocks: string[] = [];
-            try {
-              if (isNewsletter) {
-                textBlocks = [originalString];
-              } else {
-                const parts: string[] = [];
-                if (parsedContent.executive_summary) parts.push(String(parsedContent.executive_summary));
-                if (Array.isArray(parsedContent.key_takeaways)) parts.push(parsedContent.key_takeaways.join('\n'));
-                if (Array.isArray(parsedContent.strategic_insights)) parts.push(parsedContent.strategic_insights.join('\n'));
-                if (Array.isArray(parsedContent.competitors)) {
-                  for (const c of parsedContent.competitors) {
-                    if (Array.isArray(c?.recent_developments)) parts.push(c.recent_developments.join('\n'));
-                    if (Array.isArray(c?.funding_business)) parts.push(c.funding_business.join('\n'));
-                    if (Array.isArray(c?.strengths_weaknesses?.strengths)) parts.push(c.strengths_weaknesses.strengths.join('\n'));
-                    if (Array.isArray(c?.strengths_weaknesses?.weaknesses)) parts.push(c.strengths_weaknesses.weaknesses.join('\n'));
-                  }
-                }
-                textBlocks = parts;
-              }
-            } catch {}
-            const allLinks = textBlocks.flatMap(t => extractMarkdownLinks(String(t || '')));
-            const byDomain = new Map<string, string>();
-            for (const { url } of allLinks) {
-              try {
-                const d = new URL(url).hostname.replace(/^www\./, '');
-                if (!byDomain.has(d)) byDomain.set(d, url);
-              } catch {}
-            }
-            if (byDomain.size === 0) return '';
-            const items = Array.from(byDomain.entries()).slice(0, 15).map(([d, u]) => `<li><a href="${u}" target="_blank" rel="noopener noreferrer">${d}</a></li>`).join('');
-            return `
-              <div class="section">
-                <h2>🔗 Sources Referenced</h2>
-                <ul class="insights-list">${items}</ul>
-              </div>
-            `;
-          })()}
+          ${latestNews && latestNews.length > 0 ? `
+          <div class="section">
+            <h2>📰 Latest News</h2>
+            <ul class="insights-list">
+              ${latestNews.map(n => `
+                <li>
+                  <a href="${n.url}" target="_blank" rel="noopener noreferrer">${n.domain}</a>
+                  ${n.title ? ` — ${n.title}` : ''}
+                  ${n.publishedAt ? ` <span style="color:#666;font-size:12px;">(${new Date(n.publishedAt).toLocaleDateString()})</span>` : ''}
+                </li>
+              `).join('')}
+            </ul>
+          </div>
+          ` : ''}
 
           <div class="section" style="text-align: center;">
             <h2>Want More Insights?</h2>
