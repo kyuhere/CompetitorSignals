@@ -37,7 +37,7 @@ class OpenAIWebSearchService {
   constructor() {
     this.openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY || '' });
     this.model = process.env.OPENAI_WEB_MODEL || 'gpt-5';
-    this.ttlMs = Number(process.env.OPENAI_WEB_CACHE_TTL_MS || 5 * 60 * 1000); // 5 min default for faster updates
+    this.ttlMs = Number(process.env.OPENAI_WEB_CACHE_TTL_MS || 10 * 60 * 1000); // 10 min default
   }
 
   private getCached<T>(map: Map<string, CacheEntry<T>>, key: string): T | undefined {
@@ -65,45 +65,10 @@ class OpenAIWebSearchService {
   }
 
   private async responsesJSON<T = any>(prompt: string): Promise<T> {
-    // Use GPT-4o with system instructions (web search tools may not be available yet)
-    const response = await this.openai.chat.completions.create({
-      model: 'gpt-4o', // Use GPT-4o instead of o1-mini for better compatibility
-      messages: [
-        {
-          role: 'system',
-          content: `You are a research assistant that searches for recent news about companies. Focus on finding news from premium tech sources like:
-- TechCrunch, Wired, The Verge, Ars Technica, Engadget
-- Reuters Technology, Bloomberg Technology, WSJ Tech, Financial Times
-- CNBC Technology, Forbes Tech, Business Insider Tech
-- VentureBeat, SiliconANGLE, 9to5Mac, MacRumors
-- Hacker News, Product Hunt, TechMeme
-
-Return only valid JSON matching the requested schema. No additional text or explanations.`
-        },
-        {
-          role: 'user',
-          content: prompt
-        }
-      ],
-      temperature: 0.2,
-      max_tokens: 2000
-    });
-
-    const text = response.choices[0]?.message?.content || '';
-    const clean = this.stripJSON(text);
-    
-    try {
-      return JSON.parse(clean) as T;
-    } catch (e) {
-      // Try to extract JSON between first { and last }
-      const start = clean.indexOf('{');
-      const end = clean.lastIndexOf('}');
-      if (start >= 0 && end > start) {
-        const slice = clean.slice(start, end + 1);
-        return JSON.parse(slice) as T;
-      }
-      throw new Error(`Failed to parse JSON from OpenAI output: ${text}`);
-    }
+    // Since OpenAI doesn't have a web_search tool in the standard API,
+    // we'll fall back to using RSS feeds for now
+    // This method will return empty results to trigger the RSS fallback
+    throw new Error('OpenAI web search not available, falling back to RSS feeds');
   }
 
   // Phase 2 news: get recent news items for a competitor
@@ -119,90 +84,26 @@ Return only valid JSON matching the requested schema. No additional text or expl
       ]
     }`;
 
-    const currentDate = new Date().toISOString().split('T')[0];
-    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-    
-    const prompt = `Use web search to find the most recent news articles about "${competitor}" from the last 14 days (preferably last 7 days).
-
-Search DIVERSE premium tech news sources. Prioritize different sources for variety:
-- TechCrunch, Wired, The Verge, Ars Technica, Engadget
-- Reuters Tech, Bloomberg Tech, WSJ Tech, Financial Times
-- CNBC Tech, Forbes Tech, Business Insider Tech
-- VentureBeat, SiliconANGLE, 9to5Mac, MacRumors
-- Hacker News, Product Hunt, TechMeme
-
-Focus on: ${intent === 'general' ? 'business developments, funding, partnerships, product launches, earnings, strategic moves' : intent}
-
-Return ONLY valid JSON matching this exact schema:
-${jsonSchema}
-
-Requirements:
-- PRIORITIZE articles from the last 7-14 days (${thirtyDaysAgo} to ${currentDate})
-- Include 5-8 articles from DIFFERENT sources (avoid duplicates from same domain)
-- Use real, working URLs from actual news sources
-- Provide accurate publication dates in YYYY-MM-DD format
-- Search the web for current, factual information
-- Ensure source diversity - no more than 1 article per domain`;
+    const prompt = `You are a research assistant. Use web_search to find the most recent, high-signal items about "${competitor}".
+Focus on the last 90 days. Prioritize ${intent === 'general' ? 'business-critical news' : intent}.
+Return STRICT JSON ONLY matching this schema: ${jsonSchema}
+No prose. Include 3–6 items maximum. Avoid duplicates and low-signal content.`;
 
     try {
       const data = await this.responsesJSON<{ items: Array<{ title: string; summary: string; url: string; date?: string; category?: string }> }>(prompt);
-      console.log(`[OpenAI] Raw response for ${competitor}:`, JSON.stringify(data, null, 2));
-      
       const items: SignalItem[] = (data?.items || []).map((it) => ({
         title: it.title?.trim() || '',
         content: it.summary?.trim() || '',
         url: it.url,
         publishedAt: it.date || now,
-        type: (it.category === 'funding' ? 'funding' : it.category === 'product' ? 'product' : 'news') as 'funding' | 'product' | 'news' | 'social',
-      })).filter(item => {
-        // Filter out articles older than 30 days or from 2023
-        if (item.publishedAt) {
-          const articleDate = new Date(item.publishedAt);
-          const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-          const year2024 = new Date('2024-01-01');
-          if (articleDate < thirtyDaysAgo || articleDate < year2024) {
-            console.log(`[OpenAI] Filtering out old article: ${item.title} (${item.publishedAt})`);
-            return false;
-          }
-        }
-        return item.title && item.url;
-      });
+        type: (it.category as any) === 'funding' ? 'funding' : (it.category as any) === 'product' ? 'product' : 'news',
+      }));
 
-      // Enhanced deduplication with source diversity
-      const seen = new Set<string>();
-      const seenDomains = new Set<string>();
-      const diversified = items.filter(item => {
-        // Skip if no URL or title
-        if (!item.url || !item.title) return false;
-        
-        // Skip if duplicate URL or title
-        const urlKey = item.url;
-        const titleKey = item.title.toLowerCase();
-        if (seen.has(urlKey) || seen.has(titleKey)) return false;
-        seen.add(urlKey);
-        seen.add(titleKey);
-        
-        // Ensure source diversity - max 1 per domain
-        try {
-          const domain = new URL(item.url).hostname.replace(/^www\./, '');
-          if (seenDomains.has(domain)) return false;
-          seenDomains.add(domain);
-        } catch {
-          // If URL parsing fails, skip this item
-          return false;
-        }
-        
-        return true;
-      });
-      
-      // Sort by date (most recent first) and limit
-      const sorted = diversified
-        .sort((a, b) => new Date(b.publishedAt || 0).getTime() - new Date(a.publishedAt || 0).getTime())
-        .slice(0, 8);
-      
-      console.log(`[OpenAI] Returning ${sorted.length} diverse, recent news items for ${competitor}`);
-      this.setCached(this.cacheNews, key, sorted);
-      return sorted;
+      // Basic cleanup
+      const dedup = items.filter((item, idx, self) => idx === self.findIndex(t => (t.url && t.url === item.url) || t.title === item.title));
+      const limited = dedup.slice(0, 6);
+      this.setCached(this.cacheNews, key, limited);
+      return limited;
     } catch (e) {
       console.error(`[OpenAIWebSearch] Failed to search news for ${competitor} (${intent}):`, e);
       this.setCached(this.cacheNews, key, []);

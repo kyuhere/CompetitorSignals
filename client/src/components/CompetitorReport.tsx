@@ -200,7 +200,27 @@ export default function CompetitorReport({ report, guestGateActive, onGuestGate 
   // Track active tab and render heavy sections on demand
   const [activeTab, setActiveTab] = useState<"overview" | "analysis" | "reviews" | "market" | "tech">("overview");
 
-  // Note: News is now displayed via report.signals in the Source References section
+  // Latest News (OpenAI web_search-backed) for this report
+  const { data: latestNews } = useQuery({
+    queryKey: ["report-latest-news", report.id],
+    queryFn: async () => {
+      try {
+        // For guest reports (temp_), there is no persisted report. Use fallback endpoint with competitor list.
+        if (String(report.id || '').startsWith('temp_')) {
+          const q = encodeURIComponent((report.competitors || []).join(','));
+          const res = await apiRequest('GET', `/api/news?competitors=${q}`);
+          return Array.isArray(res) ? res : [];
+        } else {
+          const res = await apiRequest('GET', `/api/reports/${report.id}/news`);
+          return Array.isArray(res) ? res : [];
+        }
+      } catch (e) {
+        console.error('Failed to load latest news', e);
+        return [] as Array<{ title: string; url: string; domain: string; publishedAt?: string; competitor?: string }>;
+      }
+    },
+    staleTime: 5 * 60 * 1000,
+  });
 
   // Email mutation
   const emailMutation = useMutation({
@@ -1192,136 +1212,30 @@ export default function CompetitorReport({ report, guestGateActive, onGuestGate 
           </div>
         )}
 
-        {/* Source References */}
-        {report.signals && report.signals.length > 0 && (
-          <div className="mt-8 p-6 bg-muted/50 rounded-lg">
+        {/* Latest News (OpenAI web_search, deduped) */}
+        {Array.isArray(latestNews) && latestNews.length > 0 && (
+          <div className="mt-8 p-6 bg-muted rounded-lg">
             <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center">
-              <Globe className="w-5 h-5 text-blue-600 mr-2" />
-              Source References
+              <ExternalLink className="w-5 h-5 text-primary mr-2" />
+              Latest News
             </h3>
-            <div className="space-y-4">
-              {report.signals.map((signal, signalIndex) => {
-                // Clean up source names and make them clickable if they're RSS feeds
-                let displaySource = signal.source;
-                let sourceUrl = null;
-
-                if (signal.source === 'RapidAPI News') {
-                  displaySource = 'News';
-                } else if (signal.source.includes('RSS: bing.com')) {
-                  displaySource = 'Bing News';
-                  sourceUrl = 'https://www.bing.com/news';
-                } else if (signal.source.includes('RSS:')) {
-                  // Extract hostname from RSS source
-                  const match = signal.source.match(/RSS: (.+)/);
-                  if (match) {
-                    displaySource = match[1];
-                    // Try to create a link to the source
-                    if (match[1].includes('techcrunch')) {
-                      sourceUrl = 'https://techcrunch.com';
-                    } else if (match[1].includes('ycombinator')) {
-                      sourceUrl = 'https://news.ycombinator.com';
-                    }
-                  }
+            <ul className="space-y-3">
+              {latestNews.slice(0, 12).map((it: any, i: number) => {
+                let domain = it?.domain as string | undefined;
+                if (!domain && it?.url) {
+                  try { domain = new URL(it.url).hostname.replace(/^www\./, ''); } catch {}
                 }
-
                 return (
-                <div key={signalIndex} className="border-l-2 border-blue-200 pl-4">
-                  <h4 className="font-medium text-foreground mb-2">
-                    {sourceUrl ? (
-                      <a 
-                        href={sourceUrl} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="text-blue-600 hover:text-blue-800 hover:underline"
-                      >
-                        {displaySource}
-                      </a>
-                    ) : displaySource === 'Aggregated Sources' ? (
-                      <div className="space-y-1">
-                        <span className="text-foreground font-medium">Multiple Sources:</span>
-                        <div className="flex flex-wrap gap-2 mt-2">
-                          <a 
-                            href="https://techcrunch.com" 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full hover:bg-blue-200 transition-colors"
-                          >
-                            TechCrunch
-                          </a>
-                          <a 
-                            href="https://news.ycombinator.com" 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className="text-xs bg-orange-100 text-orange-800 px-2 py-1 rounded-full hover:bg-orange-200 transition-colors"
-                          >
-                            Hacker News
-                          </a>
-                          <a 
-                            href="https://www.bing.com/news" 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full hover:bg-green-200 transition-colors"
-                          >
-                            Bing News
-                          </a>
-                          <span className="text-xs bg-gray-100 text-gray-800 px-2 py-1 rounded-full">
-                            RSS Feeds
-                          </span>
-                        </div>
-                      </div>
-                    ) : (
-                      displaySource
-                    )}
-                  </h4>
-                  <div className="space-y-3">
-                    {signal.items.filter(item => item.url).slice(0, 8).map((item, itemIndex) => {
-                      let domain = '';
-                      try {
-                        domain = new URL(item.url!).hostname.replace(/^www\./, '');
-                      } catch {}
-                      
-                      const publishedDate = item.publishedAt ? new Date(item.publishedAt).toLocaleDateString() : null;
-                      
-                      return (
-                        <div key={itemIndex} className="border-l-2 border-primary/20 pl-4">
-                          <div className="space-y-1">
-                            <a 
-                              href={item.url} 
-                              target="_blank" 
-                              rel="noopener noreferrer"
-                              className="block text-foreground hover:text-primary transition-colors font-medium leading-tight"
-                              data-testid={`source-link-${signalIndex}-${itemIndex}`}
-                            >
-                              {item.title.replace(/&#x27;/g, "'").replace(/&quot;/g, '"').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')}
-                            </a>
-                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                              <span className="inline-flex items-center gap-1">
-                                <ExternalLink className="w-3 h-3" />
-                                {domain || 'Source'}
-                              </span>
-                              {publishedDate && (
-                                <>
-                                  <span>•</span>
-                                  <span>{publishedDate}</span>
-                                </>
-                              )}
-                              <span>•</span>
-                              <span>{item.type}</span>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
+                  <li key={i} className="text-sm">
+                    <a href={it.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 underline text-blue-700">
+                      {domain || 'link'}
+                      <ExternalLink className="w-3 h-3" />
+                    </a>
+                    {it.title ? <span className="ml-2 text-foreground/80">— {it.title}</span> : null}
+                  </li>
                 );
               })}
-            </div>
-            <div className="mt-4 pt-4 border-t border-border">
-              <p className="text-xs text-muted-foreground">
-                <strong>Total Sources:</strong> {report.signals.reduce((acc, signal) => acc + signal.items.filter(item => item.url).length, 0)} articles and references analyzed
-              </p>
-            </div>
+            </ul>
           </div>
         )}
 

@@ -4,12 +4,13 @@ import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
 import { setupLocalAuth, requireLocalAuth, requirePremium } from "./localAuth";
 import { requireAnyAuth, requirePremiumAny, addAuthContext, getAuthContext } from "./utils/unified-auth";
+import { insertCompetitorReportSchema, insertTrackedCompetitorSchema } from "@shared/schema";
 import { z } from "zod";
 import { signalAggregator } from "./services/signalAggregator";
 import { enhancedSignalAggregator } from "./services/enhancedSignalAggregator";
 
 import { summarizeCompetitorSignals, generateFastPreview, summarizeCompactSignals, summarizeNewsletterDigest } from "./services/openai";
-import { openaiWebSearch } from './services/openaiWebSearch';
+import { openaiWebSearch } from "./services/openaiWebSearch";
 import { trustpilotService } from "./services/trustpilot";
 import { sendCompetitorReport } from "./email";
 
@@ -617,21 +618,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const competitors: string[] = Array.isArray(report.competitors) ? report.competitors : [];
       if (competitors.length === 0) return res.json([]);
 
-      // Fetch in parallel via OpenAI web_search with timeout
+      // Fetch in parallel via OpenAI web_search (force use regardless of flag for this endpoint)
       const per = await Promise.allSettled(
-        competitors.map(c => 
-          Promise.race([
-            openaiWebSearch.searchNewsForCompetitor(String(c), 'general'),
-            new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 15000))
-          ])
-        )
+        competitors.map(c => openaiWebSearch.searchNewsForCompetitor(String(c), 'general'))
       );
       const all = per.flatMap(r => r.status === 'fulfilled' && Array.isArray(r.value) ? r.value : []);
 
       const thirtyDaysAgo = new Date();
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-      // Deduplicate by URL and title, filter recent articles only
+      // Deduplicate by URL and title
       const seen = new Set<string>();
       const items = [] as Array<{ title: string; url: string; domain: string; publishedAt?: string; competitor?: string }>;
       for (const it of all) {
@@ -645,7 +641,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const publishedAt = (it as any)?.publishedAt;
           if (publishedAt) {
             const d = new Date(publishedAt);
-            if (!isNaN(d.getTime()) && d < thirtyDaysAgo) continue; // Skip old articles
+            if (!isNaN(d.getTime()) && d < thirtyDaysAgo) continue;
           }
           const domain = new URL(url).hostname.replace(/^www\./, '');
           items.push({ title, url, domain, publishedAt, competitor: (it as any)?.competitor });
@@ -669,13 +665,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const competitors = raw.split(',').map((s: string) => s.trim()).filter(Boolean);
       if (competitors.length === 0) return res.json([]);
 
-      const per = await Promise.allSettled(
-        competitors.map((c: string) => 
-          Promise.race([
-            openaiWebSearch.searchNewsForCompetitor(String(c), 'general'),
-            new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 15000))
-          ])
-        )
+      const per: PromiseSettledResult<any[]>[] = await Promise.allSettled(
+        competitors.map((c: string) => openaiWebSearch.searchNewsForCompetitor(String(c), 'general'))
       );
       const all = per.flatMap((r) => r.status === 'fulfilled' && Array.isArray(r.value) ? r.value : []);
 
@@ -695,7 +686,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const publishedAt = (it as any)?.publishedAt;
           if (publishedAt) {
             const d = new Date(publishedAt);
-            if (!isNaN(d.getTime()) && d < thirtyDaysAgo) continue; // Skip old articles
+            if (!isNaN(d.getTime()) && d < thirtyDaysAgo) continue;
           }
           const domain = new URL(url).hostname.replace(/^www\./, '');
           items.push({ title, url, domain, publishedAt, competitor: (it as any)?.competitor });
