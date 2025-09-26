@@ -529,11 +529,18 @@ CRITICAL FORMATTING REQUIREMENTS:
         .replace(/\[Source:\s*(?:news|bing\.com\/news)\s*\]/ig, '')
         .replace(/\(https?:\/\/bing\.com\/news[^\)]*\)/ig, '');
       // Remove placeholder source tags without URLs, e.g., [Source: Your Source Here]
-      const cleaned2 = cleaned.replace(/\[Source:\s*([^\]]*?)\](?!\([^\)]*\))/ig, '');
-      const hasLink = /\[Source:\s*[^\]]+\]\([^\)]+\)/i.test(cleaned2);
+      let cleaned2 = cleaned.replace(/\[Source:\s*([^\]]*?)\](?!\([^\)]*\))/ig, '');
+      // If there are any bare URLs, convert them to Markdown links with domain label
+      if (!/\[[^\]]+\]\([^\)]+\)/.test(cleaned2)) {
+        cleaned2 = cleaned2.replace(/https?:\/\/[^\s\)]+/g, (u) => {
+          const dd = domainFromUrl(u) || 'link';
+          return `[${dd}](${u})`;
+        });
+      }
+      const hasLink = /\[[^\]]+\]\([^\)]+\)/i.test(cleaned2);
       const d = domainFromUrl(url || '');
       if (hasLink || !d || !url) return cleaned2.trim();
-      return `${cleaned2.trim()} [Source: ${d}](${url})`;
+      return `${cleaned2.trim()} [${d}](${url})`;
     };
 
     for (const comp of analysis.competitors) {
