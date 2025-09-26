@@ -530,6 +530,12 @@ CRITICAL FORMATTING REQUIREMENTS:
         .replace(/\(https?:\/\/bing\.com\/news[^\)]*\)/ig, '');
       // Remove placeholder source tags without URLs, e.g., [Source: Your Source Here]
       let cleaned2 = cleaned.replace(/\[Source:\s*([^\]]*?)\](?!\([^\)]*\))/ig, '');
+      // Normalize any existing Markdown links to use domain-only labels
+      cleaned2 = cleaned2.replace(/\[([^\]]+)\]\((https?:\/\/[^\)]+)\)/g, (_m, _label: string, link: string) => {
+        const dd = domainFromUrl(link) || _label;
+        return `[${dd}](${link})`;
+      });
+
       // If there are any bare URLs, convert them to Markdown links with domain label
       if (!/\[[^\]]+\]\([^\)]+\)/.test(cleaned2)) {
         cleaned2 = cleaned2.replace(/https?:\/\/[^\s\)]+/g, (u) => {

@@ -10,6 +10,7 @@ import { signalAggregator } from "./services/signalAggregator";
 import { enhancedSignalAggregator } from "./services/enhancedSignalAggregator";
 
 import { summarizeCompetitorSignals, generateFastPreview, summarizeCompactSignals, summarizeNewsletterDigest } from "./services/openai";
+import { openaiWebSearch } from "./services/openaiWebSearch";
 import { trustpilotService } from "./services/trustpilot";
 import { sendCompetitorReport } from "./email";
 
@@ -604,6 +605,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching report:", error);
       res.status(500).json({ message: "Failed to fetch report" });
+    }
+  });
+
+  // Latest News (OpenAI web_search): curated recent unique articles by report competitors
+  app.get('/api/reports/:id/news', async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const report = await storage.getReportById(id);
+      if (!report) return res.status(404).json({ message: 'Report not found' });
+
+      const competitors: string[] = Array.isArray(report.competitors) ? report.competitors : [];
+      if (competitors.length === 0) return res.json([]);
+
+      // Fetch in parallel via OpenAI web_search (force use regardless of flag for this endpoint)
+      const per = await Promise.allSettled(
+        competitors.map(c => openaiWebSearch.searchNewsForCompetitor(String(c), 'general'))
+      );
+      const all = per.flatMap(r => r.status === 'fulfilled' && Array.isArray(r.value) ? r.value : []);
+
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+      // Deduplicate by URL and title
+      const seen = new Set<string>();
+      const items = [] as Array<{ title: string; url: string; domain: string; publishedAt?: string; competitor?: string }>;
+      for (const it of all) {
+        const url = (it as any)?.url || '';
+        const title = (it as any)?.title || '';
+        if (!url || !title) continue;
+        try {
+          const key = `${new URL(url).href}|${title.trim().toLowerCase()}`;
+          if (seen.has(key)) continue;
+          seen.add(key);
+          const publishedAt = (it as any)?.publishedAt;
+          if (publishedAt) {
+            const d = new Date(publishedAt);
+            if (!isNaN(d.getTime()) && d < thirtyDaysAgo) continue;
+          }
+          const domain = new URL(url).hostname.replace(/^www\./, '');
+          items.push({ title, url, domain, publishedAt, competitor: (it as any)?.competitor });
+        } catch {}
+      }
+
+      // Sort by date desc when available, else keep order
+      items.sort((a, b) => new Date(b.publishedAt || 0).getTime() - new Date(a.publishedAt || 0).getTime());
+      res.json(items.slice(0, 12));
+    } catch (err) {
+      console.error('[Routes] latest news endpoint failed', err);
+      res.status(500).json({ message: 'Failed to fetch latest news' });
     }
   });
 

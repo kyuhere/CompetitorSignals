@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Download, Mail, BarChart3, DollarSign, MessageCircle, Lightbulb, CheckCircle, TrendingUp, TrendingDown, Minus, Building2, Target, Code, Globe, Package, Users, ThumbsUp, ThumbsDown, AlertTriangle, Zap, ExternalLink } from "lucide-react";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -164,6 +164,21 @@ export default function CompetitorReport({ report, guestGateActive, onGuestGate 
   const [emailAddress, setEmailAddress] = useState("");
   // Track active tab and render heavy sections on demand
   const [activeTab, setActiveTab] = useState<"overview" | "analysis" | "reviews" | "market" | "tech">("overview");
+
+  // Latest News (OpenAI web_search-backed) for this report
+  const { data: latestNews } = useQuery({
+    queryKey: ["report-latest-news", report.id],
+    queryFn: async () => {
+      try {
+        const res = await apiRequest('GET', `/api/reports/${report.id}/news`);
+        return Array.isArray(res) ? res : [];
+      } catch (e) {
+        console.error('Failed to load latest news', e);
+        return [] as Array<{ title: string; url: string; domain: string; publishedAt?: string; competitor?: string }>;
+      }
+    },
+    staleTime: 5 * 60 * 1000,
+  });
 
   // Email mutation
   const emailMutation = useMutation({
@@ -625,50 +640,13 @@ export default function CompetitorReport({ report, guestGateActive, onGuestGate 
                 </div>
               </div>
             )}
-
-            {/* Top Signals */}
-            {quickSummary?.topSignals && quickSummary.topSignals.length > 0 && (
-              <div>
-                <h3 className="text-2xl lg:text-3xl font-bold text-foreground mb-6 flex items-center">
-                  <Lightbulb className="w-5 h-5 text-primary mr-2" />
-                  Top Signals
-                </h3>
-                <div className="space-y-2">
-                  {quickSummary.topSignals.slice(0, 3).map((signal: string, index: number) => (
-                    <div key={index} className="flex items-start p-3 bg-muted/30 rounded-lg border border-border">
-                      <TrendingUp className="w-4 h-4 text-primary mt-1 mr-2 flex-shrink-0" />
-                      <span className="text-foreground text-sm">{signal}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Key Strategic Insights */}
-            {(quickSummary as any)?.strategicInsights && (quickSummary as any).strategicInsights.length > 0 && (
-              <div className="mt-2 p-4 bg-muted rounded-lg">
-                <h3 className="text-2xl lg:text-3xl font-bold text-foreground mb-6 flex items-center">
-                  <Lightbulb className="w-5 h-5 text-amber-500 mr-2" />
-                  Key Strategic Insights
-                </h3>
-                <ul className="space-y-2">
-                  {(quickSummary as any).strategicInsights.map((ins: string, idx: number) => (
-                    <li key={idx} className="flex items-start">
-                      <CheckCircle className="w-4 h-4 text-green-600 mt-0.5 mr-2 flex-shrink-0" />
-                      <span className="text-sm text-foreground">{stripSourceTags(ins)}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
           </div>
         ) : (
-        /* Comprehensive Competitor Analysis (default full report) */
-        <div className="space-y-8">
-          {analysis.competitors?.map((competitor: any, index: number) => (
-            <div key={index} className="border border-border rounded-lg p-6" data-testid={`competitor-analysis-${index}`}>
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-xl font-semibold text-foreground" data-testid={`text-competitor-name-${index}`}>
+          <div className="space-y-8">
+            {analysis.competitors?.map((competitor: any, competitorIndex: number) => (
+              <div key={competitorIndex}>
+                <h3 className="text-2xl lg:text-3xl font-bold text-foreground mb-6 flex items-center">
+                  <Target className="w-5 h-5 text-primary mr-2" />
                   {competitor.competitor}
                 </h3>
                 <div className="flex items-center space-x-2">
@@ -1185,117 +1163,30 @@ export default function CompetitorReport({ report, guestGateActive, onGuestGate 
           </div>
         )}
 
-        {/* Source References */}
-        {report.signals && report.signals.length > 0 && (
-          <div className="mt-8 p-6 bg-muted/50 rounded-lg">
+        {/* Latest News (OpenAI web_search, deduped) */}
+        {Array.isArray(latestNews) && latestNews.length > 0 && (
+          <div className="mt-8 p-6 bg-muted rounded-lg">
             <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center">
-              <Globe className="w-5 h-5 text-blue-600 mr-2" />
-              Source References
+              <ExternalLink className="w-5 h-5 text-primary mr-2" />
+              Latest News
             </h3>
-            <div className="space-y-4">
-              {report.signals.map((signal, signalIndex) => {
-                // Clean up source names and make them clickable if they're RSS feeds
-                let displaySource = signal.source;
-                let sourceUrl = null;
-
-                if (signal.source === 'RapidAPI News') {
-                  displaySource = 'News';
-                } else if (signal.source.includes('RSS: bing.com')) {
-                  displaySource = 'Bing News';
-                  sourceUrl = 'https://www.bing.com/news';
-                } else if (signal.source.includes('RSS:')) {
-                  // Extract hostname from RSS source
-                  const match = signal.source.match(/RSS: (.+)/);
-                  if (match) {
-                    displaySource = match[1];
-                    // Try to create a link to the source
-                    if (match[1].includes('techcrunch')) {
-                      sourceUrl = 'https://techcrunch.com';
-                    } else if (match[1].includes('ycombinator')) {
-                      sourceUrl = 'https://news.ycombinator.com';
-                    }
-                  }
+            <ul className="space-y-3">
+              {latestNews.slice(0, 12).map((it: any, i: number) => {
+                let domain = it?.domain as string | undefined;
+                if (!domain && it?.url) {
+                  try { domain = new URL(it.url).hostname.replace(/^www\./, ''); } catch {}
                 }
-
                 return (
-                <div key={signalIndex} className="border-l-2 border-blue-200 pl-4">
-                  <h4 className="font-medium text-foreground mb-2">
-                    {sourceUrl ? (
-                      <a 
-                        href={sourceUrl} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="text-blue-600 hover:text-blue-800 hover:underline"
-                      >
-                        {displaySource}
-                      </a>
-                    ) : displaySource === 'Aggregated Sources' ? (
-                      <div className="space-y-1">
-                        <span className="text-foreground font-medium">Multiple Sources:</span>
-                        <div className="flex flex-wrap gap-2 mt-2">
-                          <a 
-                            href="https://techcrunch.com" 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full hover:bg-blue-200 transition-colors"
-                          >
-                            TechCrunch
-                          </a>
-                          <a 
-                            href="https://news.ycombinator.com" 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className="text-xs bg-orange-100 text-orange-800 px-2 py-1 rounded-full hover:bg-orange-200 transition-colors"
-                          >
-                            Hacker News
-                          </a>
-                          <a 
-                            href="https://www.bing.com/news" 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full hover:bg-green-200 transition-colors"
-                          >
-                            Bing News
-                          </a>
-                          <span className="text-xs bg-gray-100 text-gray-800 px-2 py-1 rounded-full">
-                            RSS Feeds
-                          </span>
-                        </div>
-                      </div>
-                    ) : (
-                      displaySource
-                    )}
-                  </h4>
-                  <div className="space-y-2">
-                    {signal.items.filter(item => item.url).slice(0, 5).map((item, itemIndex) => (
-                      <div key={itemIndex} className="flex items-start space-x-2">
-                        <div className="w-1.5 h-1.5 bg-blue-600 rounded-full mt-2 flex-shrink-0"></div>
-                        <div className="flex-1">
-                          <a 
-                            href={item.url} 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className="text-sm text-blue-600 hover:text-blue-800 hover:underline font-medium"
-                            data-testid={`source-link-${signalIndex}-${itemIndex}`}
-                          >
-                            {item.title.replace(/&#x27;/g, "'").replace(/&quot;/g, '"').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')}
-                          </a>
-                          <p className="text-xs text-muted-foreground mt-1">
-                            {item.publishedAt ? new Date(item.publishedAt).toLocaleDateString() : ''} • {item.type}
-                          </p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
+                  <li key={i} className="text-sm">
+                    <a href={it.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 underline text-blue-700">
+                      {domain || 'link'}
+                      <ExternalLink className="w-3 h-3" />
+                    </a>
+                    {it.title ? <span className="ml-2 text-foreground/80">— {it.title}</span> : null}
+                  </li>
                 );
               })}
-            </div>
-            <div className="mt-4 pt-4 border-t border-border">
-              <p className="text-xs text-muted-foreground">
-                <strong>Total Sources:</strong> {report.signals.reduce((acc, signal) => acc + signal.items.filter(item => item.url).length, 0)} articles and references analyzed
-              </p>
-            </div>
+            </ul>
           </div>
         )}
 
