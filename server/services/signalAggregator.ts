@@ -35,6 +35,7 @@ class SignalAggregator {
     
     return intersection.size / union.size;
   }
+
   async aggregateSignals(
     competitors: string[],
     urls: string[] = [],

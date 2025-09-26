@@ -65,20 +65,28 @@ class OpenAIWebSearchService {
   }
 
   private async responsesJSON<T = any>(prompt: string): Promise<T> {
-    // Use OpenAI o1-mini with web search tool for real web results
+    // Use GPT-4o with system instructions (web search tools may not be available yet)
     const response = await this.openai.chat.completions.create({
-      model: 'o1-mini', // Medium reasoning model with web search capability
+      model: 'gpt-4o', // Use GPT-4o instead of o1-mini for better compatibility
       messages: [
+        {
+          role: 'system',
+          content: `You are a research assistant that searches for recent news about companies. Focus on finding news from premium tech sources like:
+- TechCrunch, Wired, The Verge, Ars Technica, Engadget
+- Reuters Technology, Bloomberg Technology, WSJ Tech, Financial Times
+- CNBC Technology, Forbes Tech, Business Insider Tech
+- VentureBeat, SiliconANGLE, 9to5Mac, MacRumors
+- Hacker News, Product Hunt, TechMeme
+
+Return only valid JSON matching the requested schema. No additional text or explanations.`
+        },
         {
           role: 'user',
           content: prompt
         }
       ],
-      tools: [
-        {
-          type: 'web_search'
-        }
-      ] as any // TypeScript doesn't recognize web_search tool yet, but it's valid in the OpenAI API
+      temperature: 0.2,
+      max_tokens: 2000
     });
 
     const text = response.choices[0]?.message?.content || '';
