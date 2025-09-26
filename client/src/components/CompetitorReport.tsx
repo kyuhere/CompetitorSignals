@@ -212,9 +212,10 @@ interface CompetitorReportProps {
   // Guest gating: when true, block tab switches and gated actions
   guestGateActive?: boolean;
   onGuestGate?: () => void;
+  onAnalyzeRequested?: (competitors: string[]) => void;
 }
 
-export default function CompetitorReport({ report, guestGateActive, onGuestGate }: CompetitorReportProps) {
+export default function CompetitorReport({ report, guestGateActive, onGuestGate, onAnalyzeRequested }: CompetitorReportProps) {
   const { toast } = useToast();
   const [emailDialogOpen, setEmailDialogOpen] = useState(false);
   const [emailAddress, setEmailAddress] = useState("");
@@ -1273,20 +1274,52 @@ export default function CompetitorReport({ report, guestGateActive, onGuestGate 
                 const domain = it?.domain || '';
                 const href = it?.url || (name ? `https://www.google.com/search?q=${encodeURIComponent(name + ' competitor')}` : '#');
                 return (
-                  <li key={idx} className="text-sm text-foreground flex items-start">
-                    <div className="w-1.5 h-1.5 bg-primary rounded-full mt-2 mr-3 flex-shrink-0"></div>
-                    <div>
-                      <a href={href} target="_blank" rel="noopener noreferrer" className="font-medium underline text-blue-700 hover:text-blue-800">
-                        {name}
-                      </a>
-                      {domain && (
-                        <>
-                          <span className="mx-2 text-muted-foreground">•</span>
-                          <a href={`https://${domain}`} target="_blank" rel="noopener noreferrer" className="text-muted-foreground underline">
-                            {domain}
-                          </a>
-                        </>
-                      )}
+                  <li key={idx} className="text-sm text-foreground flex items-start justify-between gap-3">
+                    <div className="flex items-start">
+                      <div className="w-1.5 h-1.5 bg-primary rounded-full mt-2 mr-3 flex-shrink-0"></div>
+                      <div>
+                        <a href={href} target="_blank" rel="noopener noreferrer" className="font-medium underline text-blue-700 hover:text-blue-800">
+                          {name}
+                        </a>
+                        {domain && (
+                          <>
+                            <span className="mx-2 text-muted-foreground">•</span>
+                            <a href={`https://${domain}`} target="_blank" rel="noopener noreferrer" className="text-muted-foreground underline">
+                              {domain}
+                            </a>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex-shrink-0">
+                      <button
+                        type="button"
+                        className="text-xs px-2 py-1 rounded-md bg-primary text-primary-foreground hover:opacity-90"
+                        onClick={() => {
+                          if (guestGateActive) { onGuestGate && onGuestGate(); return; }
+                          const toCanon = (s: string) => {
+                            const lower = (s || '').trim().toLowerCase();
+                            const noProto = lower.replace(/^https?:\/\//, '').replace(/^www\./, '');
+                            const firstToken = noProto.split('/')[0];
+                            const baseLabel = firstToken.includes('.') ? firstToken.split('.')[0] : firstToken;
+                            return baseLabel.replace(/[^a-z0-9]/g, '');
+                          };
+                          const existing = Array.isArray(report.competitors) ? report.competitors : [];
+                          const merged = [...existing, name].filter(Boolean);
+                          // Dedupe canonically
+                          const seen = new Set<string>();
+                          const deduped: string[] = [];
+                          for (const c of merged) {
+                            const canon = toCanon(c);
+                            if (!canon || seen.has(canon)) continue;
+                            seen.add(canon);
+                            deduped.push(c);
+                          }
+                          onAnalyzeRequested && onAnalyzeRequested(deduped);
+                        }}
+                      >
+                        Add to analysis
+                      </button>
                     </div>
                   </li>
                 );

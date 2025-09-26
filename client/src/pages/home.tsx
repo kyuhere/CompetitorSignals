@@ -253,6 +253,17 @@ export default function Home() {
                     report={currentReport}
                     guestGateActive={isGuest && guestHasSearched}
                     onGuestGate={() => triggerSignupGate()}
+                    onAnalyzeRequested={(competitorList: string[]) => {
+                      if (isGuest && guestHasSearched) { triggerSignupGate(); return; }
+                      const data = {
+                        competitors: competitorList.join('\n'),
+                        sources: { news: true, funding: true, social: true, products: false },
+                        autoTrack: true,
+                        competitorList,
+                        nocache: true,
+                      };
+                      handleAnalysis(data);
+                    }}
                   />
                 ) : (
                   <Card className="h-96 flex items-center justify-center card-rounded hover-lift">
@@ -304,6 +315,17 @@ export default function Home() {
                     report={currentReport}
                     guestGateActive={isGuest && guestHasSearched}
                     onGuestGate={() => triggerSignupGate()}
+                    onAnalyzeRequested={(competitorList: string[]) => {
+                      if (isGuest && guestHasSearched) { triggerSignupGate(); return; }
+                      const data = {
+                        competitors: competitorList.join('\n'),
+                        sources: { news: true, funding: true, social: true, products: false },
+                        autoTrack: true,
+                        competitorList,
+                        nocache: true,
+                      };
+                      handleAnalysis(data);
+                    }}
                   />
                 ) : (
                   <Card className="h-96 flex items-center justify-center card-rounded hover-lift">
@@ -349,6 +371,17 @@ export default function Home() {
                   report={currentReport}
                   guestGateActive={isGuest && guestHasSearched}
                   onGuestGate={() => triggerSignupGate()}
+                  onAnalyzeRequested={(competitorList: string[]) => {
+                    if (isGuest && guestHasSearched) { triggerSignupGate(); return; }
+                    const data = {
+                      competitors: competitorList.join('\n'),
+                      sources: { news: true, funding: true, social: true, products: false },
+                      autoTrack: true,
+                      competitorList,
+                      nocache: true,
+                    };
+                    handleAnalysis(data);
+                  }}
                 />
               </div>
             )}
