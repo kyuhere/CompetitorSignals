@@ -259,12 +259,10 @@ class SignalAggregator {
         }
         // Fall through to RapidAPI fallback
       }
-      // Search for business-critical news about the competitor
+      // Search for business-critical news about the competitor (reduced queries for speed)
       const searchQueries = [
         `"${competitor}" funding raised investment revenue earnings`,
-        `"${competitor}" layoffs hiring expansion growth`,
-        `"${competitor}" product launch new features`,
-        `"${competitor}" acquisition merger partnership deal`
+        `"${competitor}" product launch new features acquisition merger partnership`
       ];
 
       const allResults: SignalItem[] = [];
@@ -272,7 +270,14 @@ class SignalAggregator {
       for (const query of searchQueries) {
         try {
           const rssUrl = `https://www.bing.com/news/search?format=RSS&q=${encodeURIComponent(query)}&sortby=date&since=90days&count=3`;
-          const rssItems = await parseRSSFeed(rssUrl);
+          
+          // Add timeout to RSS parsing to prevent hanging
+          const rssItems = await Promise.race([
+            parseRSSFeed(rssUrl),
+            new Promise<any[]>((_, reject) => 
+              setTimeout(() => reject(new Error('RSS feed timeout')), 8000)
+            )
+          ]);
           
           const results = rssItems.map((item: any) => ({
             title: item.title || '',

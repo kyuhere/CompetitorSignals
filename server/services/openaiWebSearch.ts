@@ -65,10 +65,55 @@ class OpenAIWebSearchService {
   }
 
   private async responsesJSON<T = any>(prompt: string): Promise<T> {
-    // Since OpenAI doesn't have a web_search tool in the standard API,
-    // we'll fall back to using RSS feeds for now
-    // This method will return empty results to trigger the RSS fallback
-    throw new Error('OpenAI web search not available, falling back to RSS feeds');
+    // Use OpenAI chat completions with web search instructions
+    const response = await this.openai.chat.completions.create({
+      model: this.model === 'gpt-5' ? 'gpt-4o' : this.model, // Use available model
+      messages: [
+        {
+          role: 'system',
+          content: `You are a research assistant that searches for recent news about companies. Focus on finding news from premium tech sources like:
+- TechCrunch
+- Wired  
+- The Verge
+- Reuters Technology
+- Bloomberg Technology
+- The Wall Street Journal Tech
+- Financial Times Technology
+- The Guardian Technology
+- CNBC Technology
+- Forbes Tech
+- Business Insider Tech
+- VentureBeat
+- SiliconANGLE
+- Hacker News
+- MSN
+
+Return only valid JSON matching the requested schema. No additional text or explanations.`
+        },
+        {
+          role: 'user',
+          content: prompt
+        }
+      ],
+      temperature: 0.2,
+      max_tokens: 2000
+    });
+
+    const text = response.choices[0]?.message?.content || '';
+    const clean = this.stripJSON(text);
+    
+    try {
+      return JSON.parse(clean) as T;
+    } catch (e) {
+      // Try to extract JSON between first { and last }
+      const start = clean.indexOf('{');
+      const end = clean.lastIndexOf('}');
+      if (start >= 0 && end > start) {
+        const slice = clean.slice(start, end + 1);
+        return JSON.parse(slice) as T;
+      }
+      throw new Error(`Failed to parse JSON from OpenAI output: ${text}`);
+    }
   }
 
   // Phase 2 news: get recent news items for a competitor
@@ -84,10 +129,15 @@ class OpenAIWebSearchService {
       ]
     }`;
 
-    const prompt = `You are a research assistant. Use web_search to find the most recent, high-signal items about "${competitor}".
-Focus on the last 90 days. Prioritize ${intent === 'general' ? 'business-critical news' : intent}.
+    const prompt = `Find the most recent news articles about "${competitor}" from the last 30 days. 
+Focus on ${intent === 'general' ? 'business developments, funding, partnerships, product launches' : intent}.
+
+Search these premium sources first:
+- TechCrunch, Wired, The Verge, Reuters, Bloomberg, WSJ, Financial Times
+- CNBC, Forbes, Business Insider, VentureBeat, SiliconANGLE, Hacker News
+
 Return STRICT JSON ONLY matching this schema: ${jsonSchema}
-No prose. Include 3–6 items maximum. Avoid duplicates and low-signal content.`;
+Include 4-6 recent, high-quality articles with real URLs. No duplicates or generic content.`;
 
     try {
       const data = await this.responsesJSON<{ items: Array<{ title: string; summary: string; url: string; date?: string; category?: string }> }>(prompt);

@@ -4,13 +4,13 @@ import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
 import { setupLocalAuth, requireLocalAuth, requirePremium } from "./localAuth";
 import { requireAnyAuth, requirePremiumAny, addAuthContext, getAuthContext } from "./utils/unified-auth";
-import { insertCompetitorReportSchema, insertTrackedCompetitorSchema } from "@shared/schema";
 import { z } from "zod";
 import { signalAggregator } from "./services/signalAggregator";
 import { enhancedSignalAggregator } from "./services/enhancedSignalAggregator";
 
 import { summarizeCompetitorSignals, generateFastPreview, summarizeCompactSignals, summarizeNewsletterDigest } from "./services/openai";
-import { openaiWebSearch } from "./services/openaiWebSearch";
+import { openaiWebSearch } from './services/openaiWebSearch';
+import { premiumNewsService } from './services/premiumNewsService';
 import { trustpilotService } from "./services/trustpilot";
 import { sendCompetitorReport } from "./email";
 
@@ -608,7 +608,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Latest News (OpenAI web_search): curated recent unique articles by report competitors
+  // Latest News (Premium sources + OpenAI): curated recent unique articles by report competitors
   app.get('/api/reports/:id/news', async (req: any, res) => {
     try {
       const { id } = req.params;
@@ -618,37 +618,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const competitors: string[] = Array.isArray(report.competitors) ? report.competitors : [];
       if (competitors.length === 0) return res.json([]);
 
-      // Fetch in parallel via OpenAI web_search (force use regardless of flag for this endpoint)
-      const per = await Promise.allSettled(
-        competitors.map(c => openaiWebSearch.searchNewsForCompetitor(String(c), 'general'))
+      // Use premium news service for better results
+      const allNews = await Promise.allSettled(
+        competitors.map(c => premiumNewsService.searchNews(String(c), 8))
       );
-      const all = per.flatMap(r => r.status === 'fulfilled' && Array.isArray(r.value) ? r.value : []);
+      
+      const items = allNews
+        .filter(result => result.status === 'fulfilled')
+        .flatMap(result => (result as PromiseFulfilledResult<any[]>).value)
+        .map(item => ({
+          title: item.title,
+          url: item.url,
+          domain: item.source,
+          publishedAt: item.publishedAt,
+          competitor: competitors.find(c => 
+            item.title.toLowerCase().includes(c.toLowerCase()) ||
+            item.content.toLowerCase().includes(c.toLowerCase())
+          )
+        }))
+        .filter(item => item.title && item.url);
 
-      const thirtyDaysAgo = new Date();
-      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-
-      // Deduplicate by URL and title
-      const seen = new Set<string>();
-      const items = [] as Array<{ title: string; url: string; domain: string; publishedAt?: string; competitor?: string }>;
-      for (const it of all) {
-        const url = (it as any)?.url || '';
-        const title = (it as any)?.title || '';
-        if (!url || !title) continue;
-        try {
-          const key = `${new URL(url).href}|${title.trim().toLowerCase()}`;
-          if (seen.has(key)) continue;
-          seen.add(key);
-          const publishedAt = (it as any)?.publishedAt;
-          if (publishedAt) {
-            const d = new Date(publishedAt);
-            if (!isNaN(d.getTime()) && d < thirtyDaysAgo) continue;
-          }
-          const domain = new URL(url).hostname.replace(/^www\./, '');
-          items.push({ title, url, domain, publishedAt, competitor: (it as any)?.competitor });
-        } catch {}
-      }
-
-      // Sort by date desc when available, else keep order
+      // Sort by date and limit
       items.sort((a, b) => new Date(b.publishedAt || 0).getTime() - new Date(a.publishedAt || 0).getTime());
       res.json(items.slice(0, 12));
     } catch (err) {
@@ -665,33 +655,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const competitors = raw.split(',').map((s: string) => s.trim()).filter(Boolean);
       if (competitors.length === 0) return res.json([]);
 
-      const per: PromiseSettledResult<any[]>[] = await Promise.allSettled(
-        competitors.map((c: string) => openaiWebSearch.searchNewsForCompetitor(String(c), 'general'))
+      // Use premium news service for guest analyses too
+      const allNews = await Promise.allSettled(
+        competitors.map(c => premiumNewsService.searchNews(String(c), 8))
       );
-      const all = per.flatMap((r) => r.status === 'fulfilled' && Array.isArray(r.value) ? r.value : []);
-
-      const thirtyDaysAgo = new Date();
-      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-
-      const seen = new Set<string>();
-      const items: Array<{ title: string; url: string; domain: string; publishedAt?: string; competitor?: string }> = [];
-      for (const it of all) {
-        const url = (it as any)?.url || '';
-        const title = (it as any)?.title || '';
-        if (!url || !title) continue;
-        try {
-          const key = `${new URL(url).href}|${title.trim().toLowerCase()}`;
-          if (seen.has(key)) continue;
-          seen.add(key);
-          const publishedAt = (it as any)?.publishedAt;
-          if (publishedAt) {
-            const d = new Date(publishedAt);
-            if (!isNaN(d.getTime()) && d < thirtyDaysAgo) continue;
-          }
-          const domain = new URL(url).hostname.replace(/^www\./, '');
-          items.push({ title, url, domain, publishedAt, competitor: (it as any)?.competitor });
-        } catch {}
-      }
+      
+      const items = allNews
+        .filter(result => result.status === 'fulfilled')
+        .flatMap(result => (result as PromiseFulfilledResult<any[]>).value)
+        .map(item => ({
+          title: item.title,
+          url: item.url,
+          domain: item.source,
+          publishedAt: item.publishedAt,
+          competitor: competitors.find(c => 
+            item.title.toLowerCase().includes(c.toLowerCase()) ||
+            item.content.toLowerCase().includes(c.toLowerCase())
+          )
+        }))
+        .filter(item => item.title && item.url);
 
       items.sort((a, b) => new Date(b.publishedAt || 0).getTime() - new Date(a.publishedAt || 0).getTime());
       res.json(items.slice(0, 12));

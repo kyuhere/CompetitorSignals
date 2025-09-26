@@ -65,14 +65,27 @@ export class EnhancedSignalAggregator {
         onPartialResults
       );
 
-      // Enhanced signals with reviews and social sentiment (run per-competitor in parallel)
+      // Enhanced signals with reviews and social sentiment (run per-competitor in parallel with timeouts)
       console.log(`[EnhancedAggregator] Starting enhanced data collection for ${competitors.length} competitors`);
       const enhancedPerCompetitor = competitors.map(async (competitor) => {
         console.log(`[EnhancedAggregator] Processing enhanced data for: ${competitor}`);
         const domain = options?.domainsByCompetitor?.[competitor] || options?.domainsByCompetitor?.[competitor.toLowerCase()];
+        
+        // Add timeouts to prevent hanging
+        const withTimeout = <T>(promise: Promise<T>, timeoutMs: number): Promise<T> => {
+          return Promise.race([
+            promise,
+            new Promise<T>((_, reject) => 
+              setTimeout(() => reject(new Error(`Timeout after ${timeoutMs}ms`)), timeoutMs)
+            )
+          ]);
+        };
+
         const [tpData, hnData] = await Promise.allSettled([
-          (options?.mode === 'premium') ? this.getTrustpilotReviewData(competitor, domain, computeSentiment) : Promise.resolve(null),
-          this.getHackerNewsSentiment(competitor, computeSentiment, domain)
+          (options?.mode === 'premium') ? 
+            withTimeout(this.getTrustpilotReviewData(competitor, domain, computeSentiment), 15000) : 
+            Promise.resolve(null),
+          withTimeout(this.getHackerNewsSentiment(competitor, computeSentiment, domain), 10000)
         ]);
 
         if (tpData.status === 'rejected') {
