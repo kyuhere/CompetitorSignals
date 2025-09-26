@@ -644,20 +644,21 @@ export default function CompetitorReport({ report, guestGateActive, onGuestGate 
         ) : (
           <div className="space-y-8">
             {analysis.competitors?.map((competitor: any, competitorIndex: number) => (
-              <div key={competitorIndex}>
-                <h3 className="text-2xl lg:text-3xl font-bold text-foreground mb-6 flex items-center">
-                  <Target className="w-5 h-5 text-primary mr-2" />
-                  {competitor.competitor}
-                </h3>
-                <div className="flex items-center space-x-2">
-                  {getActivityBadge(competitor.activity_level)}
-                  <span className="text-xs text-muted-foreground">
-                    {(competitor.recent_developments?.length || 0) + (competitor.funding_business?.length || 0)} signals
-                  </span>
+              <div key={competitorIndex} className="space-y-6">
+                <div>
+                  <h3 className="text-2xl lg:text-3xl font-bold text-foreground mb-6 flex items-center">
+                    <Target className="w-5 h-5 text-primary mr-2" />
+                    {competitor.competitor}
+                  </h3>
+                  <div className="flex items-center space-x-2">
+                    {getActivityBadge(competitor.activity_level)}
+                    <span className="text-xs text-muted-foreground">
+                      {(competitor.recent_developments?.length || 0) + (competitor.funding_business?.length || 0)} signals
+                    </span>
+                  </div>
                 </div>
-              </div>
 
-              <Tabs value={activeTab} onValueChange={(v) => {
+                <Tabs value={activeTab} onValueChange={(v) => {
                 if (guestGateActive) { onGuestGate && onGuestGate(); return; }
                 setActiveTab(v as any);
               }} className="w-full">
