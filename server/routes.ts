@@ -608,7 +608,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Latest News (OpenAI web_search): curated recent unique articles by report competitors
+  // Latest News: curated recent unique articles by report competitors (derived from aggregator output)
   app.get('/api/reports/:id/news', async (req: any, res) => {
     try {
       const { id } = req.params;
@@ -618,11 +618,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const competitors: string[] = Array.isArray(report.competitors) ? report.competitors : [];
       if (competitors.length === 0) return res.json([]);
 
-      // Fetch in parallel via OpenAI web_search (force use regardless of flag for this endpoint)
-      const per = await Promise.allSettled(
-        competitors.map(c => openaiWebSearch.searchNewsForCompetitor(String(c), 'general'))
-      );
-      const all = per.flatMap(r => r.status === 'fulfilled' && Array.isArray(r.value) ? r.value : []);
+      // Derive from report.signals (aggregator output)
+      const all = ((report as any).signals || []).flatMap((sig: any) =>
+        (sig?.items || []).map((it: any) => ({
+          title: it?.title || '',
+          url: it?.url || '',
+          publishedAt: it?.publishedAt,
+          competitor: sig?.competitor || undefined,
+          type: it?.type || 'news'
+        }))
+      ).filter((it: any) => it.url && it.title && (it.type === 'news'));
 
       const thirtyDaysAgo = new Date();
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
@@ -657,7 +662,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Latest News for guest/temporary analyses (no stored report)
+  // Latest News for guest/temporary analyses (no stored report) - use aggregator
   app.get('/api/news', async (req: any, res) => {
     try {
       const raw = String(req.query.competitors || '').trim();
@@ -665,10 +670,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const competitors = raw.split(',').map((s: string) => s.trim()).filter(Boolean);
       if (competitors.length === 0) return res.json([]);
 
-      const per: PromiseSettledResult<any[]>[] = await Promise.allSettled(
-        competitors.map((c: string) => openaiWebSearch.searchNewsForCompetitor(String(c), 'general'))
+      // Use aggregator to fetch consistent news signals for guests
+      const agg = await signalAggregator.aggregateSignals(
+        competitors,
+        [],
+        { news: true, funding: false, social: false, products: false }
       );
-      const all = per.flatMap((r) => r.status === 'fulfilled' && Array.isArray(r.value) ? r.value : []);
+      const all = agg.flatMap((sig: any) => (sig?.items || [])).map((it: any) => ({
+        title: it?.title || '',
+        url: it?.url || '',
+        publishedAt: it?.publishedAt,
+        type: it?.type || 'news'
+      })).filter((it: any) => it.url && it.title && (it.type === 'news'));
 
       const thirtyDaysAgo = new Date();
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);

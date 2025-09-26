@@ -35,6 +35,74 @@ class SignalAggregator {
     
     return intersection.size / union.size;
   }
+
+  // RapidAPI Google Search integration for broader discovery of business news
+  private async getGoogleSearchNews(competitor: string): Promise<SignalItem[]> {
+    if (!process.env.RAPIDAPI_KEY) return [];
+
+    const queries = [
+      `${competitor} news`,
+      `${competitor} funding round`,
+      `${competitor} partnership`,
+      `${competitor} acquisition`,
+      `${competitor} layoffs hiring`
+    ];
+
+    const fetchOne = async (q: string) => {
+      const url = `https://google-search116.p.rapidapi.com/?query=${encodeURIComponent(q)}`;
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 8000);
+      try {
+        const res = await fetch(url, {
+          method: 'GET',
+          headers: {
+            'x-rapidapi-host': 'google-search116.p.rapidapi.com',
+            'x-rapidapi-key': process.env.RAPIDAPI_KEY as string,
+          },
+          signal: controller.signal,
+        });
+        clearTimeout(timeout);
+        if (!res.ok) throw new Error(`Google Search RapidAPI failed: ${res.status}`);
+        const data = await res.json();
+        const entries = (data?.news || data?.organic || data?.results || data?.items || []) as any[];
+        const nowIso = new Date().toISOString();
+        return entries.slice(0, 10).map((it: any) => ({
+          title: it.title || it.name || '',
+          content: it.snippet || it.description || it.content || '',
+          url: it.link || it.url || it.sourceUrl || '',
+          publishedAt: it.date || it.publishedAt || it.published_time || nowIso,
+          type: 'news' as const,
+        })) as SignalItem[];
+      } catch (err) {
+        clearTimeout(timeout);
+        console.error('[GoogleSearch] query failed', { competitor, q, err: (err as Error)?.message });
+        return [] as SignalItem[];
+      }
+    };
+
+    const results = (await Promise.allSettled(queries.map(fetchOne)))
+      .flatMap(r => r.status === 'fulfilled' ? r.value : []);
+
+    // Deduplicate by URL or title
+    const dedup = results.filter((item, idx, self) => idx === self.findIndex(t => (t.url && t.url === item.url) || t.title === item.title));
+    
+    // Light relevance filter: ensure competitor mention OR business keyword
+    const businessKeywords = [
+      'funding', 'investment', 'raised', 'revenue', 'earnings', 'valuation',
+      'layoffs', 'hiring', 'expansion', 'growth', 'launch', 'acquisition',
+      'merger', 'partnership', 'deal', 'ceo', 'executive', 'strategy'
+    ];
+    const compLower = competitor.toLowerCase();
+    const filtered = dedup.filter(it => {
+      const t = (it.title || '').toLowerCase();
+      const c = (it.content || '').toLowerCase();
+      const mentionsCompetitor = t.includes(compLower) || c.includes(compLower);
+      const hasBiz = businessKeywords.some(k => t.includes(k) || c.includes(k));
+      return mentionsCompetitor || hasBiz;
+    });
+
+    return filtered.slice(0, 12);
+  }
   async aggregateSignals(
     competitors: string[],
     urls: string[] = [],
@@ -292,6 +360,14 @@ class SignalAggregator {
         }
       }
 
+      // RapidAPI Google Search to broaden discovery
+      try {
+        const googleResults = await this.getGoogleSearchNews(competitor);
+        allResults.push(...googleResults);
+      } catch (err) {
+        console.error(`[SignalAggregator] Google Search integration failed for ${competitor}:`, err);
+      }
+
       // Enhanced deduplication and filtering
       const filteredResults = allResults.filter(item => {
         // Apply the same date and relevance filtering as RSS feeds
@@ -428,7 +504,7 @@ class SignalAggregator {
         return true;
       });
 
-      // For remaining items, use AI to check relevance
+      // For remaining items, use AI to check relevance (deterministic)
       const relevantItems: SignalItem[] = [];
       
       for (const item of preFiltered.slice(0, 10)) { // Limit to avoid API costs
@@ -659,8 +735,8 @@ Respond with only "RELEVANT" or "NOT_RELEVANT"`;
       }
 
       // Enhanced relevance check
-      const title = item.title.toLowerCase();
-      const content = item.content.toLowerCase();
+      const title = (item.title || '').toLowerCase();
+      const content = (item.content || '').toLowerCase();
       
       // Check if any competitor is mentioned directly
       const hasCompetitorMention = competitors.some(competitor => {
@@ -683,7 +759,7 @@ Respond with only "RELEVANT" or "NOT_RELEVANT"`;
       
       if (hasIrrelevantContent) return false;
       
-      // Prioritize business-critical content
+      // Deterministic business-critical filter
       const businessKeywords = [
         'funding', 'investment', 'raised', 'revenue', 'earnings', 'valuation',
         'layoffs', 'hiring', 'expansion', 'growth', 'launch', 'acquisition',
@@ -694,10 +770,8 @@ Respond with only "RELEVANT" or "NOT_RELEVANT"`;
         title.includes(keyword) || content.includes(keyword)
       );
       
-      // If it mentions the competitor but isn't business-critical, be more selective
-      if (!hasBusinessContent && Math.random() > 0.3) {
-        return false; // Only include 30% of non-business content
-      }
+      // Require business-critical content when a competitor is mentioned
+      if (!hasBusinessContent) return false;
       
       return true;
     });
