@@ -540,6 +540,20 @@ Respond with only "RELEVANT" or "NOT_RELEVANT"`;
 
   private async getRapidAPINews(competitor: string): Promise<CompetitorSignals> {
     try {
+      // If web_search is enabled, use OpenAI Responses to retrieve high-quality links here
+      if (process.env.OPENAI_ENABLE_WEB_NEWS === '1') {
+        try {
+          const ws = await openaiWebSearch.searchNewsForCompetitor(competitor, 'general');
+          return {
+            source: "RapidAPI News",
+            competitor,
+            items: (ws || []).slice(0, 8)
+          };
+        } catch (e) {
+          console.error('[RapidAPI News] web_search path failed, falling back to RapidAPI', { competitor, error: (e as Error)?.message });
+        }
+      }
+
       if (!process.env.RAPIDAPI_KEY) {
         return { source: "RapidAPI News", competitor, items: [] };
       }
@@ -580,6 +594,7 @@ Respond with only "RELEVANT" or "NOT_RELEVANT"`;
     }
   }
 
+// ...
   private filterRelevantItems(items: SignalItem[], competitors: string[]): SignalItem[] {
     const threeMonthsAgo = new Date();
     threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);

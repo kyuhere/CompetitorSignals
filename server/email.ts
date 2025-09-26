@@ -86,6 +86,18 @@ function generateReportEmailHTML(title: string, reportContent: any, competitors:
   const isNewsletter = /\*\*Executive Summary\*\*/.test(originalString);
 
   const mdBold = (s: string) => s.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+  const mdLinks = (s: string) => s.replace(/\[([^\]]+)\]\((https?:\/\/[^\)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
+  const mdInline = (s: string) => mdLinks(mdBold(s));
+  const extractMarkdownLinks = (s: string) => {
+    const links: { text: string; url: string }[] = [];
+    if (!s) return links;
+    const regex = /\[([^\]]+)\]\((https?:\/\/[^\)]+)\)/g;
+    let m: RegExpExecArray | null;
+    while ((m = regex.exec(s)) !== null) {
+      links.push({ text: m[1], url: m[2] });
+    }
+    return links;
+  };
 
   function renderNewsletterMarkdown(md: string): string {
     const lines = md.split(/\r?\n/);
@@ -106,21 +118,21 @@ function generateReportEmailHTML(title: string, reportContent: any, competitors:
       // Headings like **Executive Summary**
       if (/^\*\*.*\*\*$/.test(line)) {
         flushList();
-        out.push(`<h2 style="font-size:22px;font-weight:700;margin:20px 0 12px 0;border-bottom:2px solid #FFE606;padding-bottom:6px;">${mdBold(line.replace(/^\*\*(.*)\*\*$/, '$1'))}</h2>`);
+        out.push(`<h2 style="font-size:22px;font-weight:700;margin:20px 0 12px 0;border-bottom:2px solid #FFE606;padding-bottom:6px;">${mdInline(line.replace(/^\*\*(.*)\*\*$/, '$1'))}</h2>`);
         continue;
       }
 
       // Bullets like - **Company**: update text
       if (/^-\s+/.test(line)) {
         if (!listOpen) { out.push('<ul style="padding-left:20px;margin:0 0 14px 0;">'); listOpen = true; }
-        const li = mdBold(line.replace(/^-\s+/, ''));
+        const li = mdInline(line.replace(/^-\s+/, ''));
         out.push(`<li style="margin:8px 0;">${li}</li>`);
         continue;
       }
 
       // Paragraph
       flushList();
-      out.push(`<p style="margin:10px 0;">${mdBold(line)}</p>`);
+      out.push(`<p style="margin:10px 0;">${mdInline(line)}</p>`);
     }
     flushList();
     // Wrap in a styled section
@@ -266,7 +278,7 @@ function generateReportEmailHTML(title: string, reportContent: any, competitors:
             <h2>🔥 3 Key Takeaways</h2>
             <p style="margin-bottom: 15px; font-style: italic;">The most important insights from your competitor analysis:</p>
             <ul class="insights-list">
-              ${parsedContent.key_takeaways.slice(0, 3).map((takeaway: string) => `<li>${takeaway}</li>`).join('')}
+              ${parsedContent.key_takeaways.slice(0, 3).map((takeaway: string) => `<li>${mdInline(takeaway)}</li>`).join('')}
             </ul>
           </div>
           ` : ''}
@@ -274,7 +286,7 @@ function generateReportEmailHTML(title: string, reportContent: any, competitors:
           ${!isNewsletter && parsedContent.executive_summary ? `
           <div class="section">
             <h2>🎯 Executive Summary</h2>
-            <p>${parsedContent.executive_summary}</p>
+            <p>${mdInline(parsedContent.executive_summary)}</p>
           </div>
           ` : ''}
 
@@ -282,7 +294,7 @@ function generateReportEmailHTML(title: string, reportContent: any, competitors:
           <div class="section">
             <h2>🚀 Strategic Insights</h2>
             <ul class="insights-list">
-              ${parsedContent.strategic_insights.map((insight: string) => `<li>${insight}</li>`).join('')}
+              ${parsedContent.strategic_insights.map((insight: string) => `<li>${mdInline(insight)}</li>`).join('')}
             </ul>
           </div>
           ` : ''}
@@ -296,12 +308,52 @@ function generateReportEmailHTML(title: string, reportContent: any, competitors:
               ${competitor.recent_developments && competitor.recent_developments.length > 0 ? `
                 <h4>Recent Developments:</h4>
                 <ul class="insights-list">
-                  ${competitor.recent_developments.map((dev: string) => `<li>${dev}</li>`).join('')}
+                  ${competitor.recent_developments.map((dev: string) => `<li>${mdInline(dev)}</li>`).join('')}
                 </ul>
               ` : ''}
             `).join('')}
           </div>
           ` : ''}
+
+          ${(() => {
+            // Build "Sources Referenced" section by extracting Markdown links from the content
+            let textBlocks: string[] = [];
+            try {
+              if (isNewsletter) {
+                textBlocks = [originalString];
+              } else {
+                const parts: string[] = [];
+                if (parsedContent.executive_summary) parts.push(String(parsedContent.executive_summary));
+                if (Array.isArray(parsedContent.key_takeaways)) parts.push(parsedContent.key_takeaways.join('\n'));
+                if (Array.isArray(parsedContent.strategic_insights)) parts.push(parsedContent.strategic_insights.join('\n'));
+                if (Array.isArray(parsedContent.competitors)) {
+                  for (const c of parsedContent.competitors) {
+                    if (Array.isArray(c?.recent_developments)) parts.push(c.recent_developments.join('\n'));
+                    if (Array.isArray(c?.funding_business)) parts.push(c.funding_business.join('\n'));
+                    if (Array.isArray(c?.strengths_weaknesses?.strengths)) parts.push(c.strengths_weaknesses.strengths.join('\n'));
+                    if (Array.isArray(c?.strengths_weaknesses?.weaknesses)) parts.push(c.strengths_weaknesses.weaknesses.join('\n'));
+                  }
+                }
+                textBlocks = parts;
+              }
+            } catch {}
+            const allLinks = textBlocks.flatMap(t => extractMarkdownLinks(String(t || '')));
+            const byDomain = new Map<string, string>();
+            for (const { url } of allLinks) {
+              try {
+                const d = new URL(url).hostname.replace(/^www\./, '');
+                if (!byDomain.has(d)) byDomain.set(d, url);
+              } catch {}
+            }
+            if (byDomain.size === 0) return '';
+            const items = Array.from(byDomain.entries()).slice(0, 15).map(([d, u]) => `<li><a href="${u}" target="_blank" rel="noopener noreferrer">${d}</a></li>`).join('');
+            return `
+              <div class="section">
+                <h2>🔗 Sources Referenced</h2>
+                <ul class="insights-list">${items}</ul>
+              </div>
+            `;
+          })()}
 
           <div class="section" style="text-align: center;">
             <h2>Want More Insights?</h2>

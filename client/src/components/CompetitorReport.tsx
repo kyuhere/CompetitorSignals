@@ -12,7 +12,13 @@ import { Label } from "@/components/ui/label";
 import { useState, useMemo } from "react";
 
 // Minimal markdown -> HTML converter tailored to our newsletter format
-// Supports: bold (**text**), bullet lines starting with "- ", and simple paragraphs
+// Supports: bold (**text**), bullet lines starting with "- ", simple paragraphs, and Markdown links [text](url)
+const mdLinksToAnchors = (s: string) => {
+  if (!s) return s;
+  // Convert Markdown links to HTML anchors; leave other text intact
+  return s.replace(/\[([^\]]+)\]\((https?:\/\/[^\)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1 underline text-blue-700">$1</a>');
+};
+
 const renderNewsletterMarkdown = (md: string) => {
   const lines = (md || "").split(/\r?\n/);
   const elements: JSX.Element[] = [];
@@ -23,7 +29,7 @@ const renderNewsletterMarkdown = (md: string) => {
       elements.push(
         <ul className="list-disc pl-6 space-y-1" key={`ul-${elements.length}`}>
           {listBuffer.map((item, idx) => (
-            <li key={idx} dangerouslySetInnerHTML={{ __html: item.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') }} />
+            <li key={idx} dangerouslySetInnerHTML={{ __html: mdLinksToAnchors(item.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')) }} />
           ))}
         </ul>
       );
@@ -55,7 +61,7 @@ const renderNewsletterMarkdown = (md: string) => {
     } else {
       // Paragraph
       elements.push(
-        <p className="text-base text-foreground mb-4" key={`p-${elements.length}`} dangerouslySetInnerHTML={{ __html: line.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') }} />
+        <p className="text-base text-foreground mb-4" key={`p-${elements.length}`} dangerouslySetInnerHTML={{ __html: mdLinksToAnchors(line.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')) }} />
       );
     }
   }
@@ -448,11 +454,11 @@ export default function CompetitorReport({ report, guestGateActive, onGuestGate 
             {icon}
             {title}
           </h4>
-          <ul className="space-y-2 text-sm">
+          <ul className="space-y-2">
             {filtered.map((item: string, itemIndex: number) => (
-              <li key={itemIndex} className="flex items-start">
+              <li key={itemIndex} className="text-sm text-foreground flex items-start">
                 <div className="w-1.5 h-1.5 bg-primary rounded-full mt-2 mr-3 flex-shrink-0"></div>
-                <span className="text-foreground">{stripSourceTags(item)}</span>
+                <span dangerouslySetInnerHTML={{ __html: mdLinksToAnchors(item) }} />
               </li>
             ))}
           </ul>
@@ -478,13 +484,13 @@ export default function CompetitorReport({ report, guestGateActive, onGuestGate 
       <div className="p-4 sm:p-6 lg:p-8 border-b border-border">
         <div className="flex flex-col sm:flex-row items-start sm:items-start justify-between gap-3 sm:gap-2">
           <div className="min-w-0 w-full sm:w-auto">
-            <h1 className="text-2xl sm:text-4xl lg:text-6xl font-extrabold leading-tight text-foreground mb-4 flex items-center gap-2" data-testid="text-report-title">
+            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold leading-tight text-foreground mb-2 flex items-center gap-2 break-all max-w-full" data-testid="text-report-title">
               {report.title}
               {(report as any)?.metadata?.type === 'quick_summary' && (
                 <Badge className="bg-yellow-100 text-yellow-800 border border-yellow-300">Quick Summary</Badge>
               )}
             </h1>
-            <div className="flex items-center space-x-4 text-sm text-muted-foreground">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
               <span data-testid="text-report-date">
                 Generated: {report.createdAt ? new Date(report.createdAt).toLocaleDateString() : 'Now'} at {report.createdAt ? new Date(report.createdAt).toLocaleTimeString() : 'Now'}
               </span>
@@ -699,17 +705,15 @@ export default function CompetitorReport({ report, guestGateActive, onGuestGate 
                         </h4>
                         <div className="space-y-3 bg-muted/50 p-4 rounded-lg">
                           <div>
-                            <p className="text-sm font-medium text-foreground mb-1">Location</p>
-                            <p className="text-sm text-muted-foreground">{competitor.company_overview?.location || "No reliable data found"}</p>
+                            <p className="text-sm text-foreground"><strong>Location</strong> {competitor.company_overview?.location || "No reliable data found"}</p>
                           </div>
                           <div>
-                            <p className="text-sm font-medium text-foreground mb-1">Market Position</p>
-                            <p className="text-sm text-muted-foreground">{competitor.company_overview?.market_positioning || "No reliable data found"}</p>
+                            <p className="text-sm text-foreground"><strong>Market Position</strong> {competitor.company_overview?.market_positioning || "No reliable data found"}</p>
                           </div>
                         </div>
                         {competitor.company_overview?.key_products_services && Array.isArray(competitor.company_overview.key_products_services) && (
                           <div>
-                            <p className="text-sm font-medium text-foreground mb-3">Key Products & Services</p>
+                            <p className="text-sm text-foreground"><strong>Key Products & Services</strong></p>
                             <ul className="space-y-2">
                               {competitor.company_overview.key_products_services.slice(0, 4).map((item: string, idx: number) => (
                                 <li key={idx} className="text-sm text-foreground flex items-start">
@@ -730,7 +734,7 @@ export default function CompetitorReport({ report, guestGateActive, onGuestGate 
                         <div className="space-y-4">
                           {competitor.products_services?.main_offerings && Array.isArray(competitor.products_services.main_offerings) && (
                             <div className="bg-muted/50 p-4 rounded-lg">
-                              <p className="text-sm font-medium text-foreground mb-2">Main Offerings</p>
+                              <p className="text-sm text-foreground"><strong>Main Offerings</strong></p>
                               <ul className="space-y-2">
                                 {competitor.products_services.main_offerings.slice(0, 3).map((item: string, idx: number) => (
                                   <li key={idx} className="text-sm text-foreground flex items-start">
@@ -743,7 +747,7 @@ export default function CompetitorReport({ report, guestGateActive, onGuestGate 
                           )}
                           {competitor.products_services?.unique_selling_points && Array.isArray(competitor.products_services.unique_selling_points) && (
                             <div className="bg-muted/50 p-4 rounded-lg">
-                              <p className="text-sm font-medium text-foreground mb-2">Unique Selling Points</p>
+                              <p className="text-sm text-foreground"><strong>Unique Selling Points</strong></p>
                               <ul className="space-y-2">
                                 {competitor.products_services.unique_selling_points.slice(0, 3).map((item: string, idx: number) => (
                                   <li key={idx} className="text-sm text-foreground flex items-start">
@@ -767,15 +771,15 @@ export default function CompetitorReport({ report, guestGateActive, onGuestGate 
                     </h4>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       <div className="bg-muted/50 p-4 rounded-lg space-y-2">
-                        <p className="text-sm font-medium text-foreground">Pricing Models</p>
+                        <p className="text-sm text-foreground"><strong>Pricing Models</strong></p>
                         <p className="text-sm text-muted-foreground">{competitor.pricing_strategy?.pricing_models || "No reliable data found"}</p>
                       </div>
                       <div className="bg-muted/50 p-4 rounded-lg space-y-2">
-                        <p className="text-sm font-medium text-foreground">Strategy</p>
+                        <p className="text-sm text-foreground"><strong>Strategy</strong></p>
                         <p className="text-sm text-muted-foreground">{competitor.pricing_strategy?.general_strategy || "No reliable data found"}</p>
                       </div>
                       <div className="bg-muted/50 p-4 rounded-lg space-y-2">
-                        <p className="text-sm font-medium text-foreground">Promotions</p>
+                        <p className="text-sm text-foreground"><strong>Promotions</strong></p>
                         <p className="text-sm text-muted-foreground">{competitor.pricing_strategy?.promotions_offers || "No reliable data found"}</p>
                       </div>
                     </div>

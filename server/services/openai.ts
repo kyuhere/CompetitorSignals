@@ -21,6 +21,48 @@ interface CompetitorSignal {
   }>;
 }
 
+// Full structured analysis (used by summarizeCompetitorSignals)
+interface FullCompanyOverview {
+  location?: string;
+  market_positioning?: string;
+  key_products_services?: string[] | string;
+}
+
+interface FullStrengthsWeaknesses {
+  strengths?: string[];
+  weaknesses?: string[];
+}
+
+interface FullCompetitorAnalysis {
+  competitor: string;
+  company_overview?: FullCompanyOverview;
+  strengths_weaknesses?: FullStrengthsWeaknesses;
+  pricing_strategy?: Record<string, any>;
+  target_market?: Record<string, any>;
+  tech_assessment?: Record<string, any>;
+  market_presence?: Record<string, any>;
+  products_services?: Record<string, any>;
+  swot_analysis?: Record<string, any>;
+  customer_insights?: Record<string, any>;
+  tech_innovation?: Record<string, any>;
+  activity_level?: 'high' | 'moderate' | 'low';
+  recent_developments?: string[];
+  funding_business?: string[];
+}
+
+interface FullAnalysisResult {
+  executive_summary: string;
+  competitors: FullCompetitorAnalysis[];
+  key_takeaways?: string[];
+  strategic_insights?: string[];
+  sources_referenced?: string;
+  methodology?: {
+    sources_analyzed?: string[];
+    total_signals?: number;
+    confidence_level?: 'high' | 'medium' | 'low';
+  };
+}
+
 // Newsletter-style digest (Markdown output) — fast, concise, email-ready
 export async function summarizeNewsletterDigest(input: {
   trackedCompanies: Array<{ canonicalName: string; aliases?: string[] }>,
@@ -452,8 +494,103 @@ CRITICAL FORMATTING REQUIREMENTS:
       throw new Error("No response from OpenAI");
     }
 
-    // Validate the JSON response
-    const analysis: AnalysisResult = JSON.parse(result);
+    // Validate and post-process the JSON response
+    const analysis: FullAnalysisResult = JSON.parse(result);
+
+    // Helper to extract domain from a URL
+    const domainFromUrl = (u?: string): string | null => {
+      if (!u) return null;
+      try {
+        const url = new URL(u);
+        return url.hostname.replace(/^www\./, '');
+      } catch {
+        return null;
+      }
+    };
+
+    // Basic fallback HQ facts for common companies (to avoid "No reliable data found")
+    const BASIC_LOCATIONS: Record<string, string> = {
+      'OpenAI': 'San Francisco, USA',
+    };
+
+    // Build quick index of signals by competitor and by type
+    const sigIndex: Record<string, { any: typeof signals[0]['items']; funding: typeof signals[0]['items']; news: typeof signals[0]['items'] }> = {};
+    for (const s of signals) {
+      const arrAny = s.items || [];
+      const arrFunding = arrAny.filter(it => it.type === 'funding');
+      const arrNews = arrAny.filter(it => it.type !== 'funding');
+      sigIndex[s.competitor] = { any: arrAny, funding: arrFunding, news: arrNews };
+    }
+
+    // Ensure bullets carry a source link when possible; strip placeholder tokens
+    const appendSourceIfMissing = (text: string, url?: string): string => {
+      if (!text) return text;
+      const cleaned = text
+        .replace(/\[Source:\s*(?:news|bing\.com\/news)\s*\]/ig, '')
+        .replace(/\(https?:\/\/bing\.com\/news[^\)]*\)/ig, '');
+      // Remove placeholder source tags without URLs, e.g., [Source: Your Source Here]
+      const cleaned2 = cleaned.replace(/\[Source:\s*([^\]]*?)\](?!\([^\)]*\))/ig, '');
+      const hasLink = /\[Source:\s*[^\]]+\]\([^\)]+\)/i.test(cleaned2);
+      const d = domainFromUrl(url || '');
+      if (hasLink || !d || !url) return cleaned2.trim();
+      return `${cleaned2.trim()} [Source: ${d}](${url})`;
+    };
+
+    for (const comp of analysis.competitors) {
+      // Fill HQ if missing and we have a known value
+      const knownLoc = BASIC_LOCATIONS[comp.competitor] || BASIC_LOCATIONS[comp.competitor?.trim()] || null;
+      if (comp.company_overview && (!comp.company_overview.location || /no reliable data found/i.test(String(comp.company_overview.location)))) {
+        if (knownLoc) {
+          comp.company_overview.location = knownLoc;
+        }
+      }
+
+      const idx = sigIndex[comp.competitor] || sigIndex[comp.competitor?.trim()] || { any: [], funding: [], news: [] };
+      const pickUrl = (pref: 'funding' | 'news' | 'any') => {
+        const arr = idx[pref];
+        const withUrl = (arr || []).find(it => it.url && it.url.length > 10);
+        return withUrl?.url;
+      };
+
+      // Recent developments: prefer news-type URLs
+      if (Array.isArray(comp.recent_developments)) {
+        const url = pickUrl('news') || pickUrl('any');
+        comp.recent_developments = comp.recent_developments.map(b => appendSourceIfMissing(b, url));
+      }
+      // Funding/business: prefer funding URLs
+      if (Array.isArray(comp.funding_business)) {
+        const url = pickUrl('funding') || pickUrl('news') || pickUrl('any');
+        comp.funding_business = comp.funding_business.map(b => appendSourceIfMissing(b, url));
+      }
+
+      // Strengths/Weaknesses bullets: prefer news-type URLs
+      if (comp.strengths_weaknesses) {
+        const url = pickUrl('news') || pickUrl('any');
+        if (Array.isArray(comp.strengths_weaknesses.strengths)) {
+          comp.strengths_weaknesses.strengths = comp.strengths_weaknesses.strengths.map(b => appendSourceIfMissing(b, url));
+        }
+        if (Array.isArray(comp.strengths_weaknesses.weaknesses)) {
+          comp.strengths_weaknesses.weaknesses = comp.strengths_weaknesses.weaknesses.map(b => appendSourceIfMissing(b, url));
+        }
+      }
+    }
+
+    // Global arrays
+    const pickAnyUrl = () => {
+      for (const s of signals) {
+        const it = (s.items || []).find(i => i.url);
+        if (it?.url) return it.url;
+      }
+      return undefined;
+    };
+    const globalUrl = pickAnyUrl();
+    if (Array.isArray(analysis.key_takeaways) && globalUrl) {
+      analysis.key_takeaways = analysis.key_takeaways.map(b => appendSourceIfMissing(b, globalUrl));
+    }
+    if (Array.isArray(analysis.strategic_insights) && globalUrl) {
+      analysis.strategic_insights = analysis.strategic_insights.map(b => appendSourceIfMissing(b, globalUrl));
+    }
+
     return JSON.stringify(analysis, null, 2);
   } catch (error) {
     console.error("OpenAI summarization error:", error);

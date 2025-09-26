@@ -72,7 +72,7 @@ export class EnhancedSignalAggregator {
         const domain = options?.domainsByCompetitor?.[competitor] || options?.domainsByCompetitor?.[competitor.toLowerCase()];
         const [tpData, hnData] = await Promise.allSettled([
           (options?.mode === 'premium') ? this.getTrustpilotReviewData(competitor, domain, computeSentiment) : Promise.resolve(null),
-          this.getHackerNewsSentiment(competitor, computeSentiment)
+          this.getHackerNewsSentiment(competitor, computeSentiment, domain)
         ]);
 
         if (tpData.status === 'rejected') {
@@ -205,12 +205,12 @@ export class EnhancedSignalAggregator {
     }
   }
 
-  private async getHackerNewsSentiment(competitor: string, computeSentiment: boolean = true): Promise<ReviewSentimentData> {
+  private async getHackerNewsSentiment(competitor: string, computeSentiment: boolean = true, domain?: string | null): Promise<ReviewSentimentData> {
     try {
       // Web-search first path (feature-flagged)
       if (process.env.OPENAI_ENABLE_WEB_ENHANCED === '1') {
         try {
-          const webResult = await openaiWebSearch.fetchSocialSentiment(competitor);
+          const webResult = await openaiWebSearch.fetchSocialSentiment(competitor, domain || undefined);
           if (webResult) {
             return webResult;
           }
