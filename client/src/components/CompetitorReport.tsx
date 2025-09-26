@@ -219,7 +219,7 @@ export default function CompetitorReport({ report, guestGateActive, onGuestGate 
         return [] as Array<{ title: string; url: string; domain: string; publishedAt?: string; competitor?: string }>;
       }
     },
-    staleTime: 5 * 60 * 1000,
+    staleTime: 2 * 60 * 1000, // 2 minutes for faster updates
   });
 
   // Email mutation
@@ -1212,26 +1212,44 @@ export default function CompetitorReport({ report, guestGateActive, onGuestGate 
           </div>
         )}
 
-        {/* Latest News (OpenAI web_search, deduped) */}
+        {/* Latest News (Recent Headlines) */}
         {Array.isArray(latestNews) && latestNews.length > 0 && (
           <div className="mt-8 p-6 bg-muted rounded-lg">
             <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center">
               <ExternalLink className="w-5 h-5 text-primary mr-2" />
-              Latest News
+              Recent News Headlines
             </h3>
-            <ul className="space-y-3">
-              {latestNews.slice(0, 12).map((it: any, i: number) => {
+            <ul className="space-y-4">
+              {latestNews.slice(0, 8).map((it: any, i: number) => {
                 let domain = it?.domain as string | undefined;
                 if (!domain && it?.url) {
                   try { domain = new URL(it.url).hostname.replace(/^www\./, ''); } catch {}
                 }
+                const publishedDate = it.publishedAt ? new Date(it.publishedAt).toLocaleDateString() : null;
                 return (
-                  <li key={i} className="text-sm">
-                    <a href={it.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 underline text-blue-700">
-                      {domain || 'link'}
-                      <ExternalLink className="w-3 h-3" />
-                    </a>
-                    {it.title ? <span className="ml-2 text-foreground/80">— {it.title}</span> : null}
+                  <li key={i} className="border-l-2 border-primary/20 pl-4">
+                    <div className="space-y-1">
+                      <a 
+                        href={it.url} 
+                        target="_blank" 
+                        rel="noopener noreferrer" 
+                        className="block text-foreground hover:text-primary transition-colors font-medium leading-tight"
+                      >
+                        {it.title || 'Untitled Article'}
+                      </a>
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <span className="inline-flex items-center gap-1">
+                          <ExternalLink className="w-3 h-3" />
+                          {domain || 'Unknown Source'}
+                        </span>
+                        {publishedDate && (
+                          <>
+                            <span>•</span>
+                            <span>{publishedDate}</span>
+                          </>
+                        )}
+                      </div>
+                    </div>
                   </li>
                 );
               })}

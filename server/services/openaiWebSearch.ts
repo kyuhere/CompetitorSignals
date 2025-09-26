@@ -37,7 +37,7 @@ class OpenAIWebSearchService {
   constructor() {
     this.openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY || '' });
     this.model = process.env.OPENAI_WEB_MODEL || 'gpt-5';
-    this.ttlMs = Number(process.env.OPENAI_WEB_CACHE_TTL_MS || 10 * 60 * 1000); // 10 min default
+    this.ttlMs = Number(process.env.OPENAI_WEB_CACHE_TTL_MS || 5 * 60 * 1000); // 5 min default for faster updates
   }
 
   private getCached<T>(map: Map<string, CacheEntry<T>>, key: string): T | undefined {
@@ -114,21 +114,27 @@ class OpenAIWebSearchService {
     const currentDate = new Date().toISOString().split('T')[0];
     const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
     
-    const prompt = `Use web search to find recent news articles about "${competitor}" from the last 30 days.
+    const prompt = `Use web search to find the most recent news articles about "${competitor}" from the last 14 days (preferably last 7 days).
 
-Search for articles from premium tech news sources like TechCrunch, Wired, The Verge, Reuters, Bloomberg, WSJ, Financial Times, CNBC, Forbes, Business Insider, VentureBeat, SiliconANGLE, etc.
+Search DIVERSE premium tech news sources. Prioritize different sources for variety:
+- TechCrunch, Wired, The Verge, Ars Technica, Engadget
+- Reuters Tech, Bloomberg Tech, WSJ Tech, Financial Times
+- CNBC Tech, Forbes Tech, Business Insider Tech
+- VentureBeat, SiliconANGLE, 9to5Mac, MacRumors
+- Hacker News, Product Hunt, TechMeme
 
-Focus on: ${intent === 'general' ? 'business developments, funding, partnerships, product launches' : intent}
+Focus on: ${intent === 'general' ? 'business developments, funding, partnerships, product launches, earnings, strategic moves' : intent}
 
 Return ONLY valid JSON matching this exact schema:
 ${jsonSchema}
 
 Requirements:
-- Only include articles from 2024 or later (published between ${thirtyDaysAgo} and ${currentDate})
-- Include 4-6 recent, high-quality articles
+- PRIORITIZE articles from the last 7-14 days (${thirtyDaysAgo} to ${currentDate})
+- Include 5-8 articles from DIFFERENT sources (avoid duplicates from same domain)
 - Use real, working URLs from actual news sources
-- Provide accurate publication dates
-- Search the web for current, factual information`;
+- Provide accurate publication dates in YYYY-MM-DD format
+- Search the web for current, factual information
+- Ensure source diversity - no more than 1 article per domain`;
 
     try {
       const data = await this.responsesJSON<{ items: Array<{ title: string; summary: string; url: string; date?: string; category?: string }> }>(prompt);
@@ -154,12 +160,41 @@ Requirements:
         return item.title && item.url;
       });
 
-      // Basic cleanup
-      const dedup = items.filter((item, idx, self) => idx === self.findIndex(t => (t.url && t.url === item.url) || t.title === item.title));
-      const limited = dedup.slice(0, 6);
-      console.log(`[OpenAI] Returning ${limited.length} recent news items for ${competitor}`);
-      this.setCached(this.cacheNews, key, limited);
-      return limited;
+      // Enhanced deduplication with source diversity
+      const seen = new Set<string>();
+      const seenDomains = new Set<string>();
+      const diversified = items.filter(item => {
+        // Skip if no URL or title
+        if (!item.url || !item.title) return false;
+        
+        // Skip if duplicate URL or title
+        const urlKey = item.url;
+        const titleKey = item.title.toLowerCase();
+        if (seen.has(urlKey) || seen.has(titleKey)) return false;
+        seen.add(urlKey);
+        seen.add(titleKey);
+        
+        // Ensure source diversity - max 1 per domain
+        try {
+          const domain = new URL(item.url).hostname.replace(/^www\./, '');
+          if (seenDomains.has(domain)) return false;
+          seenDomains.add(domain);
+        } catch {
+          // If URL parsing fails, skip this item
+          return false;
+        }
+        
+        return true;
+      });
+      
+      // Sort by date (most recent first) and limit
+      const sorted = diversified
+        .sort((a, b) => new Date(b.publishedAt || 0).getTime() - new Date(a.publishedAt || 0).getTime())
+        .slice(0, 8);
+      
+      console.log(`[OpenAI] Returning ${sorted.length} diverse, recent news items for ${competitor}`);
+      this.setCached(this.cacheNews, key, sorted);
+      return sorted;
     } catch (e) {
       console.error(`[OpenAIWebSearch] Failed to search news for ${competitor} (${intent}):`, e);
       this.setCached(this.cacheNews, key, []);
