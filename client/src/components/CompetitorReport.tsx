@@ -20,19 +20,35 @@ const mdLinksToAnchors = (s: string) => {
   const toDomain = (url: string) => {
     try { return new URL(url).hostname.replace(/^www\./, ''); } catch { return url; }
   };
-  const parts = s.split(/(<[^>]+>)/g); // keep HTML tags intact
+  
+  // First, handle any existing HTML tags to avoid conflicts
+  const parts = s.split(/(<[^>]+>)/g);
   const processed = parts.map((part) => {
-    if (part.startsWith('<') && part.endsWith('>')) return part; // skip tags
+    if (part.startsWith('<') && part.endsWith('>')) return part; // skip existing HTML tags
     let text = part;
-    // Convert Markdown links first
-    text = text.replace(/\[([^\]]+)\]\((https?:\/\/[^\)]+)\)/g, (_m, label, url) => {
-      return `<a href="${url}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1 underline text-blue-700">${label}</a>`;
+    
+    // Convert Markdown links first - be more careful with escaping
+    text = text.replace(/\[([^\]]+)\]\((https?:\/\/[^\)]+)\)/g, (match, label, url) => {
+      // Escape quotes in URL but preserve & for URL functionality
+      const safeUrl = url.replace(/"/g, '&quot;');
+      const safeLabel = label
+        .replace(/"/g, '&quot;')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+      return `<a href="${safeUrl}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1 underline text-blue-700">${safeLabel}</a>`;
     });
-    // Auto-link bare URLs in remaining text segments
-    text = text.replace(/(https?:\/\/[^\s<)]+)/g, (m) => {
-      const label = toDomain(m);
-      return `<a href="${m}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1 underline text-blue-700">${label}</a>`;
-    });
+    
+    // Auto-link bare URLs in remaining text segments (only if no markdown links were found)
+    if (!text.includes('<a href=')) {
+      text = text.replace(/(https?:\/\/[^\s<)]+)/g, (url) => {
+        const label = toDomain(url);
+        const safeUrl = url.replace(/"/g, '&quot;');
+        const safeLabel = label.replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        return `<a href="${safeUrl}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1 underline text-blue-700">${safeLabel}</a>`;
+      });
+    }
+    
     return text;
   });
   return processed.join('');

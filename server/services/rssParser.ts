@@ -99,7 +99,17 @@ function normalizeRssLink(rawUrl: string): string {
       if (cand) {
         // Try decodeURIComponent first
         let decoded = '';
-        try { decoded = decodeURIComponent(cand); } catch { decoded = cand; }
+        try { 
+          decoded = decodeURIComponent(cand); 
+          // Handle double encoding
+          if (decoded.includes('%')) {
+            try {
+              decoded = decodeURIComponent(decoded);
+            } catch {}
+          }
+        } catch { 
+          decoded = cand; 
+        }
 
         // Some variants use base64 for `u`
         if (!/^https?:\/\//i.test(decoded) && /^[A-Za-z0-9+/=_-]+$/.test(decoded)) {
@@ -117,6 +127,16 @@ function normalizeRssLink(rawUrl: string): string {
       // Sometimes the path contains a redirect-like "ck/a" with encoded target in the query
       const r = u.searchParams.get('r');
       if (r && /^https?:\/\//i.test(r)) return r;
+      
+      // Try other common Bing redirect parameters
+      const target = u.searchParams.get('target') || u.searchParams.get('link');
+      if (target && /^https?:\/\//i.test(target)) {
+        try {
+          return decodeURIComponent(target);
+        } catch {
+          return target;
+        }
+      }
     }
 
     // Handle Google News style links if ever encountered (defensive)

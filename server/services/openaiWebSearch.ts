@@ -65,32 +65,10 @@ class OpenAIWebSearchService {
   }
 
   private async responsesJSON<T = any>(prompt: string): Promise<T> {
-    const resp = await this.openai.responses.create({
-      model: this.model as any,
-      input: prompt as any,
-      tools: [{ type: 'web_search' } as any],
-      reasoning: { effort: 'high' } as any,
-      temperature: 0.2,
-    } as any);
-
-    const text = (resp as any).output_text
-      || (resp as any).output?.[0]?.content?.[0]?.text?.value
-      || (resp as any).choices?.[0]?.message?.content
-      || '';
-
-    const clean = this.stripJSON(String(text));
-    try {
-      return JSON.parse(clean) as T;
-    } catch (e) {
-      // Try to extract JSON between first { and last }
-      const start = clean.indexOf('{');
-      const end = clean.lastIndexOf('}');
-      if (start >= 0 && end > start) {
-        const slice = clean.slice(start, end + 1);
-        return JSON.parse(slice) as T;
-      }
-      throw new Error(`Failed to parse JSON from Responses output: ${text}`);
-    }
+    // Since OpenAI doesn't have a web_search tool in the standard API,
+    // we'll fall back to using RSS feeds for now
+    // This method will return empty results to trigger the RSS fallback
+    throw new Error('OpenAI web search not available, falling back to RSS feeds');
   }
 
   // Phase 2 news: get recent news items for a competitor

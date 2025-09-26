@@ -145,24 +145,48 @@ class SignalAggregator {
     }));
   }
 
-  // Trim text to headline, summary, and key details only (max 300 chars)
+  // Trim text to headline, summary, and key details only (max 800 chars for better context)
   private trimTextContent(content: string): string {
     if (!content) return '';
     
     // Remove HTML tags
     const cleanContent = content.replace(/<[^>]*>/g, '');
     
-    // Extract first paragraph or sentence that looks like a summary
-    const sentences = cleanContent.split(/[.!?]+/);
-    let summary = sentences[0] || '';
-    
-    // If first sentence is too short, try to get more context
-    if (summary.length < 100 && sentences[1]) {
-      summary += '. ' + sentences[1];
+    // If content is already reasonably short, return it as-is
+    if (cleanContent.length <= 800) {
+      return cleanContent.trim();
     }
     
-    // Limit to 300 characters for efficiency
-    return summary.substring(0, 300).trim();
+    // For longer content, try to split into sentences more intelligently
+    // Handle common abbreviations that shouldn't be split
+    const sentences = cleanContent
+      .replace(/U\.S\./g, 'US') // Replace U.S. with US to avoid splitting
+      .replace(/U\.K\./g, 'UK') // Replace U.K. with UK
+      .replace(/etc\./g, 'etc') // Replace etc. with etc
+      .split(/[.!?]+/)
+      .map(s => s.trim())
+      .filter(s => s.length > 5); // Filter out very short fragments
+    
+    let summary = '';
+    
+    // Build summary by adding sentences until we have good context
+    for (let i = 0; i < sentences.length && summary.length < 600; i++) {
+      const sentence = sentences[i];
+      if (summary) {
+        summary += '. ' + sentence;
+      } else {
+        summary = sentence;
+      }
+    }
+    
+    // Restore abbreviations
+    summary = summary
+      .replace(/\bUS\b/g, 'U.S.')
+      .replace(/\bUK\b/g, 'U.K.')
+      .replace(/\betc\b/g, 'etc.');
+    
+    // Limit to 800 characters for better context while maintaining efficiency
+    return summary.substring(0, 800).trim();
   }
 
   private async getCompetitorSignals(
