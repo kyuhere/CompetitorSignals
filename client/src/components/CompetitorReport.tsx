@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Download, Mail, BarChart3, DollarSign, MessageCircle, Lightbulb, CheckCircle, TrendingUp, TrendingDown, Minus, Building2, Target, Code, Globe, Package, Users, ThumbsUp, ThumbsDown, AlertTriangle, Zap, ExternalLink } from "lucide-react";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -261,6 +261,30 @@ export default function CompetitorReport({ report, guestGateActive, onGuestGate,
       toast({
         title: "Email Failed",
         description: error.message || "Failed to send email. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Track competitor mutation
+  const trackCompetitorMutation = useMutation({
+    mutationFn: async (competitorName: string) => {
+      return await apiRequest('POST', '/api/competitors/tracked', {
+        competitorName: competitorName.trim()
+      });
+    },
+    onSuccess: (data, competitorName) => {
+      toast({
+        title: "✅ Competitor Tracked!",
+        description: `${competitorName} has been added to your tracked competitors`,
+      });
+      // Invalidate queries to refresh the tracked competitors list
+      queryClient.invalidateQueries({ queryKey: ["/api/competitors/tracked"] });
+    },
+    onError: (error: any, competitorName) => {
+      toast({
+        title: "Failed to Track Competitor",
+        description: error.message || `Could not add ${competitorName} to tracking`,
         variant: "destructive",
       });
     },
@@ -1291,10 +1315,23 @@ export default function CompetitorReport({ report, guestGateActive, onGuestGate,
                         )}
                       </div>
                     </div>
-                    <div className="flex-shrink-0">
-                      <button
-                        type="button"
-                        className="text-xs px-2 py-1 rounded-md bg-primary text-primary-foreground hover:opacity-90"
+                    <div className="flex-shrink-0 flex gap-2">
+                      <Button
+                        size="sm"
+                        className="text-xs px-3 py-1 h-7 bg-primary text-primary-foreground hover:bg-primary/90"
+                        onClick={() => {
+                          if (guestGateActive) { onGuestGate && onGuestGate(); return; }
+                          trackCompetitorMutation.mutate(name);
+                        }}
+                        disabled={trackCompetitorMutation.isPending}
+                        data-testid={`button-track-suggested-${idx}`}
+                      >
+                        {trackCompetitorMutation.isPending ? "Adding..." : "Track"}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="text-xs px-3 py-1 h-7 border-primary text-primary hover:bg-primary hover:text-primary-foreground"
                         onClick={() => {
                           if (guestGateActive) { onGuestGate && onGuestGate(); return; }
                           const toCanon = (s: string) => {
@@ -1317,9 +1354,10 @@ export default function CompetitorReport({ report, guestGateActive, onGuestGate,
                           }
                           onAnalyzeRequested && onAnalyzeRequested(deduped);
                         }}
+                        data-testid={`button-analyze-suggested-${idx}`}
                       >
-                        Add to analysis
-                      </button>
+                        Analyze
+                      </Button>
                     </div>
                   </li>
                 );
