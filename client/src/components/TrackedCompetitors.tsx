@@ -307,7 +307,7 @@ export default function TrackedCompetitors({ onShowReport }: TrackedCompetitorsP
 
         {/* Add New Competitor */}
         {isAdding ? (
-          <div className="flex space-x-3 p-4 bg-muted/30 rounded-xl">
+          <div className="space-y-3 p-4 bg-muted/30 rounded-xl">
             <Input
               placeholder="Enter competitor name..."
               value={newCompetitorName}
@@ -315,27 +315,29 @@ export default function TrackedCompetitors({ onShowReport }: TrackedCompetitorsP
               onKeyDown={handleKeyPress}
               autoFocus
               data-testid="input-new-competitor"
-              className="flex-1 min-w-0 rounded-xl border-2 focus:border-primary font-medium text-base px-4 py-3"
+              className="w-full rounded-xl border-2 focus:border-primary font-medium text-base px-4 py-3 h-12"
             />
-            <Button
-              onClick={handleAddCompetitor}
-              disabled={addCompetitorMutation.isPending || !newCompetitorName.trim()}
-              data-testid="button-confirm-add"
-              className="btn-primary px-6 py-2 text-sm rounded-xl"
-            >
-              Add
-            </Button>
-            <Button
-              variant="ghost"
-              onClick={() => {
-                setIsAdding(false);
-                setNewCompetitorName("");
-              }}
-              data-testid="button-cancel-add"
-              className="rounded-xl"
-            >
-              Cancel
-            </Button>
+            <div className="flex space-x-3">
+              <Button
+                onClick={handleAddCompetitor}
+                disabled={addCompetitorMutation.isPending || !newCompetitorName.trim()}
+                data-testid="button-confirm-add"
+                className="btn-primary px-4 py-2 text-sm rounded-xl flex-1"
+              >
+                Add
+              </Button>
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  setIsAdding(false);
+                  setNewCompetitorName("");
+                }}
+                data-testid="button-cancel-add"
+                className="rounded-xl px-4 py-2 text-sm flex-1"
+              >
+                Cancel
+              </Button>
+            </div>
           </div>
         ) : (
           <Button
