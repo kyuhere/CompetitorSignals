@@ -190,15 +190,6 @@ export default function CompetitorInputForm({ onAnalyze, isLoading, usage }: Com
                 </Label>
               </div>
             </div>
-            {/* Fresh data toggle */}
-            <div className="flex items-center space-x-2 pt-1">
-              <Checkbox
-                id="fresh"
-                checked={fresh}
-                onCheckedChange={(checked) => setFresh(!!checked)}
-              />
-              <Label htmlFor="fresh" className="text-sm text-foreground">Fetch fresh data (skip cache)</Label>
-            </div>
           </div>
 
           {/* Generate Button */}
