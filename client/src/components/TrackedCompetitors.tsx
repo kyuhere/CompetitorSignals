@@ -315,7 +315,7 @@ export default function TrackedCompetitors({ onShowReport }: TrackedCompetitorsP
               onKeyDown={handleKeyPress}
               autoFocus
               data-testid="input-new-competitor"
-              className="flex-1 rounded-xl border-2 focus:border-primary font-medium"
+              className="flex-1 min-w-0 rounded-xl border-2 focus:border-primary font-medium text-base px-4 py-3"
             />
             <Button
               onClick={handleAddCompetitor}
