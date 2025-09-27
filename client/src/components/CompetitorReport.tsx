@@ -484,7 +484,11 @@ export default function CompetitorReport({ report, guestGateActive, onGuestGate,
   };
 
   // Helper to strip any trailing inline source tags like "[Source: bing.com/news]"
-  const stripSourceTags = (s: string) => (s || '').replace(/\s*\[source:[^\]]*\]/gi, '').trim();
+  // Also remove full markdown link variants: [Source: xyz](https://...)
+  const stripSourceTags = (s: string) => (s || '')
+    .replace(/\s*\[source:[^\]]*\]\([^)]*\)/gi, '')
+    .replace(/\s*\[source:[^\]]*\]/gi, '')
+    .trim();
 
   // Newsletter-only view
   if (isNewsletter) {
@@ -576,7 +580,7 @@ export default function CompetitorReport({ report, guestGateActive, onGuestGate,
             {filtered.map((item: string, itemIndex: number) => (
               <li key={itemIndex} className="text-sm text-foreground flex items-start">
                 <div className="w-1.5 h-1.5 bg-primary rounded-full mt-2 mr-3 flex-shrink-0"></div>
-                <span dangerouslySetInnerHTML={{ __html: mdLinksToAnchors(item) }} />
+                <span dangerouslySetInnerHTML={{ __html: mdLinksToAnchors(stripSourceTags(item)) }} />
               </li>
             ))}
           </ul>
@@ -1190,8 +1194,14 @@ export default function CompetitorReport({ report, guestGateActive, onGuestGate,
                       {renderSection("Target Market", <Target className="w-4 h-4 text-cyan-600 mr-2" />,
                         <>
                           <div className="space-y-2">
-                            <div className="text-sm text-foreground"><strong>Primary Segments:</strong> {competitor.target_market?.primary_segments || "No reliable data found"}</div>
-                            <div className="text-sm text-foreground"><strong>Competitive Position:</strong> {competitor.target_market?.competitive_position || "No reliable data found"}</div>
+                            <div className="text-sm text-foreground">
+                              <strong>Primary Segments:</strong>{' '}
+                              <span dangerouslySetInnerHTML={{ __html: mdLinksToAnchors(stripSourceTags(competitor.target_market?.primary_segments || "No reliable data found")) }} />
+                            </div>
+                            <div className="text-sm text-foreground">
+                              <strong>Competitive Position:</strong>{' '}
+                              <span dangerouslySetInnerHTML={{ __html: mdLinksToAnchors(stripSourceTags(competitor.target_market?.competitive_position || "No reliable data found")) }} />
+                            </div>
                           </div>
                         </>
                       )}
@@ -1200,9 +1210,18 @@ export default function CompetitorReport({ report, guestGateActive, onGuestGate,
                     <div>
                       {renderSection("Market Presence", <Globe className="w-4 h-4 text-emerald-600 mr-2" />,
                         <div className="space-y-2">
-                          <div className="text-sm text-foreground"><strong>Market Share:</strong> {competitor.market_presence?.market_share || "No reliable data found"}</div>
-                          <div className="text-sm text-foreground"><strong>Geographic Reach:</strong> {competitor.market_presence?.geographic_reach || "No reliable data found"}</div>
-                          <div className="text-sm text-foreground"><strong>Target Audience:</strong> {competitor.market_presence?.target_audience || "No reliable data found"}</div>
+                          <div className="text-sm text-foreground">
+                            <strong>Market Share:</strong>{' '}
+                            <span dangerouslySetInnerHTML={{ __html: mdLinksToAnchors(stripSourceTags(competitor.market_presence?.market_share || "No reliable data found")) }} />
+                          </div>
+                          <div className="text-sm text-foreground">
+                            <strong>Geographic Reach:</strong>{' '}
+                            <span dangerouslySetInnerHTML={{ __html: mdLinksToAnchors(stripSourceTags(competitor.market_presence?.geographic_reach || "No reliable data found")) }} />
+                          </div>
+                          <div className="text-sm text-foreground">
+                            <strong>Target Audience:</strong>{' '}
+                            <span dangerouslySetInnerHTML={{ __html: mdLinksToAnchors(stripSourceTags(competitor.market_presence?.target_audience || "No reliable data found")) }} />
+                          </div>
                         </div>
                       )}
                     </div>
@@ -1230,8 +1249,14 @@ export default function CompetitorReport({ report, guestGateActive, onGuestGate,
                       {renderSection("Tech Assessment", <Code className="w-4 h-4 text-slate-600 mr-2" />,
                         <>
                           <div className="space-y-2">
-                            <div className="text-sm text-foreground"><strong>Tech Stack:</strong> {competitor.tech_assessment?.tech_stack || "No reliable data found"}</div>
-                            <div className="text-sm text-foreground"><strong>Innovation Level:</strong> {competitor.tech_assessment?.innovation_level || "No reliable data found"}</div>
+                            <div className="text-sm text-foreground">
+                              <strong>Tech Stack:</strong>{' '}
+                              <span dangerouslySetInnerHTML={{ __html: mdLinksToAnchors(stripSourceTags(competitor.tech_assessment?.tech_stack || "No reliable data found")) }} />
+                            </div>
+                            <div className="text-sm text-foreground">
+                              <strong>Innovation Level:</strong>{' '}
+                              <span dangerouslySetInnerHTML={{ __html: mdLinksToAnchors(stripSourceTags(competitor.tech_assessment?.innovation_level || "No reliable data found")) }} />
+                            </div>
                           </div>
                         </>
                       )}
@@ -1241,8 +1266,14 @@ export default function CompetitorReport({ report, guestGateActive, onGuestGate,
                       {renderSection("Tech & Innovation", <Zap className="w-4 h-4 text-yellow-600 mr-2" />,
                         <>
                           <div className="space-y-2">
-                            <div className="text-sm text-foreground"><strong>Patents & R&D:</strong> {competitor.tech_innovation?.patents_rd || "No reliable data found"}</div>
-                            <div className="text-sm text-foreground"><strong>Key Innovations:</strong> {competitor.tech_innovation?.differentiating_innovations || "No reliable data found"}</div>
+                            <div className="text-sm text-foreground">
+                              <strong>Patents & R&D:</strong>{' '}
+                              <span dangerouslySetInnerHTML={{ __html: mdLinksToAnchors(stripSourceTags(competitor.tech_innovation?.patents_rd || "No reliable data found")) }} />
+                            </div>
+                            <div className="text-sm text-foreground">
+                              <strong>Key Innovations:</strong>{' '}
+                              <span dangerouslySetInnerHTML={{ __html: mdLinksToAnchors(stripSourceTags(competitor.tech_innovation?.differentiating_innovations || "No reliable data found")) }} />
+                            </div>
                           </div>
                         </>
                       )}
