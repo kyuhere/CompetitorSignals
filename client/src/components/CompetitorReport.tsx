@@ -231,9 +231,11 @@ export default function CompetitorReport({ report, guestGateActive, onGuestGate,
         if (String(report.id || '').startsWith('temp_')) {
           const q = encodeURIComponent((report.competitors || []).join(','));
           const res = await apiRequest('GET', `/api/suggested-competitors?competitors=${q}`);
+          console.log('Suggested competitors (temp):', res);
           return Array.isArray(res) ? res : [];
         } else {
           const res = await apiRequest('GET', `/api/reports/${report.id}/suggested-competitors`);
+          console.log('Suggested competitors (persisted):', res);
           return Array.isArray(res) ? res : [];
         }
       } catch (e) {
@@ -243,6 +245,11 @@ export default function CompetitorReport({ report, guestGateActive, onGuestGate,
     },
     staleTime: 10 * 60 * 1000,
   });
+
+  // Debug suggested competitors data
+  console.log('suggestedComps data:', suggestedComps);
+  console.log('suggestedComps array check:', Array.isArray(suggestedComps));
+  console.log('suggestedComps length:', suggestedComps?.length);
 
   // Email mutation
   const emailMutation = useMutation({
