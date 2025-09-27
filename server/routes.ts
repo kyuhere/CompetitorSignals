@@ -8,6 +8,7 @@ import { insertCompetitorReportSchema, insertTrackedCompetitorSchema } from "@sh
 import { z } from "zod";
 import { signalAggregator } from "./services/signalAggregator";
 import { enhancedSignalAggregator } from "./services/enhancedSignalAggregator";
+import { intelligentCompetitorSuggestions } from "./services/intelligentCompetitorSuggestions";
 
 import { summarizeCompetitorSignals, generateFastPreview, summarizeCompactSignals, summarizeNewsletterDigest } from "./services/openai";
 import { openaiWebSearch } from "./services/openaiWebSearch";
@@ -725,26 +726,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (competitors.length === 0) return res.json([]);
 
       const base = String(competitors[0] || '').trim();
-      const suggestions = await signalAggregator.getSuggestedCompetitorsFor(base);
+      
+      // Use intelligent competitor suggestions with ChatGPT analysis
+      const suggestions = await intelligentCompetitorSuggestions.discoverCompetitors(base, competitors);
+      
+      // Format for frontend (keep top 3 with highest relevance scores)
+      const formatted = suggestions
+        .slice(0, 3)
+        .map(s => ({
+          name: s.name,
+          domain: s.domain,
+          url: s.url,
+          relevanceScore: s.relevanceScore,
+          reasoning: s.reasoning,
+          category: s.category
+        }));
 
-      const existing = new Set(competitors.map((c: string) => (c || '').toLowerCase()));
-      const deduped = [] as Array<{ name: string; domain: string; url: string }>;
-      const seenDomain = new Set<string>();
-      for (const s of suggestions) {
-        const domain = (s.domain || '').toLowerCase();
-        const name = (s.name || '').toLowerCase();
-        if (!domain) continue;
-        if (existing.has(name)) continue;
-        if (seenDomain.has(domain)) continue;
-        seenDomain.add(domain);
-        deduped.push({ name: s.name, domain: s.domain, url: s.url });
-        if (deduped.length >= 3) break;
-      }
-
-      res.json(deduped);
+      res.json(formatted);
     } catch (err) {
       console.error('[Routes] /api/reports/:id/suggested-competitors failed', err);
-      res.status(500).json({ message: 'Failed to suggest competitors' });
+      
+      // Fallback to basic suggestions if AI analysis fails
+      try {
+        const { id: reportId } = req.params;
+        const fallbackReport = await storage.getReportById(reportId);
+        if (!fallbackReport) return res.status(404).json({ message: 'Report not found' });
+        
+        const competitors: string[] = Array.isArray(fallbackReport.competitors) ? fallbackReport.competitors : [];
+        const base = String(competitors[0] || '').trim();
+        const basicSuggestions = await signalAggregator.getSuggestedCompetitorsFor(base);
+        
+        const existing = new Set(competitors.map((c: string) => (c || '').toLowerCase()));
+        const deduped = [] as Array<{ name: string; domain: string; url: string }>;
+        const seenDomain = new Set<string>();
+        for (const s of basicSuggestions) {
+          const domain = (s.domain || '').toLowerCase();
+          const name = (s.name || '').toLowerCase();
+          if (!domain) continue;
+          if (existing.has(name)) continue;
+          if (seenDomain.has(domain)) continue;
+          seenDomain.add(domain);
+          deduped.push({ name: s.name, domain: s.domain, url: s.url });
+          if (deduped.length >= 3) break;
+        }
+        
+        res.json(deduped);
+      } catch (fallbackErr) {
+        console.error('[Routes] Fallback also failed', fallbackErr);
+        res.status(500).json({ message: 'Failed to suggest competitors' });
+      }
     }
   });
 
@@ -756,21 +786,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const base = q || (rawComps.split(',').map((s: string) => s.trim()).filter(Boolean)[0] || '');
       if (!base) return res.json([]);
 
-      const suggestions = await signalAggregator.getSuggestedCompetitorsFor(base);
-      const deduped = [] as Array<{ name: string; domain: string; url: string }>;
-      const seenDomain = new Set<string>();
-      for (const s of suggestions) {
-        const domain = (s.domain || '').toLowerCase();
-        if (!domain) continue;
-        if (seenDomain.has(domain)) continue;
-        seenDomain.add(domain);
-        deduped.push({ name: s.name, domain: s.domain, url: s.url });
-        if (deduped.length >= 3) break;
-      }
-      res.json(deduped);
+      const existingCompetitors = rawComps ? rawComps.split(',').map((s: string) => s.trim()).filter(Boolean) : [];
+      
+      // Use intelligent competitor suggestions with ChatGPT analysis
+      const suggestions = await intelligentCompetitorSuggestions.discoverCompetitors(base, existingCompetitors);
+      
+      // Format for frontend (keep top 3 with highest relevance scores)
+      const formatted = suggestions
+        .slice(0, 3)
+        .map(s => ({
+          name: s.name,
+          domain: s.domain,
+          url: s.url,
+          relevanceScore: s.relevanceScore,
+          reasoning: s.reasoning,
+          category: s.category
+        }));
+
+      res.json(formatted);
     } catch (err) {
       console.error('[Routes] /api/suggested-competitors failed', err);
-      res.status(500).json({ message: 'Failed to suggest competitors' });
+      
+      // Fallback to basic suggestions if AI analysis fails
+      try {
+        const q = (String(req.query.query || '') || '').trim();
+        const rawComps = String(req.query.competitors || '').trim();
+        const base = q || (rawComps.split(',').map((s: string) => s.trim()).filter(Boolean)[0] || '');
+        
+        const basicSuggestions = await signalAggregator.getSuggestedCompetitorsFor(base);
+        const deduped = [] as Array<{ name: string; domain: string; url: string }>;
+        const seenDomain = new Set<string>();
+        for (const s of basicSuggestions) {
+          const domain = (s.domain || '').toLowerCase();
+          if (!domain) continue;
+          if (seenDomain.has(domain)) continue;
+          seenDomain.add(domain);
+          deduped.push({ name: s.name, domain: s.domain, url: s.url });
+          if (deduped.length >= 3) break;
+        }
+        res.json(deduped);
+      } catch (fallbackErr) {
+        console.error('[Routes] Fallback also failed', fallbackErr);
+        res.status(500).json({ message: 'Failed to suggest competitors' });
+      }
     }
   });
 

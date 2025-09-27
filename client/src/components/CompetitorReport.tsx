@@ -1310,31 +1310,58 @@ export default function CompetitorReport({ report, guestGateActive, onGuestGate,
             <h3 className="text-lg font-semibold text-foreground mb-3 flex items-center">
               <Users className="w-5 h-5 text-primary mr-2" />
               Suggested Competitors
+              <span className="ml-2 text-xs bg-primary/10 text-primary px-2 py-1 rounded-full">AI-Analyzed</span>
             </h3>
-            <ul className="space-y-2">
+            <ul className="space-y-4">
               {suggestedComps.slice(0, 3).map((it: any, idx: number) => {
                 const name = it?.name || '';
                 const domain = it?.domain || '';
                 const href = it?.url || (name ? `https://www.google.com/search?q=${encodeURIComponent(name + ' competitor')}` : '#');
+                const relevanceScore = it?.relevanceScore || 0;
+                const reasoning = it?.reasoning || '';
+                const category = it?.category || 'Potential Competitor';
+                
                 return (
-                  <li key={idx} className="text-sm text-foreground flex items-start justify-between gap-3">
-                    <div className="flex items-start">
-                      <div className="w-1.5 h-1.5 bg-primary rounded-full mt-2 mr-3 flex-shrink-0"></div>
-                      <div>
-                        <a href={href} target="_blank" rel="noopener noreferrer" className="font-medium underline text-blue-700 hover:text-blue-800">
-                          {name}
-                        </a>
-                        {domain && (
-                          <>
-                            <span className="mx-2 text-muted-foreground">•</span>
-                            <a href={`https://${domain}`} target="_blank" rel="noopener noreferrer" className="text-muted-foreground underline">
-                              {domain}
+                  <li key={idx} className="text-sm text-foreground border border-border/50 rounded-lg p-4 bg-background/50">
+                    <div className="flex items-start justify-between gap-3 mb-2">
+                      <div className="flex items-start flex-1">
+                        <div className="w-1.5 h-1.5 bg-primary rounded-full mt-2 mr-3 flex-shrink-0"></div>
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <a href={href} target="_blank" rel="noopener noreferrer" className="font-medium underline text-blue-700 hover:text-blue-800">
+                              {name}
                             </a>
-                          </>
-                        )}
+                            {relevanceScore > 0 && (
+                              <span className={`text-xs px-2 py-1 rounded-full font-medium ${
+                                relevanceScore >= 80 ? 'bg-green-100 text-green-800' :
+                                relevanceScore >= 60 ? 'bg-yellow-100 text-yellow-800' :
+                                'bg-gray-100 text-gray-800'
+                              }`}>
+                                {relevanceScore}% match
+                              </span>
+                            )}
+                            {category && (
+                              <span className="text-xs px-2 py-1 rounded-full bg-blue-100 text-blue-800">
+                                {category}
+                              </span>
+                            )}
+                          </div>
+                          {domain && (
+                            <div className="mb-2">
+                              <a href={`https://${domain}`} target="_blank" rel="noopener noreferrer" className="text-muted-foreground underline text-xs">
+                                {domain}
+                              </a>
+                            </div>
+                          )}
+                          {reasoning && (
+                            <p className="text-xs text-muted-foreground italic">
+                              {reasoning}
+                            </p>
+                          )}
+                        </div>
                       </div>
                     </div>
-                    <div className="flex-shrink-0 flex gap-2">
+                    <div className="flex-shrink-0 flex gap-2 mt-2">
                       <Button
                         size="sm"
                         className="text-xs px-3 py-1 h-7 bg-primary text-primary-foreground hover:bg-primary/90"
