@@ -225,31 +225,12 @@ export default function CompetitorReport({ report, guestGateActive, onGuestGate,
 
   // Suggested Competitors (via backend helper)
   const { data: suggestedComps } = useQuery({
-    queryKey: ["suggested-competitors", report.id, (report.competitors || []).join(',')],
-    queryFn: async () => {
-      try {
-        if (String(report.id || '').startsWith('temp_')) {
-          const q = encodeURIComponent((report.competitors || []).join(','));
-          const res = await apiRequest('GET', `/api/suggested-competitors?competitors=${q}`);
-          console.log('Suggested competitors (temp):', res);
-          return Array.isArray(res) ? res : [];
-        } else {
-          const res = await apiRequest('GET', `/api/reports/${report.id}/suggested-competitors`);
-          console.log('Suggested competitors (persisted):', res);
-          return Array.isArray(res) ? res : [];
-        }
-      } catch (e) {
-        console.error('Failed to load suggested competitors', e);
-        return [] as Array<{ name: string; domain: string; url: string }>;
-      }
-    },
-    staleTime: 10 * 60 * 1000,
+    queryKey: String(report.id || '').startsWith('temp_') 
+      ? [`/api/suggested-competitors?competitors=${encodeURIComponent((report.competitors || []).join(','))}`]
+      : ["/api/reports", report.id, "suggested-competitors"],
+    enabled: !!report.id, // Only run when we have a report ID
+    staleTime: 5 * 60 * 1000,
   });
-
-  // Debug suggested competitors data
-  console.log('suggestedComps data:', suggestedComps);
-  console.log('suggestedComps array check:', Array.isArray(suggestedComps));
-  console.log('suggestedComps length:', suggestedComps?.length);
 
   // Email mutation
   const emailMutation = useMutation({
@@ -1294,7 +1275,7 @@ export default function CompetitorReport({ report, guestGateActive, onGuestGate,
 
         {/* Suggested Competitors */}
         {Array.isArray(suggestedComps) && suggestedComps.length > 0 && (
-          <div className="mt-8 p-6 bg-muted/60 rounded-lg">
+          <div className="mt-8 p-6 bg-muted/60 rounded-lg" data-testid="suggested-competitors-section">
             <h3 className="text-lg font-semibold text-foreground mb-3 flex items-center">
               <Users className="w-5 h-5 text-primary mr-2" />
               Suggested Competitors
